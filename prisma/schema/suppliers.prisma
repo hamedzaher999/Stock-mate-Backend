@@ -1,0 +1,14 @@
+model Supplier {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  variantSuppliers VariantSupplier[]
+
+  @@map("suppliers")
+}

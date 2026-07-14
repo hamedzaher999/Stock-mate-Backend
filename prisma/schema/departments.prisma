@@ -1,0 +1,14 @@
+model Department {
+  id        String         @id @default(uuid()) @db.Uuid
+  name      String         @unique
+  type      DepartmentType @default(standard)
+  managerId String?        @unique @map("manager_id") @db.Uuid
+  isActive  Boolean        @default(true) @map("is_active")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime?      @updatedAt @map("updated_at")
+
+  manager User?  @relation("DepartmentManager", fields: [managerId], references: [id])
+  users   User[] @relation("DepartmentUsers")
+
+  @@map("departments")
+}

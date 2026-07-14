@@ -1,0 +1,33 @@
+model OtpCode {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  channel     OtpChannel
+  destination String
+  code        String     
+  attempts    Int        @default(0)
+  expiresAt   DateTime   @map("expires_at")
+  consumed    Boolean    @default(false)
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("otp_codes")
+}
+
+model Session {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @map("user_id") @db.Uuid
+  platform         SessionPlatform
+  accessTokenHash  String          @unique @map("access_token_hash")
+  refreshTokenHash String          @unique @map("refresh_token_hash")
+  deviceInfo       String?         @map("device_info")
+  ipAddress        String?         @map("ip_address")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  accessExpiresAt  DateTime        @map("access_expires_at")
+  refreshExpiresAt DateTime        @map("refresh_expires_at")
+  revokedAt        DateTime?       @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}

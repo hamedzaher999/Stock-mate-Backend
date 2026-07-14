@@ -1,0 +1,82 @@
+model Unit {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  abbreviation String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  productVariants ProductVariant[]
+
+  @@map("units")
+}
+
+model Category {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  parentCategoryId String?  @map("parent_category_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  parentCategory Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories  Category[] @relation("CategoryHierarchy")
+  products       Product[]
+
+  @@map("categories")
+}
+
+enum MaterialType {
+  consumable
+  fixed_asset
+
+  @@map("material_type")
+}
+
+model Product {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  categoryId   String?      @map("category_id") @db.Uuid
+  materialType MaterialType @map("material_type")
+  description  String?
+  isActive     Boolean      @default(true) @map("is_active")
+  createdById  String       @map("created_by") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime?    @updatedAt @map("updated_at")
+
+  category  Category?        @relation(fields: [categoryId], references: [id])
+  createdBy User             @relation(fields: [createdById], references: [id])
+  variants  ProductVariant[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id          String    @id @default(uuid()) @db.Uuid
+  productId   String    @map("product_id") @db.Uuid
+  variantName String    @map("variant_name")
+  sku         String    @unique
+  unitId      String    @map("unit_id") @db.Uuid
+  isActive    Boolean   @default(true) @map("is_active")
+  createdById String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+
+  product          Product           @relation(fields: [productId], references: [id])
+  unit             Unit              @relation(fields: [unitId], references: [id])
+  createdBy        User              @relation(fields: [createdById], references: [id])
+  variantSuppliers VariantSupplier[]
+
+  @@map("product_variants")
+}
+
+model VariantSupplier {
+  id                    String   @id @default(uuid()) @db.Uuid
+  variantId             String   @map("variant_id") @db.Uuid
+  supplierId            String   @map("supplier_id") @db.Uuid
+  expectedPurchasePrice Decimal? @map("expected_purchase_price")
+  supplierProductCode   String?  @map("supplier_product_code")
+  isPreferred           Boolean  @default(false) @map("is_preferred")
+
+  variant  ProductVariant @relation(fields: [variantId], references: [id])
+  supplier Supplier       @relation(fields: [supplierId], references: [id])
+
+  @@unique([variantId, supplierId])
+  @@map("variant_suppliers")
+}

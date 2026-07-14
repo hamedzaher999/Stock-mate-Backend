@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  inactive
+
+  @@map("user_status")
+}
+
+enum DepartmentType {
+  central_warehouse
+  pharmacy
+  standard
+
+  @@map("department_type")
+}
+
+enum OtpChannel {
+  phone
+  email
+
+  @@map("otp_channel")
+} 
+
+enum SessionPlatform {
+  web
+  mobile
+
+  @@map("session_platform")
+}
+
+enum PermissionEffect {
+  grant
+  revoke
+
+  @@map("permission_effect")
+}
