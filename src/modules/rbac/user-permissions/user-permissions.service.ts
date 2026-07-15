@@ -7,6 +7,7 @@ import { UserPermissionsRepository } from './user-permissions.repository';
 import { PermissionsRepository } from '../permissions/permissions.repository';
 import { PermissionsResolverService } from '../permissions-resolver.service';
 import { UpsertUserPermissionDto } from './dto/upsert-user-permission.dto';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 
 @Injectable()
 export class UserPermissionsService {
@@ -16,8 +17,15 @@ export class UserPermissionsService {
     private readonly permissionsResolver: PermissionsResolverService,
   ) {}
 
-  findAllForUser(userId: string) {
-    return this.userPermissionsRepository.findAllForUser(userId);
+  async findAllForUser(userId: string) {
+    const [overrides, effectivePermissions] = await Promise.all([
+      this.userPermissionsRepository.findAllForUser(userId),
+      this.permissionsResolver.getEffectivePermissions(userId),
+    ]);
+    return {
+      overrides,
+      effectivePermissions: Array.from(effectivePermissions),
+    };
   }
 
   async upsert(
@@ -27,6 +35,15 @@ export class UserPermissionsService {
   ) {
     if (targetUserId === grantedById && dto.effect === 'revoke') {
       throw new BadRequestException('You cannot revoke your own permissions.');
+    }
+
+    const target =
+      await this.userPermissionsRepository.findUserRole(targetUserId);
+    if (!target) throw new NotFoundException('User not found.');
+    if (target.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+      throw new BadRequestException(
+        'The Hospital Manager account already has full access -- overrides do not apply to it.',
+      );
     }
 
     const [permission] = await this.permissionsRepository.findByCodes([
@@ -55,5 +72,20 @@ export class UserPermissionsService {
     await this.userPermissionsRepository.delete(targetUserId, permission.id);
     await this.permissionsResolver.invalidate(targetUserId);
     return { removed: true };
+  }
+
+  async resetToDefault(targetUserId: string) {
+    const target =
+      await this.userPermissionsRepository.findUserRole(targetUserId);
+    if (!target) throw new NotFoundException('User not found.');
+    if (target.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+      throw new BadRequestException(
+        'The Hospital Manager account always has full access -- there is nothing to reset.',
+      );
+    }
+
+    await this.userPermissionsRepository.deleteAllForUser(targetUserId);
+    await this.permissionsResolver.invalidate(targetUserId);
+    return { reset: true };
   }
 }

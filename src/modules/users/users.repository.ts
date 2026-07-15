@@ -135,4 +135,10 @@ export class UsersRepository {
       select: userListSelect,
     });
   }
+
+  countActiveByRoleName(roleName: string) {
+    return this.prisma.user.count({
+      where: { status: 'active', role: { name: roleName } },
+    });
+  }
 }

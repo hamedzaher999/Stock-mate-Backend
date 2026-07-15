@@ -27,7 +27,7 @@ enum OtpChannel {
   email
 
   @@map("otp_channel")
-} 
+}
 
 enum SessionPlatform {
   web
@@ -41,4 +41,29 @@ enum PermissionEffect {
   revoke
 
   @@map("permission_effect")
+}
+
+enum PurchaseRequestStatus {
+  draft
+  submitted
+  pending_hospital_approval
+  rejected
+  pending_purchasing_committee
+  approved
+  ready_for_receiving
+  partially_received
+  received
+  cancelled
+
+  @@map("purchase_request_status")
+}
+
+enum PurchaseOrderStatus {
+  draft
+  sent
+  partially_received
+  received
+  cancelled
+
+  @@map("purchase_order_status")
 }

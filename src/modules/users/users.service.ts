@@ -13,6 +13,7 @@ import { UpdateMeDto } from './dto/update-me.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 
 const DOCTOR_ROLE_NAME = 'doctor';
 
@@ -45,9 +46,22 @@ export class UsersService {
     return user;
   }
 
+  async getWithPermissions(id: string) {
+    const user = await this.findById(id);
+    const permissions =
+      await this.permissionsResolver.getEffectivePermissions(id);
+    return { ...user, permissions: Array.from(permissions) };
+  }
+
   async create(dto: CreateUserDto, createdById: string) {
     const role = await this.usersRepository.findRoleById(dto.roleId);
     if (!role) throw new BadRequestException('Role does not exist.');
+
+    if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+      throw new ConflictException(
+        'The Hospital Manager account is a fixed, singular master account and cannot be created.',
+      );
+    }
 
     if (dto.departmentId) {
       const department = await this.usersRepository.departmentExists(
@@ -91,9 +105,25 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto) {
     const existing = await this.findById(id);
 
+    if (
+      existing.role.name === HOSPITAL_MANAGER_ROLE_NAME &&
+      dto.roleId &&
+      dto.roleId !== existing.roleId
+    ) {
+      throw new BadRequestException(
+        "The Hospital Manager account's role cannot be changed.",
+      );
+    }
+
     if (dto.roleId) {
       const role = await this.usersRepository.findRoleById(dto.roleId);
       if (!role) throw new BadRequestException('Role does not exist.');
+
+      if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+        throw new ConflictException(
+          'The Hospital Manager role cannot be assigned -- it is a fixed, singular master account.',
+        );
+      }
 
       const willBeDoctor = role.name === DOCTOR_ROLE_NAME;
       const effectiveDepartmentId = dto.departmentId ?? existing.departmentId;
@@ -144,7 +174,17 @@ export class UsersService {
       throw new ForbiddenException('You cannot deactivate your own account.');
     }
 
-    await this.findById(id);
+    const target = await this.findById(id);
+
+    if (
+      target.role.name === HOSPITAL_MANAGER_ROLE_NAME &&
+      dto.status === 'inactive'
+    ) {
+      throw new ForbiddenException(
+        'The Hospital Manager account can never be deactivated.',
+      );
+    }
+
     return this.usersRepository.updateStatus(id, dto.status);
   }
 

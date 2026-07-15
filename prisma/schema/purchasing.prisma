@@ -1,0 +1,83 @@
+model PurchaseRequest {
+  id                       String                @id @default(uuid()) @db.Uuid
+  requestNumber            String                @unique @map("request_number")
+  requestedById            String                @map("requested_by") @db.Uuid
+  status                   PurchaseRequestStatus @default(draft)
+  hospitalApprovedById     String?               @map("hospital_approved_by") @db.Uuid
+  hospitalApprovedAt       DateTime?             @map("hospital_approved_at")
+  hospitalRejectionReason  String?               @map("hospital_rejection_reason")
+  committeeApprovedById    String?               @map("committee_approved_by") @db.Uuid
+  committeeApprovedAt      DateTime?             @map("committee_approved_at")
+  committeeRejectionReason String?               @map("committee_rejection_reason")
+  committeeMarkedReadyById String?               @map("committee_marked_ready_by") @db.Uuid
+  committeeMarkedReadyAt   DateTime?             @map("committee_marked_ready_at")
+  notes                    String?
+  createdAt                DateTime              @default(now()) @map("created_at")
+  updatedAt                DateTime?             @updatedAt @map("updated_at")
+
+  requestedBy            User                  @relation("PRRequestedBy", fields: [requestedById], references: [id])
+  hospitalApprovedBy     User?                 @relation("PRHospitalApprovedBy", fields: [hospitalApprovedById], references: [id])
+  committeeApprovedBy    User?                 @relation("PRCommitteeApprovedBy", fields: [committeeApprovedById], references: [id])
+  committeeMarkedReadyBy User?                 @relation("PRCommitteeMarkedReadyBy", fields: [committeeMarkedReadyById], references: [id])
+  items                  PurchaseRequestItem[]
+  purchaseOrders         PurchaseOrder[]
+  purchaseReceipts       PurchaseReceipt[]
+
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestItem {
+  id                        String   @id @default(uuid()) @db.Uuid
+  purchaseRequestId         String   @map("purchase_request_id") @db.Uuid
+  variantId                 String   @map("variant_id") @db.Uuid
+  requestedQuantity         Decimal  @map("requested_quantity")
+  estimatedPrice            Decimal? @map("estimated_price")
+  committeeApprovedQuantity Decimal? @map("committee_approved_quantity")
+  receivedQuantity          Decimal  @default(0) @map("received_quantity")
+  notes                     String?
+
+  purchaseRequest    PurchaseRequest     @relation(fields: [purchaseRequestId], references: [id])
+  variant            ProductVariant      @relation(fields: [variantId], references: [id])
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@map("purchase_request_items")
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(uuid()) @db.Uuid
+  orderNumber          String              @unique @map("order_number")
+  purchaseRequestId    String              @map("purchase_request_id") @db.Uuid
+  supplierId           String              @map("supplier_id") @db.Uuid
+  status               PurchaseOrderStatus @default(draft)
+  createdById          String              @map("created_by") @db.Uuid
+  orderedAt            DateTime?           @map("ordered_at")
+  expectedDeliveryDate DateTime?           @map("expected_delivery_date") @db.Date
+  notes                String?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime?           @updatedAt @map("updated_at")
+
+  purchaseRequest  PurchaseRequest     @relation(fields: [purchaseRequestId], references: [id])
+  supplier         Supplier            @relation(fields: [supplierId], references: [id])
+  createdBy        User                @relation(fields: [createdById], references: [id])
+  items            PurchaseOrderItem[]
+  purchaseReceipts PurchaseReceipt[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id                    String   @id @default(uuid()) @db.Uuid
+  purchaseOrderId       String   @map("purchase_order_id") @db.Uuid
+  purchaseRequestItemId String   @map("purchase_request_item_id") @db.Uuid
+  variantId             String   @map("variant_id") @db.Uuid
+  orderedQuantity       Decimal  @map("ordered_quantity")
+  unitPrice             Decimal? @map("unit_price")
+  receivedQuantity      Decimal  @default(0) @map("received_quantity")
+
+  purchaseOrder        PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
+  purchaseRequestItem  PurchaseRequestItem   @relation(fields: [purchaseRequestItemId], references: [id])
+  variant              ProductVariant        @relation(fields: [variantId], references: [id])
+  purchaseReceiptItems PurchaseReceiptItem[]
+
+  @@map("purchase_order_items")
+}

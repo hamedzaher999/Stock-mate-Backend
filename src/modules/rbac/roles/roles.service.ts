@@ -9,6 +9,7 @@ import { PermissionsRepository } from '../permissions/permissions.repository';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 
 @Injectable()
 export class RolesService {
@@ -58,7 +59,13 @@ export class RolesService {
   }
 
   async setPermissions(roleId: string, dto: SetRolePermissionsDto) {
-    await this.findById(roleId);
+    const role = await this.findById(roleId);
+
+    if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+      throw new BadRequestException(
+        'The Hospital Manager role automatically has every permission -- its role_permissions cannot be edited.',
+      );
+    }
 
     const permissions = await this.permissionsRepository.findByCodes(
       dto.permissionCodes,

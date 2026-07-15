@@ -24,7 +24,7 @@ export class UsersController {
 
   @Get('me')
   async me(@CurrentUser() user: AuthenticatedUser) {
-    const data = await this.usersService.findById(user.sub);
+    const data = await this.usersService.getWithPermissions(user.sub);
     return { message: 'Success', data };
   }
 
@@ -47,7 +47,7 @@ export class UsersController {
   @Get(':id')
   @RequirePermissions(PERMISSIONS.MANAGE_ACCOUNTS)
   async findOne(@Param('id') id: string) {
-    const data = await this.usersService.findById(id);
+    const data = await this.usersService.getWithPermissions(id);
     return { message: 'Success', data };
   }
 

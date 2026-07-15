@@ -3,7 +3,7 @@ model OtpCode {
   userId      String     @map("user_id") @db.Uuid
   channel     OtpChannel
   destination String
-  code        String     
+  code        String
   attempts    Int        @default(0)
   expiresAt   DateTime   @map("expires_at")
   consumed    Boolean    @default(false)

@@ -8,7 +8,10 @@ model Supplier {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime? @updatedAt @map("updated_at")
 
-  variantSuppliers VariantSupplier[]
+  variantSuppliers     VariantSupplier[]
+  purchaseOrders       PurchaseOrder[]
+  purchaseReceiptItems PurchaseReceiptItem[]
+  batches              Batch[]
 
   @@map("suppliers")
 }

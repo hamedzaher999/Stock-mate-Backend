@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { CacheKeys } from '../../core/cache/cache-keys.constants';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 
 const PERMISSIONS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -22,6 +23,7 @@ export class PermissionsResolverService {
       select: {
         role: {
           select: {
+            name: true,
             rolePermissions: {
               select: { permission: { select: { code: true } } },
             },
@@ -35,15 +37,23 @@ export class PermissionsResolverService {
 
     if (!user) return new Set();
 
-    const effective = new Set<string>(
-      user.role.rolePermissions.map((rp) => rp.permission.code),
-    );
+    let effective: Set<string>;
 
-    for (const override of user.userPermissions) {
-      if (override.effect === 'grant') {
-        effective.add(override.permission.code);
-      } else {
-        effective.delete(override.permission.code);
+    if (user.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+      const allPermissions = await this.prisma.permission.findMany({
+        select: { code: true },
+      });
+      effective = new Set(allPermissions.map((p) => p.code));
+    } else {
+      effective = new Set(
+        user.role.rolePermissions.map((rp) => rp.permission.code),
+      );
+      for (const override of user.userPermissions) {
+        if (override.effect === 'grant') {
+          effective.add(override.permission.code);
+        } else {
+          effective.delete(override.permission.code);
+        }
       }
     }
 

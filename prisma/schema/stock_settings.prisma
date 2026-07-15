@@ -1,0 +1,19 @@
+model DepartmentStockSetting {
+  id              String    @id @default(uuid()) @db.Uuid
+  variantId       String    @map("variant_id") @db.Uuid
+  departmentId    String    @map("department_id") @db.Uuid
+  storageLocation String?   @map("storage_location")
+  minimumStock    Decimal?  @map("minimum_stock")
+  maximumStock    Decimal?  @map("maximum_stock")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdById     String    @map("created_by") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime? @updatedAt @map("updated_at")
+
+  variant    ProductVariant @relation(fields: [variantId], references: [id])
+  department Department     @relation(fields: [departmentId], references: [id])
+  createdBy  User           @relation(fields: [createdById], references: [id])
+
+  @@unique([variantId, departmentId])
+  @@map("department_stock_settings")
+}

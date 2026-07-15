@@ -7,8 +7,10 @@ model Department {
   createdAt DateTime       @default(now()) @map("created_at")
   updatedAt DateTime?      @updatedAt @map("updated_at")
 
-  manager User?  @relation("DepartmentManager", fields: [managerId], references: [id])
-  users   User[] @relation("DepartmentUsers")
+  manager       User?                    @relation("DepartmentManager", fields: [managerId], references: [id])
+  users         User[]                   @relation("DepartmentUsers")
+  batchStocks   BatchStock[]
+  stockSettings DepartmentStockSetting[]
 
   @@map("departments")
 }

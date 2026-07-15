@@ -191,7 +191,7 @@ const roleDefinitions: {
   {
     name: 'hospital_manager',
     description:
-      'Manages hospital structure, department managers, and approves operational requests.',
+      'Fixed master account. Always has every permission that exists -- role_permissions below are informational only and are never actually consulted.',
     permissions: [
       'manage_departments',
       'manage_accounts',
@@ -279,6 +279,7 @@ const roleDefinitions: {
     description: 'Manages pharmacy inventory and dispenses prescriptions.',
     permissions: [
       'view_inventory',
+      'manage_department_materials',
       'create_department_refill_request',
       'confirm_department_delivery',
       'perform_inventory_adjustment',
@@ -340,11 +341,17 @@ async function seedDepartments() {
     create: { name: 'Pharmacy', type: 'pharmacy' },
   });
 
-  return { warehouse, pharmacy };
+  const emergency = await prisma.department.upsert({
+    where: { name: 'Emergency' },
+    update: {},
+    create: { name: 'Emergency', type: 'standard' },
+  });
+
+  return { warehouse, pharmacy, emergency };
 }
 
 async function seedBootstrapAdmin() {
-  console.log('Seeding bootstrap Hospital Manager...');
+  console.log('Seeding the fixed Hospital Manager master account...');
   const hospitalManagerRole = await prisma.role.findUniqueOrThrow({
     where: { name: 'hospital_manager' },
   });
@@ -360,13 +367,10 @@ async function seedBootstrapAdmin() {
   }
 
   const existing = await prisma.user.findFirst({
-    where: {
-      OR: [{ phone: phone ?? undefined }, { email: email ?? undefined }],
-    },
+    where: { roleId: hospitalManagerRole.id },
   });
-
   if (existing) {
-    console.log('Bootstrap admin already exists, skipping.');
+    console.log('Hospital Manager already exists, skipping.');
     return existing;
   }
 
@@ -381,12 +385,146 @@ async function seedBootstrapAdmin() {
   });
 }
 
+interface TestAccountSeed {
+  roleName: string;
+  fullName: string;
+  phone: string;
+  departmentId?: string;
+  specialty?: string;
+}
+
+async function seedTestAccounts(departments: {
+  warehouse: { id: string };
+  pharmacy: { id: string };
+  emergency: { id: string };
+}) {
+  console.log('Seeding two test accounts per role...');
+
+  const roleNames = [
+    'warehouse_manager',
+    'purchasing_committee_manager',
+    'department_manager',
+    'reception_staff',
+    'doctor',
+    'pharmacy_staff',
+  ];
+
+  const roles = await prisma.role.findMany({
+    where: { name: { in: roleNames } },
+  });
+  const roleMap = new Map(roles.map((r) => [r.name, r]));
+
+  const accounts: TestAccountSeed[] = [
+    {
+      roleName: 'warehouse_manager',
+      fullName: 'Omar Al-Khatib',
+      phone: '+963900000101',
+      departmentId: departments.warehouse.id,
+    },
+    {
+      roleName: 'warehouse_manager',
+      fullName: 'Rania Sabbagh',
+      phone: '+963900000102',
+      departmentId: departments.warehouse.id,
+    },
+
+    {
+      roleName: 'purchasing_committee_manager',
+      fullName: 'Khaled Mansour',
+      phone: '+963900000201',
+    },
+    {
+      roleName: 'purchasing_committee_manager',
+      fullName: 'Nour Halabi',
+      phone: '+963900000202',
+    },
+
+    {
+      roleName: 'department_manager',
+      fullName: 'Samer Aziz',
+      phone: '+963900000301',
+      departmentId: departments.emergency.id,
+    },
+    {
+      roleName: 'department_manager',
+      fullName: 'Lubna Farouk',
+      phone: '+963900000302',
+      departmentId: departments.emergency.id,
+    },
+
+    {
+      roleName: 'reception_staff',
+      fullName: 'Maya Deeb',
+      phone: '+963900000401',
+      departmentId: departments.emergency.id,
+    },
+    {
+      roleName: 'reception_staff',
+      fullName: 'Fadi Haddad',
+      phone: '+963900000402',
+      departmentId: departments.emergency.id,
+    },
+
+    {
+      roleName: 'doctor',
+      fullName: 'Dr. Ahmad Youssef',
+      phone: '+963900000501',
+      departmentId: departments.emergency.id,
+      specialty: 'Internal Medicine',
+    },
+    {
+      roleName: 'doctor',
+      fullName: 'Dr. Sara Khalil',
+      phone: '+963900000502',
+      departmentId: departments.emergency.id,
+      specialty: 'Pediatrics',
+    },
+
+    {
+      roleName: 'pharmacy_staff',
+      fullName: 'Hiba Qasim',
+      phone: '+963900000601',
+      departmentId: departments.pharmacy.id,
+    },
+    {
+      roleName: 'pharmacy_staff',
+      fullName: "Tariq Nu'man",
+      phone: '+963900000602',
+      departmentId: departments.pharmacy.id,
+    },
+  ];
+
+  for (const acc of accounts) {
+    const role = roleMap.get(acc.roleName);
+    if (!role)
+      throw new Error(
+        `Role "${acc.roleName}" not found -- did seedRoles() run first?`,
+      );
+
+    await prisma.user.upsert({
+      where: { phone: acc.phone },
+      update: {},
+      create: {
+        fullName: acc.fullName,
+        phone: acc.phone,
+        roleId: role.id,
+        departmentId: acc.departmentId,
+        specialty: acc.specialty,
+        status: 'active',
+      },
+    });
+  }
+}
+
 async function main() {
   await seedPermissions();
   await seedRoles();
-  await seedDepartments();
+  const departments = await seedDepartments();
   await seedBootstrapAdmin();
-  console.log('Seeding complete.');
+  await seedTestAccounts(departments);
+  console.log(
+    'Seeding complete: 1 Hospital Manager + 12 test accounts (2 per role) across 3 departments.',
+  );
 }
 
 main()

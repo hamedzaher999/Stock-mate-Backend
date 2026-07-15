@@ -58,10 +58,15 @@ model ProductVariant {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime? @updatedAt @map("updated_at")
 
-  product          Product           @relation(fields: [productId], references: [id])
-  unit             Unit              @relation(fields: [unitId], references: [id])
-  createdBy        User              @relation(fields: [createdById], references: [id])
-  variantSuppliers VariantSupplier[]
+  product              Product                  @relation(fields: [productId], references: [id])
+  unit                 Unit                     @relation(fields: [unitId], references: [id])
+  createdBy            User                     @relation(fields: [createdById], references: [id])
+  variantSuppliers     VariantSupplier[]
+  stockSettings        DepartmentStockSetting[]
+  purchaseRequestItems PurchaseRequestItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  purchaseReceiptItems PurchaseReceiptItem[]
+  batches              Batch[]
 
   @@map("product_variants")
 }

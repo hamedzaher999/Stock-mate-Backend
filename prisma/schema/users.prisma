@@ -11,18 +11,27 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime?  @updatedAt @map("updated_at")
 
-  role              Role             @relation(fields: [roleId], references: [id])
-  department        Department?      @relation("DepartmentUsers", fields: [departmentId], references: [id])
-  managedDepartment Department?      @relation("DepartmentManager")
-  createdBy         User?            @relation("UserCreatedBy", fields: [createdById], references: [id])
-  createdUsers      User[]           @relation("UserCreatedBy")
+  role              Role        @relation(fields: [roleId], references: [id])
+  department        Department? @relation("DepartmentUsers", fields: [departmentId], references: [id])
+  managedDepartment Department? @relation("DepartmentManager")
+  createdBy         User?       @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers      User[]      @relation("UserCreatedBy")
 
-  rolesCreated           Role[]           @relation("RoleCreatedBy")
-  otpCodes               OtpCode[]
-  sessions               Session[]
-  userPermissions        UserPermission[] @relation("UserPermissionOwner")
-  userPermissionsGranted UserPermission[] @relation("PermissionGrantedBy")
-  createdProducts        Product[]
-  createdProductVariants ProductVariant[]
+  rolesCreated             Role[]                   @relation("RoleCreatedBy")
+  otpCodes                 OtpCode[]
+  sessions                 Session[]
+  userPermissions          UserPermission[]         @relation("UserPermissionOwner")
+  userPermissionsGranted   UserPermission[]         @relation("PermissionGrantedBy")
+  createdProducts          Product[]
+  createdProductVariants   ProductVariant[]
+  createdStockSettings     DepartmentStockSetting[]
+  prRequested              PurchaseRequest[]        @relation("PRRequestedBy")
+  prHospitalApproved       PurchaseRequest[]        @relation("PRHospitalApprovedBy")
+  prCommitteeApproved      PurchaseRequest[]        @relation("PRCommitteeApprovedBy")
+  prCommitteeMarkedReady   PurchaseRequest[]        @relation("PRCommitteeMarkedReadyBy")
+  createdPurchaseOrders    PurchaseOrder[]
+  receivedPurchaseReceipts PurchaseReceipt[]
+  createdBatches           Batch[]
+
   @@map("users")
 }

@@ -1,0 +1,36 @@
+model Batch {
+  id                    String    @id @default(uuid()) @db.Uuid
+  purchaseReceiptItemId String?   @unique @map("purchase_receipt_item_id") @db.Uuid
+  variantId             String    @map("variant_id") @db.Uuid
+  supplierId            String?   @map("supplier_id") @db.Uuid
+  batchNumber           String    @map("batch_number")
+  quantityReceived      Decimal   @map("quantity_received")
+  purchasePrice         Decimal?  @map("purchase_price")
+  manufacturingDate     DateTime? @map("manufacturing_date") @db.Date
+  expirationDate        DateTime? @map("expiration_date") @db.Date
+  receivingDate         DateTime  @map("receiving_date") @db.Date
+  createdById           String    @map("created_by") @db.Uuid
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  purchaseReceiptItem PurchaseReceiptItem? @relation(fields: [purchaseReceiptItemId], references: [id])
+  variant             ProductVariant       @relation(fields: [variantId], references: [id])
+  supplier            Supplier?            @relation(fields: [supplierId], references: [id])
+  createdBy           User                 @relation(fields: [createdById], references: [id])
+  batchStocks         BatchStock[]
+
+  @@map("batches")
+}
+
+model BatchStock {
+  id           String    @id @default(uuid()) @db.Uuid
+  batchId      String    @map("batch_id") @db.Uuid
+  departmentId String    @map("department_id") @db.Uuid
+  quantity     Decimal   @default(0)
+  updatedAt    DateTime? @updatedAt @map("updated_at")
+
+  batch      Batch      @relation(fields: [batchId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@unique([batchId, departmentId])
+  @@map("batch_stock")
+}

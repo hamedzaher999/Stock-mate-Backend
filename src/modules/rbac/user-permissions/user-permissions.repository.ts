@@ -45,4 +45,14 @@ export class UserPermissionsRepository {
       where: { userId_permissionId: { userId, permissionId } },
     });
   }
+  deleteAllForUser(userId: string) {
+    return this.prisma.userPermission.deleteMany({ where: { userId } });
+  }
+
+  findUserRole(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: { select: { name: true } } },
+    });
+  }
 }

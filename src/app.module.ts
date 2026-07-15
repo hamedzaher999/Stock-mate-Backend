@@ -16,7 +16,9 @@ import { UsersModule } from './modules/users/users.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
-
+import { StockSettingsModule } from './modules/stock-settings/stock-settings.module';
+import { PurchasingModule } from './modules/purchasing/purchasing.module';
+import { BatchesModule } from './modules/batches/batches.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validationSchema }),
@@ -35,6 +37,9 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     DepartmentsModule,
     SuppliersModule,
     CatalogModule,
+    StockSettingsModule,
+    PurchasingModule,
+    BatchesModule,
   ],
   controllers: [AppController],
   providers: [
