@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { Prisma } from '@prisma/client';
 
 const purchaseReceiptDetailSelect = {
@@ -40,7 +41,10 @@ const purchaseReceiptListSelect = {
 
 @Injectable()
 export class PurchaseReceivingRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inventoryLedger: InventoryLedgerService,
+  ) {}
 
   async findMany(params: {
     skip: number;
@@ -171,6 +175,18 @@ export class PurchaseReceivingRepository {
             departmentId: params.warehouseDepartmentId,
             quantity: line.quantity,
           },
+        });
+
+        await this.inventoryLedger.record(tx, {
+          transactionType: 'purchase_receipt',
+          variantId: line.variantId,
+          batchId: batch.id,
+          departmentId: params.warehouseDepartmentId,
+          quantity: line.quantity,
+          balanceAfter: line.quantity,
+          referenceType: 'purchase_receipt',
+          referenceId: receipt.id,
+          performedById: params.receivedById,
         });
 
         await tx.purchaseOrderItem.update({

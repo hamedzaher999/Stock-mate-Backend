@@ -1,0 +1,15 @@
+model Patient {
+  id                 String    @id @default(uuid()) @db.Uuid
+  fullName           String    @map("full_name")
+  nationalId         String?   @unique @map("national_id")
+  familyBookNumber   String?   @map("family_book_number")
+  patientId          String?   @unique @map("patient_id")
+  registeredById      String    @map("registered_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime? @updatedAt @map("updated_at")
+
+  registeredBy User @relation(fields: [registeredById], references: [id])
+  queueEntries DepartmentQueue[]
+  
+  @@map("patients")
+}

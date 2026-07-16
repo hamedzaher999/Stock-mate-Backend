@@ -1,0 +1,71 @@
+model DepartmentRefillRequest {
+  id                       String              @id @default(uuid()) @db.Uuid
+  requestNumber            String              @unique @map("request_number")
+  departmentId             String              @map("department_id") @db.Uuid
+  requestedById            String              @map("requested_by") @db.Uuid
+  status                   RefillRequestStatus @default(draft)
+  hospitalApprovedById     String?             @map("hospital_approved_by") @db.Uuid
+  hospitalApprovedAt       DateTime?           @map("hospital_approved_at")
+  hospitalRejectionReason  String?             @map("hospital_rejection_reason")
+  notes                    String?
+  createdAt                DateTime            @default(now()) @map("created_at")
+  updatedAt                DateTime?           @updatedAt @map("updated_at")
+
+  department         Department                 @relation(fields: [departmentId], references: [id])
+  requestedBy         User                       @relation("DRRequestedBy", fields: [requestedById], references: [id])
+  hospitalApprovedBy  User?                      @relation("DRHospitalApprovedBy", fields: [hospitalApprovedById], references: [id])
+  items               DepartmentRefillItem[]
+  deliveries          DepartmentRefillDelivery[]
+
+  @@map("department_refill_requests")
+}
+
+model DepartmentRefillItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  refillRequestId     String   @map("refill_request_id") @db.Uuid
+  variantId           String   @map("variant_id") @db.Uuid
+  requestedQuantity   Decimal  @map("requested_quantity")
+  preparedQuantity    Decimal? @map("prepared_quantity")
+  deliveredQuantity   Decimal? @map("delivered_quantity")
+  quantityDiscrepancy Decimal  @default(0) @map("quantity_discrepancy")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  refillRequest DepartmentRefillRequest        @relation(fields: [refillRequestId], references: [id])
+  variant       ProductVariant                 @relation(fields: [variantId], references: [id])
+  deliveryItems DepartmentRefillDeliveryItem[]
+
+  @@map("department_refill_items")
+}
+
+model DepartmentRefillDelivery {
+  id              String    @id @default(uuid()) @db.Uuid
+  refillRequestId String    @map("refill_request_id") @db.Uuid
+  deliveredById   String    @map("delivered_by") @db.Uuid
+  deliveredAt     DateTime  @default(now()) @map("delivered_at")
+  receivedById    String?   @map("received_by") @db.Uuid
+  confirmedAt     DateTime? @map("confirmed_at")
+  notes           String?
+
+  refillRequest DepartmentRefillRequest        @relation(fields: [refillRequestId], references: [id])
+  deliveredBy   User                           @relation("DeliveryDeliveredBy", fields: [deliveredById], references: [id])
+  receivedBy    User?                          @relation("DeliveryReceivedBy", fields: [receivedById], references: [id])
+  items         DepartmentRefillDeliveryItem[]
+
+  @@map("department_refill_deliveries")
+}
+
+model DepartmentRefillDeliveryItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  deliveryId          String   @map("delivery_id") @db.Uuid
+  refillItemId        String   @map("refill_item_id") @db.Uuid
+  batchId             String   @map("batch_id") @db.Uuid
+  shippedQuantity     Decimal  @map("shipped_quantity")
+  receivedQuantity    Decimal? @map("received_quantity")
+  quantityDiscrepancy Decimal  @default(0) @map("quantity_discrepancy")
+
+  delivery   DepartmentRefillDelivery @relation(fields: [deliveryId], references: [id])
+  refillItem DepartmentRefillItem     @relation(fields: [refillItemId], references: [id])
+  batch      Batch                    @relation(fields: [batchId], references: [id])
+
+  @@map("department_refill_delivery_items")
+}

@@ -8,8 +8,11 @@ import { PurchaseOrdersRepository } from './purchase-orders/purchase-orders.repo
 import { PurchaseReceivingController } from './purchase-receiving/purchase-receiving.controller';
 import { PurchaseReceivingService } from './purchase-receiving/purchase-receiving.service';
 import { PurchaseReceivingRepository } from './purchase-receiving/purchase-receiving.repository';
+import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
+  imports: [InventoryModule],
+
   controllers: [
     PurchaseRequestsController,
     PurchaseOrdersController,

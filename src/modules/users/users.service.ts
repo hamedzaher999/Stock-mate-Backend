@@ -56,6 +56,8 @@ export class UsersService {
   async create(dto: CreateUserDto, createdById: string) {
     const role = await this.usersRepository.findRoleById(dto.roleId);
     if (!role) throw new BadRequestException('Role does not exist.');
+    if (!role.isActive)
+      throw new BadRequestException('Cannot assign an inactive role.');
 
     if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
       throw new ConflictException(
@@ -118,6 +120,8 @@ export class UsersService {
     if (dto.roleId) {
       const role = await this.usersRepository.findRoleById(dto.roleId);
       if (!role) throw new BadRequestException('Role does not exist.');
+      if (!role.isActive)
+        throw new BadRequestException('Cannot assign an inactive role.');
 
       if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
         throw new ConflictException(

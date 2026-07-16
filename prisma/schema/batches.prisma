@@ -17,7 +17,11 @@ model Batch {
   supplier            Supplier?            @relation(fields: [supplierId], references: [id])
   createdBy           User                 @relation(fields: [createdById], references: [id])
   batchStocks         BatchStock[]
-
+  refillDeliveryItems DepartmentRefillDeliveryItem[]
+  inventoryTransactions InventoryTransaction[]
+  inventoryAdjustments  InventoryAdjustment[]
+  stockCountItems StockCountItem[]
+  
   @@map("batches")
 }
 

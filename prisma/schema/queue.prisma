@@ -1,0 +1,22 @@
+model DepartmentQueue {
+  id             String      @id @default(uuid()) @db.Uuid
+  departmentId   String      @map("department_id") @db.Uuid
+  patientId      String      @map("patient_id") @db.Uuid
+  status         QueueStatus @default(waiting)
+  addedById      String      @map("added_by") @db.Uuid
+  addedAt        DateTime    @default(now()) @map("added_at")
+  lockedById     String?     @map("locked_by") @db.Uuid
+  lockedAt       DateTime?   @map("locked_at")
+  completedAt    DateTime?   @map("completed_at")
+  removedById    String?     @map("removed_by") @db.Uuid
+  removedReason  String?     @map("removed_reason")
+
+  department Department @relation(fields: [departmentId], references: [id])
+  patient    Patient    @relation(fields: [patientId], references: [id])
+  addedBy    User       @relation("QueueAddedBy", fields: [addedById], references: [id])
+  lockedBy   User?      @relation("QueueLockedBy", fields: [lockedById], references: [id])
+  removedBy  User?      @relation("QueueRemovedBy", fields: [removedById], references: [id])
+
+  @@index([departmentId, status])
+  @@map("department_queues")
+}

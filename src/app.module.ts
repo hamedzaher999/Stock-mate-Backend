@@ -19,6 +19,11 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { StockSettingsModule } from './modules/stock-settings/stock-settings.module';
 import { PurchasingModule } from './modules/purchasing/purchasing.module';
 import { BatchesModule } from './modules/batches/batches.module';
+import { DepartmentRefillsModule } from './modules/department-refills/department-refills.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { PatientsModule } from './modules/patients/patients.module';
+import { DepartmentQueueModule } from './modules/department-queue/department-queue.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validationSchema }),
@@ -40,6 +45,10 @@ import { BatchesModule } from './modules/batches/batches.module';
     StockSettingsModule,
     PurchasingModule,
     BatchesModule,
+    DepartmentRefillsModule,
+    InventoryModule,
+    PatientsModule,
+    DepartmentQueueModule,
   ],
   controllers: [AppController],
   providers: [

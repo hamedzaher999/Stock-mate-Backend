@@ -1,34 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import { createTransport, Transporter } from 'nodemailer';
 import { OtpSender, OtpSenderResult } from './otp-sender.interface';
 
 @Injectable()
 export class EmailOtpSender implements OtpSender {
   private readonly logger = new Logger(EmailOtpSender.name);
-  private readonly resend: Resend;
+  private readonly transporter: Transporter;
   private readonly fromAddress: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    this.transporter = createTransport({
+      host: this.configService.get<string>('EMAIL_HOST'),
+      port: this.configService.get<number>('EMAIL_PORT'),
+      secure: this.configService.get<number>('EMAIL_PORT') === 465,
+      auth: {
+        user: this.configService.get<string>('EMAIL_USER'),
+        pass: this.configService.get<string>('EMAIL_PASS'),
+      },
+    });
     this.fromAddress = this.configService.get<string>('EMAIL_FROM') as string;
   }
 
   async send(destination: string, code: string): Promise<OtpSenderResult> {
-    const { data, error } = await this.resend.emails.send({
-      from: this.fromAddress,
-      to: destination,
-      subject: 'Your Red Crescent verification code',
-      text: `Your verification code is: ${code}. It expires in 5 minutes.`,
-    });
-
-    if (error) {
+    try {
+      const info = await this.transporter.sendMail({
+        from: this.fromAddress,
+        to: destination,
+        subject: 'Your Red Crescent verification code',
+        text: `Your verification code is: ${code}. It expires in 5 minutes.`,
+      });
+      return { success: true, providerMessageId: info.messageId as string };
+    } catch (error) {
       this.logger.error(
-        `Failed to send OTP email to ${destination}: ${error.message}`,
+        `Failed to send OTP email to ${destination}`,
+        error as Error,
       );
       return { success: false };
     }
-
-    return { success: true, providerMessageId: data?.id };
   }
 }

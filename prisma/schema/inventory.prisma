@@ -1,0 +1,58 @@
+model DepartmentInventory {
+  id                 String    @id @default(uuid()) @db.Uuid
+  departmentId       String    @map("department_id") @db.Uuid
+  variantId          String    @map("variant_id") @db.Uuid
+  currentQuantity    Decimal   @default(0) @map("current_quantity")
+  lastRefillQuantity Decimal?  @map("last_refill_quantity")
+  lastRefillDate     DateTime? @map("last_refill_date") @db.Date
+  updatedAt          DateTime? @updatedAt @map("updated_at")
+
+  department Department     @relation(fields: [departmentId], references: [id])
+  variant    ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@unique([departmentId, variantId])
+  @@map("department_inventory")
+}
+
+model InventoryTransaction {
+  id              String          @id @default(uuid()) @db.Uuid
+  transactionType TransactionType @map("transaction_type")
+  variantId       String          @map("variant_id") @db.Uuid
+  batchId         String          @map("batch_id") @db.Uuid
+  departmentId    String          @map("department_id") @db.Uuid
+  quantity        Decimal
+  balanceAfter    Decimal         @map("balance_after")
+  referenceType   ReferenceType?  @map("reference_type")
+  referenceId     String?         @map("reference_id") @db.Uuid
+  performedById   String          @map("performed_by") @db.Uuid
+  transactionDate DateTime        @default(now()) @map("transaction_date")
+  notes           String?
+
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+  batch       Batch          @relation(fields: [batchId], references: [id])
+  department  Department     @relation(fields: [departmentId], references: [id])
+  performedBy User           @relation(fields: [performedById], references: [id])
+
+  @@map("inventory_transactions")
+}
+
+model InventoryAdjustment {
+  id             String         @id @default(uuid()) @db.Uuid
+  variantId      String         @map("variant_id") @db.Uuid
+  departmentId   String         @map("department_id") @db.Uuid
+  batchId        String         @map("batch_id") @db.Uuid
+  adjustmentType AdjustmentType @map("adjustment_type")
+  quantity       Decimal
+  referenceType  String?        @map("reference_type")
+  referenceId    String?        @map("reference_id") @db.Uuid
+  reportedById   String         @map("reported_by") @db.Uuid
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  variant    ProductVariant @relation(fields: [variantId], references: [id])
+  department Department     @relation(fields: [departmentId], references: [id])
+  batch      Batch          @relation(fields: [batchId], references: [id])
+  reportedBy User           @relation(fields: [reportedById], references: [id])
+
+  @@map("inventory_adjustments")
+}

@@ -49,12 +49,22 @@ export class StockSettingsService {
       dto.variantId,
     );
     if (!variant) throw new BadRequestException('Variant does not exist.');
+    if (!variant.isActive || !variant.product.isActive) {
+      throw new BadRequestException(
+        'Cannot configure stock settings for an inactive variant.',
+      );
+    }
 
     const department = await this.stockSettingsRepository.departmentExists(
       dto.departmentId,
     );
     if (!department)
       throw new BadRequestException('Department does not exist.');
+    if (!department.isActive) {
+      throw new BadRequestException(
+        'Cannot configure stock settings for an inactive department.',
+      );
+    }
 
     const existing =
       await this.stockSettingsRepository.findByVariantAndDepartment(
@@ -75,7 +85,6 @@ export class StockSettingsService {
       createdById: requestingUserId,
     });
   }
-
   async update(
     id: string,
     dto: UpdateStockSettingDto,

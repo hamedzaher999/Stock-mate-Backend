@@ -84,6 +84,16 @@ export class PurchaseRequestsRepository {
     });
   }
 
+  findVariantsWithActivation(ids: string[]) {
+    return this.prisma.productVariant.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        isActive: true,
+        product: { select: { isActive: true } },
+      },
+    });
+  }
   findRequestingUserRole(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },

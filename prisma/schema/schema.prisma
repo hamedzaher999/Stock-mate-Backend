@@ -67,3 +67,64 @@ enum PurchaseOrderStatus {
 
   @@map("purchase_order_status")
 }
+enum RefillRequestStatus {
+  draft
+  pending_hospital_approval
+  approved
+  preparing
+  ready_for_delivery
+  delivered
+  partially_delivered
+  cancelled
+
+  @@map("refill_request_status")
+}
+
+enum TransactionType {
+  purchase_receipt
+  department_transfer_out
+  department_transfer_in
+  prescription_dispense
+  adjustment_damaged
+  adjustment_expired
+  adjustment_shrinkage
+  adjustment_found
+
+  @@map("transaction_type")
+}
+
+enum AdjustmentType {
+  damaged
+  expired
+  shrinkage
+  found
+
+  @@map("adjustment_type")
+}
+
+enum ReferenceType {
+  purchase_receipt
+  refill_request
+  department_refill_delivery_item
+  prescription_dispense
+  adjustment
+  stock_count
+
+  @@map("reference_type")
+}
+
+enum StockCountStatus {
+  draft
+  completed
+
+  @@map("stock_count_status")
+}
+
+enum QueueStatus {
+  waiting
+  in_consultation
+  completed
+  removed
+
+  @@map("queue_status")
+}

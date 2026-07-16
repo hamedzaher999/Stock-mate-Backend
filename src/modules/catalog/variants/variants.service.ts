@@ -106,6 +106,13 @@ export class VariantsService {
         throw new BadRequestException('One or more suppliers do not exist.');
       }
 
+      const inactiveSuppliers = foundSuppliers.filter((s) => !s.isActive);
+      if (inactiveSuppliers.length > 0) {
+        throw new BadRequestException(
+          'Cannot link an inactive supplier to a variant.',
+        );
+      }
+
       const preferredCount = dto.suppliers.filter((s) => s.isPreferred).length;
       if (preferredCount > 1) {
         throw new BadRequestException(

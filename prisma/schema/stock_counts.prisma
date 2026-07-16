@@ -1,0 +1,33 @@
+model StockCountSession {
+  id            String           @id @default(uuid()) @db.Uuid
+  departmentId  String           @map("department_id") @db.Uuid
+  initiatedById String           @map("initiated_by") @db.Uuid
+  status        StockCountStatus @default(draft)
+  countDate     DateTime         @map("count_date") @db.Date
+  completedAt   DateTime?        @map("completed_at")
+  notes         String?
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  department  Department          @relation(fields: [departmentId], references: [id])
+  initiatedBy User                @relation(fields: [initiatedById], references: [id])
+  items       StockCountItem[]
+
+  @@map("stock_count_sessions")
+}
+
+model StockCountItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  sessionId         String   @map("session_id") @db.Uuid
+  variantId         String   @map("variant_id") @db.Uuid
+  batchId           String?  @map("batch_id") @db.Uuid
+  expectedQuantity  Decimal  @map("expected_quantity")
+  countedQuantity   Decimal  @map("counted_quantity")
+  variance          Decimal
+  notes             String?
+
+  session StockCountSession @relation(fields: [sessionId], references: [id])
+  variant ProductVariant    @relation(fields: [variantId], references: [id])
+  batch   Batch?            @relation(fields: [batchId], references: [id])
+
+  @@map("stock_count_items")
+}

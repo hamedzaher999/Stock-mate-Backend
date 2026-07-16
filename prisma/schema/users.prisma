@@ -32,6 +32,17 @@ model User {
   createdPurchaseOrders    PurchaseOrder[]
   receivedPurchaseReceipts PurchaseReceipt[]
   createdBatches           Batch[]
-
+  drRequested        DepartmentRefillRequest[]  @relation("DRRequestedBy")
+  drHospitalApproved DepartmentRefillRequest[]  @relation("DRHospitalApprovedBy")
+  deliveriesShipped  DepartmentRefillDelivery[] @relation("DeliveryDeliveredBy")
+  deliveriesReceived DepartmentRefillDelivery[] @relation("DeliveryReceivedBy")
+  performedInventoryTransactions InventoryTransaction[]
+  reportedInventoryAdjustments   InventoryAdjustment[]
+  initiatedStockCountSessions StockCountSession[]
+  registeredPatients Patient[]
+  queueEntriesAdded   DepartmentQueue[] @relation("QueueAddedBy")
+  queueEntriesLocked  DepartmentQueue[] @relation("QueueLockedBy")
+  queueEntriesRemoved DepartmentQueue[] @relation("QueueRemovedBy")
+  
   @@map("users")
 }

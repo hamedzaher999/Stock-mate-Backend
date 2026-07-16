@@ -78,7 +78,11 @@ export class PurchaseOrdersService {
           'This item has not been approved with a quantity by the committee yet.',
         );
       }
-
+      if (!prItem.variant.isActive || !prItem.variant.product.isActive) {
+        throw new BadRequestException(
+          'One or more variants on this request have since been deactivated.',
+        );
+      }
       const alreadyOrdered =
         await this.purchaseOrdersRepository.sumOrderedQuantityForRequestItem(
           prItem.id,

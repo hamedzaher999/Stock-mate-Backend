@@ -11,6 +11,12 @@ model Department {
   users         User[]                   @relation("DepartmentUsers")
   batchStocks   BatchStock[]
   stockSettings DepartmentStockSetting[]
-
+  refillRequests       DepartmentRefillRequest[]
+  departmentInventories DepartmentInventory[]
+  inventoryTransactions InventoryTransaction[]
+  inventoryAdjustments  InventoryAdjustment[]
+  stockCountSessions StockCountSession[]
+  queueEntries DepartmentQueue[]
+  
   @@map("departments")
 }

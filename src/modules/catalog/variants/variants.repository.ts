@@ -99,7 +99,7 @@ export class VariantsRepository {
   suppliersExist(ids: string[]) {
     return this.prisma.supplier.findMany({
       where: { id: { in: ids } },
-      select: { id: true },
+      select: { id: true, isActive: true },
     });
   }
 

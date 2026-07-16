@@ -74,10 +74,7 @@ export class PurchaseRequestsService {
 
   async create(dto: CreatePurchaseRequestDto, requestedById: string) {
     const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
-    const foundVariants =
-      await this.purchaseRequestsRepository.variantsExist(variantIds);
-    if (foundVariants.length !== variantIds.length)
-      throw new BadRequestException('One or more variants do not exist.');
+    await this.assertVariantsActive(variantIds);
 
     return this.purchaseRequestsRepository.create({
       requestNumber: generateRequestNumber('PR'),
@@ -96,10 +93,7 @@ export class PurchaseRequestsService {
 
     if (dto.items) {
       const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
-      const foundVariants =
-        await this.purchaseRequestsRepository.variantsExist(variantIds);
-      if (foundVariants.length !== variantIds.length)
-        throw new BadRequestException('One or more variants do not exist.');
+      await this.assertVariantsActive(variantIds);
     }
 
     return this.purchaseRequestsRepository.replaceItems(
@@ -253,5 +247,20 @@ export class PurchaseRequestsService {
 
     if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
     return requestingUserId;
+  }
+  private async assertVariantsActive(variantIds: string[]) {
+    const variants =
+      await this.purchaseRequestsRepository.findVariantsWithActivation(
+        variantIds,
+      );
+    if (variants.length !== variantIds.length)
+      throw new BadRequestException('One or more variants do not exist.');
+
+    const inactive = variants.filter((v) => !v.isActive || !v.product.isActive);
+    if (inactive.length > 0) {
+      throw new BadRequestException(
+        'One or more selected variants (or their parent product) are inactive.',
+      );
+    }
   }
 }

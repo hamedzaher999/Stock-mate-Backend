@@ -63,14 +63,18 @@ export class StockSettingsRepository {
   variantExists(id: string) {
     return this.prisma.productVariant.findUnique({
       where: { id },
-      select: { id: true },
+      select: {
+        id: true,
+        isActive: true,
+        product: { select: { isActive: true } },
+      },
     });
   }
 
   departmentExists(id: string) {
     return this.prisma.department.findUnique({
       where: { id },
-      select: { id: true, type: true },
+      select: { id: true, type: true, isActive: true },
     });
   }
 

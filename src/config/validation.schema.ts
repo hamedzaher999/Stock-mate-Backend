@@ -9,9 +9,11 @@ export const validationSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().default(3000),
-  RESEND_API_KEY: Joi.string().required(),
-  EMAIL_FROM: Joi.string().required(),
-  REDIS_HOST: Joi.string().default('127.0.0.1'),
-  REDIS_PORT: Joi.number().default(6379),
   OTP_LENGTH: Joi.number().valid(6, 8).default(6),
+  EMAIL_HOST: Joi.string().required(),
+  EMAIL_PORT: Joi.number().required(),
+  EMAIL_USER: Joi.string().required(),
+  EMAIL_PASS: Joi.string().required(),
+  EMAIL_FROM: Joi.string().required(),
+  RESEND_API_KEY: Joi.string().optional(),
 });

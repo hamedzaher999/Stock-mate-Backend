@@ -83,6 +83,12 @@ export class PurchaseOrdersRepository {
             variantId: true,
             committeeApprovedQuantity: true,
             receivedQuantity: true,
+            variant: {
+              select: {
+                isActive: true,
+                product: { select: { isActive: true } },
+              },
+            },
           },
         },
       },
