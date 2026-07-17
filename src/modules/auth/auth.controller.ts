@@ -32,7 +32,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Body() dto: RequestOtpDto) {
     const result = await this.authService.requestOtp(dto);
-    return { message: result.message, data: null };
+    return { message: result.message, data: result.data };
   }
 
   @Public()

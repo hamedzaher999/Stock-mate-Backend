@@ -65,7 +65,7 @@ export class PermissionsResolverService {
     return effective;
   }
 
-  invalidate(userId: string): Promise<boolean> {
+  invalidate(userId: string): Promise<void> {
     return this.cacheService.del(CacheKeys.effectivePermissions(userId));
   }
 }

@@ -73,8 +73,8 @@ export class OtpService {
     if (!result.success) {
       this.logger.warn(`OTP delivery failed for ${destination} via ${channel}`);
     }
-
-    return { expiresAt };
+    //  TODO:DELETE CODE FROM RESPONSE
+    return { expiresAt, code };
   }
 
   async verifyOtp(userId: string, code: string): Promise<boolean> {

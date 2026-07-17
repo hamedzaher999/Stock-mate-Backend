@@ -37,9 +37,13 @@ export class AuthService {
         'No destination available for the selected channel.',
       );
     }
+    //  TODO:DELETE CODE FROM RESPONSE
 
-    await this.otpService.issueOtp(user.id, channel, destination);
-    return { message: 'If this account exists, an OTP has been sent.' };
+    const r = await this.otpService.issueOtp(user.id, channel, destination);
+    return {
+      message: 'If this account exists, an OTP has been sent.',
+      data: { code: r.code },
+    };
   }
 
   async verifyOtp(
