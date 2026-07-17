@@ -9,7 +9,7 @@ export const validationSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().default(3000),
-  OTP_LENGTH: Joi.number().valid(6, 8).default(6),
+  OTP_LENGTH: Joi.number().valid(6, 8).default(8),
   EMAIL_HOST: Joi.string().required(),
   EMAIL_PORT: Joi.number().required(),
   EMAIL_USER: Joi.string().required(),

@@ -5,7 +5,7 @@ import { SessionPlatform } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { hashToken } from '../../../common/utils/token-hash.util';
 
-const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
+const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 @Injectable()
