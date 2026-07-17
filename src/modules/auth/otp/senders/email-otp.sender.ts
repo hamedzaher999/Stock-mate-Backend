@@ -10,6 +10,12 @@ export class EmailOtpSender implements OtpSender {
   private readonly fromAddress: string;
 
   constructor(private readonly configService: ConfigService) {
+    console.log({
+      host: this.configService.get('EMAIL_HOST'),
+      port: this.configService.get('EMAIL_PORT'),
+      user: this.configService.get('EMAIL_USER'),
+      hasPass: !!this.configService.get('EMAIL_PASS'),
+    });
     this.transporter = createTransport({
       host: this.configService.get<string>('EMAIL_HOST'),
       port: this.configService.get<number>('EMAIL_PORT'),
@@ -20,6 +26,10 @@ export class EmailOtpSender implements OtpSender {
       },
     });
     this.fromAddress = this.configService.get<string>('EMAIL_FROM') as string;
+    this.transporter
+      .verify()
+      .then(() => console.log('SMTP OK'))
+      .catch((err) => console.error('SMTP ERROR', err));
   }
 
   async send(destination: string, code: string): Promise<OtpSenderResult> {
