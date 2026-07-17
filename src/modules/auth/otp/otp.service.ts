@@ -66,13 +66,13 @@ export class OtpService {
       expiresAt,
     });
 
-    const sender =
-      channel === OtpChannel.email ? this.emailSender : this.smsSender;
-    const result = await sender.send(destination, code);
+    // const sender =
+    //   channel === OtpChannel.email ? this.emailSender : this.smsSender;
+    // const result = await sender.send(destination, code);
 
-    if (!result.success) {
-      this.logger.warn(`OTP delivery failed for ${destination} via ${channel}`);
-    }
+    // if (!result.success) {
+    //   this.logger.warn(`OTP delivery failed for ${destination} via ${channel}`);
+    // }
     //  TODO:DELETE CODE FROM RESPONSE
     return { expiresAt, code };
   }
