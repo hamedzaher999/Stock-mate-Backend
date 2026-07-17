@@ -14,6 +14,10 @@ import { CacheService } from './cache.service';
         store: await redisStore({
           host: configService.get<string>('REDIS_HOST'),
           port: configService.get<number>('REDIS_PORT'),
+          retryStrategy: (times: number) => {
+            if (times > 5) return null;
+            return Math.min(times * 200, 2000);
+          },
         }),
       }),
       inject: [ConfigService],
