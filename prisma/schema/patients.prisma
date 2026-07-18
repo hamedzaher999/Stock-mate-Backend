@@ -10,6 +10,9 @@ model Patient {
 
   registeredBy User @relation(fields: [registeredById], references: [id])
   queueEntries DepartmentQueue[]
+  visits       MedicalVisit[]
+  prescriptions Prescription[]
+  dispenseQueueEntries PharmacyDispenseQueue[]
   
   @@map("patients")
 }

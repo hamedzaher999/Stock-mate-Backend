@@ -23,40 +23,44 @@ import { DepartmentRefillsModule } from './modules/department-refills/department
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { DepartmentQueueModule } from './modules/department-queue/department-queue.module';
+import { MedicalVisitsModule } from './modules/medical-visits/medical-visits.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true, validationSchema }),
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60000,
-        limit: 30,
-      },
-    ]),
-    CacheModule,
-    PrismaModule,
-    AuthModule,
-    RbacModule,
-    UsersModule,
-    DepartmentsModule,
-    SuppliersModule,
-    CatalogModule,
-    StockSettingsModule,
-    PurchasingModule,
-    BatchesModule,
-    DepartmentRefillsModule,
-    InventoryModule,
-    PatientsModule,
-    DepartmentQueueModule,
-  ],
-  controllers: [AppController],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: PermissionsGuard },
-    { provide: APP_INTERCEPTOR, useClass: TransformResponseInterceptor },
-    { provide: APP_FILTER, useClass: HttpExceptionFilter },
-  ],
+    imports: [
+        ConfigModule.forRoot({ isGlobal: true, validationSchema }),
+        ScheduleModule.forRoot(),
+        ThrottlerModule.forRoot([
+            {
+                name: 'default',
+                ttl: 60000,
+                limit: 30,
+            },
+        ]),
+        CacheModule,
+        PrismaModule,
+        AuthModule,
+        RbacModule,
+        UsersModule,
+        DepartmentsModule,
+        SuppliersModule,
+        CatalogModule,
+        StockSettingsModule,
+        PurchasingModule,
+        BatchesModule,
+        DepartmentRefillsModule,
+        InventoryModule,
+        PatientsModule,
+        DepartmentQueueModule,
+        MedicalVisitsModule,
+    ],
+    controllers: [AppController],
+    providers: [
+        { provide: APP_GUARD, useClass: ThrottlerGuard },
+        { provide: APP_GUARD, useClass: JwtAuthGuard },
+        { provide: APP_GUARD, useClass: PermissionsGuard },
+        { provide: APP_INTERCEPTOR, useClass: TransformResponseInterceptor },
+        { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    ],
 })
 export class AppModule {}

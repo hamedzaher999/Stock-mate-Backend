@@ -1,7 +1,7 @@
 import { IsOptional, IsUUID } from 'class-validator';
 
 export class AssignManagerDto {
-  @IsOptional()
-  @IsUUID()
-  managerId?: string | null;
+    @IsOptional()
+    @IsUUID()
+    managerId?: string | null;
 }

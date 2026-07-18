@@ -5,9 +5,9 @@ import { DepartmentQueueRepository } from './department-queue.repository';
 import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
-  imports: [RbacModule],
-  controllers: [DepartmentQueueController],
-  providers: [DepartmentQueueService, DepartmentQueueRepository],
-  exports: [DepartmentQueueRepository],
+    imports: [RbacModule],
+    controllers: [DepartmentQueueController],
+    providers: [DepartmentQueueService, DepartmentQueueRepository],
+    exports: [DepartmentQueueRepository],
 })
 export class DepartmentQueueModule {}

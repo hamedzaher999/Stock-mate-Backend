@@ -1,11 +1,11 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Query,
 } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -19,46 +19,46 @@ import { PERMISSIONS } from '../../common/constants/permissions.constants';
 
 @Controller('patients')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+    constructor(private readonly patientsService: PatientsService) {}
 
-  @Get()
-  @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
-  async findAll(@Query() query: ListPatientsDto) {
-    const data = await this.patientsService.list(query);
-    return { message: 'Success', data };
-  }
+    @Get()
+    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    async findAll(@Query() query: ListPatientsDto) {
+        const data = await this.patientsService.list(query);
+        return { message: 'Success', data };
+    }
 
-  @Get('lookup')
-  @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
-  async lookup(@Query() query: LookupPatientDto) {
-    const data = await this.patientsService.lookup(query);
-    return {
-      message: data ? 'Patient found.' : 'No matching patient found.',
-      data,
-    };
-  }
+    @Get('lookup')
+    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    async lookup(@Query() query: LookupPatientDto) {
+        const data = await this.patientsService.lookup(query);
+        return {
+            message: data ? 'Patient found.' : 'No matching patient found.',
+            data,
+        };
+    }
 
-  @Get(':id')
-  @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
-  async findOne(@Param('id') id: string) {
-    const data = await this.patientsService.findById(id);
-    return { message: 'Success', data };
-  }
+    @Get(':id')
+    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    async findOne(@Param('id') id: string) {
+        const data = await this.patientsService.findById(id);
+        return { message: 'Success', data };
+    }
 
-  @Post()
-  @RequirePermissions(PERMISSIONS.ADD_PATIENT)
-  async create(
-    @Body() dto: CreatePatientDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.patientsService.create(dto, user.sub);
-    return { message: 'Patient registered.', data };
-  }
+    @Post()
+    @RequirePermissions(PERMISSIONS.ADD_PATIENT)
+    async create(
+        @Body() dto: CreatePatientDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.patientsService.create(dto, user.sub);
+        return { message: 'Patient registered.', data };
+    }
 
-  @Patch(':id')
-  @RequirePermissions(PERMISSIONS.ADD_PATIENT)
-  async update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
-    const data = await this.patientsService.update(id, dto);
-    return { message: 'Patient record updated.', data };
-  }
+    @Patch(':id')
+    @RequirePermissions(PERMISSIONS.ADD_PATIENT)
+    async update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
+        const data = await this.patientsService.update(id, dto);
+        return { message: 'Patient record updated.', data };
+    }
 }

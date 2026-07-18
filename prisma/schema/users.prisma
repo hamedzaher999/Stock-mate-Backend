@@ -43,6 +43,15 @@ model User {
   queueEntriesAdded   DepartmentQueue[] @relation("QueueAddedBy")
   queueEntriesLocked  DepartmentQueue[] @relation("QueueLockedBy")
   queueEntriesRemoved DepartmentQueue[] @relation("QueueRemovedBy")
+  doctorVisits     MedicalVisit[] @relation("VisitDoctor")
+  visitsCancelled  MedicalVisit[] @relation("VisitCancelledBy")
+  prescriptionsWritten     Prescription[] @relation("PrescriptionDoctor")
+  prescriptionsCancelled   Prescription[] @relation("PrescriptionCancelledBy")
+  // users.prisma -- inside model User, add:
+  periodicSchedulesCreated  PeriodicRefillSchedule[] @relation("PeriodicScheduleCreatedBy")
+  periodicSchedulesApproved PeriodicRefillSchedule[] @relation("PeriodicScheduleApprovedBy")
+  periodicSchedulesCancelled PeriodicRefillSchedule[] @relation("PeriodicScheduleCancelledBy")
+  prescriptionDispenses PrescriptionDispense[]
   
   @@map("users")
 }

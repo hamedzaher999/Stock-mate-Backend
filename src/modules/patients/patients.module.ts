@@ -4,8 +4,8 @@ import { PatientsService } from './patients.service';
 import { PatientsRepository } from './patients.repository';
 
 @Module({
-  controllers: [PatientsController],
-  providers: [PatientsService, PatientsRepository],
-  exports: [PatientsRepository],
+    controllers: [PatientsController],
+    providers: [PatientsService, PatientsRepository],
+    exports: [PatientsRepository],
 })
 export class PatientsModule {}

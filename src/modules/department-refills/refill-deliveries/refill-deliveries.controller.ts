@@ -10,47 +10,47 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 
 @Controller('department-refills/deliveries')
 export class RefillDeliveriesController {
-  constructor(
-    private readonly refillDeliveriesService: RefillDeliveriesService,
-  ) {}
+    constructor(
+        private readonly refillDeliveriesService: RefillDeliveriesService,
+    ) {}
 
-  @Get()
-  @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
-  async findAll(@Query() query: ListDeliveriesDto) {
-    const data = await this.refillDeliveriesService.list(query);
-    return { message: 'Success', data };
-  }
+    @Get()
+    @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
+    async findAll(@Query() query: ListDeliveriesDto) {
+        const data = await this.refillDeliveriesService.list(query);
+        return { message: 'Success', data };
+    }
 
-  @Get(':id')
-  @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
-  async findOne(@Param('id') id: string) {
-    const data = await this.refillDeliveriesService.findById(id);
-    return { message: 'Success', data };
-  }
+    @Get(':id')
+    @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
+    async findOne(@Param('id') id: string) {
+        const data = await this.refillDeliveriesService.findById(id);
+        return { message: 'Success', data };
+    }
 
-  @Post()
-  @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
-  async create(
-    @Body() dto: CreateDeliveryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.refillDeliveriesService.create(dto, user.sub);
-    return { message: 'Delivery shipped from warehouse stock.', data };
-  }
+    @Post()
+    @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
+    async create(
+        @Body() dto: CreateDeliveryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillDeliveriesService.create(dto, user.sub);
+        return { message: 'Delivery shipped from warehouse stock.', data };
+    }
 
-  @Post(':id/confirm')
-  @RequirePermissions(PERMISSIONS.CONFIRM_DEPARTMENT_DELIVERY)
-  async confirm(
-    @Param('id') id: string,
-    @Body() dto: ConfirmDeliveryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.refillDeliveriesService.confirm(
-      id,
-      dto,
-      user.sub,
-      user.sub,
-    );
-    return { message: 'Delivery confirmed.', data };
-  }
+    @Post(':id/confirm')
+    @RequirePermissions(PERMISSIONS.CONFIRM_DEPARTMENT_DELIVERY)
+    async confirm(
+        @Param('id') id: string,
+        @Body() dto: ConfirmDeliveryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillDeliveriesService.confirm(
+            id,
+            dto,
+            user.sub,
+            user.sub,
+        );
+        return { message: 'Delivery confirmed.', data };
+    }
 }

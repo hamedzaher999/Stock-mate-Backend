@@ -1,0 +1,34 @@
+model PeriodicRefillSchedule {
+  id                String                 @id @default(uuid()) @db.Uuid
+  departmentId      String                 @map("department_id") @db.Uuid
+  createdById       String                 @map("created_by") @db.Uuid
+  originRequestId   String                 @unique @map("origin_request_id") @db.Uuid // the request whose approval created this schedule; its items are the recurring template
+  status            PeriodicScheduleStatus @default(active)
+  approvalPolicy    ScheduleApprovalPolicy @map("approval_policy")
+  requestType       RefillRequestType      @map("request_type")       // snapshot, immutable -- daily/weekly/monthly only, never normal
+  frequencyInterval Int                    @map("frequency_interval") // snapshot, immutable -- the period count
+
+  hospitalApprovedById String   @map("hospital_approved_by") @db.Uuid // who approved the origin request & set this policy
+  hospitalApprovedAt   DateTime @map("hospital_approved_at")
+
+  nextRunDate     DateTime  @map("next_run_date") @db.Date
+  lastGeneratedAt DateTime? @map("last_generated_at")
+
+  cancelledById String?   @map("cancelled_by") @db.Uuid
+  cancelledAt   DateTime? @map("cancelled_at")
+  cancelReason  String?   @map("cancel_reason")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  department        Department                @relation(fields: [departmentId], references: [id])
+  createdBy         User                      @relation("PeriodicScheduleCreatedBy", fields: [createdById], references: [id])
+  hospitalApprovedBy User                     @relation("PeriodicScheduleApprovedBy", fields: [hospitalApprovedById], references: [id])
+  cancelledBy       User?                     @relation("PeriodicScheduleCancelledBy", fields: [cancelledById], references: [id])
+  originRequest     DepartmentRefillRequest   @relation("PeriodicScheduleOrigin", fields: [originRequestId], references: [id])
+  generatedRequests DepartmentRefillRequest[] @relation("PeriodicScheduleGenerated")
+
+  @@index([status, nextRunDate]) // the scheduler's exact query: active schedules due to run
+  @@index([departmentId, status])
+  @@map("periodic_refill_schedules")
+}

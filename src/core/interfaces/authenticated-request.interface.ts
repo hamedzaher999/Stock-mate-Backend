@@ -1,5 +1,5 @@
 export interface AuthenticatedUser {
-  sub: string;
-  sessionId: string;
-  roleId: string;
+    sub: string;
+    sessionId: string;
+    roleId: string;
 }

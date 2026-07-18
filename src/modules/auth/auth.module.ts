@@ -14,19 +14,19 @@ import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), RbacModule],
-  controllers: [AuthController],
-  providers: [
-    AuthService,
-    AuthRepository,
-    OtpService,
-    OtpRepository,
-    EmailOtpSender,
-    SmsOtpSender,
-    SessionsService,
-    SessionsRepository,
-    JwtAccessStrategy,
-  ],
-  exports: [SessionsService],
+    imports: [PassportModule, JwtModule.register({}), RbacModule],
+    controllers: [AuthController],
+    providers: [
+        AuthService,
+        AuthRepository,
+        OtpService,
+        OtpRepository,
+        EmailOtpSender,
+        SmsOtpSender,
+        SessionsService,
+        SessionsRepository,
+        JwtAccessStrategy,
+    ],
+    exports: [SessionsService],
 })
 export class AuthModule {}

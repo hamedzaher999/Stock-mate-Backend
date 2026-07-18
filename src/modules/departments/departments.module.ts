@@ -4,8 +4,8 @@ import { DepartmentsService } from './departments.service';
 import { DepartmentsRepository } from './departments.repository';
 
 @Module({
-  controllers: [DepartmentsController],
-  providers: [DepartmentsService, DepartmentsRepository],
-  exports: [DepartmentsRepository],
+    controllers: [DepartmentsController],
+    providers: [DepartmentsService, DepartmentsRepository],
+    exports: [DepartmentsRepository],
 })
 export class DepartmentsModule {}

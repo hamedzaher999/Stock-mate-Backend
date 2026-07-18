@@ -1,9 +1,9 @@
 import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
 } from '@nestjs/common';
 import { PurchaseRequestsRepository } from './purchase-requests.repository';
 import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
@@ -17,250 +17,265 @@ import { generateRequestNumber } from '../../../common/utils/request-number-gene
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 
 const CANCELLABLE_STATUSES = [
-  'draft',
-  'pending_hospital_approval',
-  'pending_purchasing_committee',
-  'approved',
-  'ready_for_receiving',
+    'draft',
+    'pending_hospital_approval',
+    'pending_purchasing_committee',
+    'approved',
+    'ready_for_receiving',
 ];
 const UNRESTRICTED_ROLES = [
-  HOSPITAL_MANAGER_ROLE_NAME,
-  'purchasing_committee_manager',
+    HOSPITAL_MANAGER_ROLE_NAME,
+    'purchasing_committee_manager',
 ];
 
 @Injectable()
 export class PurchaseRequestsService {
-  constructor(
-    private readonly purchaseRequestsRepository: PurchaseRequestsRepository,
-  ) {}
+    constructor(
+        private readonly purchaseRequestsRepository: PurchaseRequestsRepository,
+    ) {}
 
-  async list(
-    dto: ListPurchaseRequestsDto,
-    requestingUserId: string,
-  ): Promise<PaginatedResult<unknown>> {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    async list(
+        dto: ListPurchaseRequestsDto,
+        requestingUserId: string,
+    ): Promise<PaginatedResult<unknown>> {
+        const page = dto.page ?? 1;
+        const limit = dto.limit ?? 20;
 
-    const ownerScope = await this.resolveOwnerScope(requestingUserId);
+        const ownerScope = await this.resolveOwnerScope(requestingUserId);
 
-    const { items, total } = await this.purchaseRequestsRepository.findMany({
-      skip: (page - 1) * limit,
-      take: limit,
-      status: dto.status,
-      requestedById: ownerScope ?? undefined,
-    });
-
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
-  }
-
-  private async findById(id: string) {
-    const pr = await this.purchaseRequestsRepository.findById(id);
-    if (!pr) throw new NotFoundException('Purchase request not found.');
-    return pr;
-  }
-
-  async findByIdForUser(id: string, requestingUserId: string) {
-    const pr = await this.findById(id);
-
-    const ownerScope = await this.resolveOwnerScope(requestingUserId);
-    if (ownerScope && pr.requestedById !== ownerScope) {
-      throw new ForbiddenException(
-        'You can only view purchase requests you created.',
-      );
-    }
-
-    return pr;
-  }
-
-  async create(dto: CreatePurchaseRequestDto, requestedById: string) {
-    const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
-    await this.assertVariantsActive(variantIds);
-
-    return this.purchaseRequestsRepository.create({
-      requestNumber: generateRequestNumber('PR'),
-      requestedById,
-      notes: dto.notes,
-      items: dto.items,
-    });
-  }
-
-  async update(id: string, dto: UpdatePurchaseRequestDto) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'draft')
-      throw new ConflictException(
-        'Only draft purchase requests can be edited.',
-      );
-
-    if (dto.items) {
-      const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
-      await this.assertVariantsActive(variantIds);
-    }
-
-    return this.purchaseRequestsRepository.replaceItems(
-      id,
-      dto.notes,
-      dto.items,
-    );
-  }
-
-  async submit(id: string) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'draft')
-      throw new ConflictException(
-        'Only draft purchase requests can be submitted.',
-      );
-    if (pr.items.length === 0)
-      throw new BadRequestException(
-        'Cannot submit a purchase request with no items.',
-      );
-
-    return this.purchaseRequestsRepository.updateStatus(id, {
-      status: 'pending_hospital_approval',
-    });
-  }
-
-  async hospitalApprove(id: string, approverId: string) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'pending_hospital_approval')
-      throw new ConflictException(
-        'This request is not awaiting hospital approval.',
-      );
-
-    return this.purchaseRequestsRepository.updateStatus(id, {
-      status: 'pending_purchasing_committee',
-      hospitalApprovedById: approverId,
-      hospitalApprovedAt: new Date(),
-    });
-  }
-
-  async hospitalReject(id: string, dto: HospitalRejectDto) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'pending_hospital_approval')
-      throw new ConflictException(
-        'This request is not awaiting hospital approval.',
-      );
-
-    return this.purchaseRequestsRepository.updateStatus(id, {
-      status: 'rejected',
-      hospitalRejectionReason: dto.reason,
-    });
-  }
-
-  async committeeApprove(
-    id: string,
-    dto: CommitteeApproveDto,
-    approverId: string,
-  ) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'pending_purchasing_committee')
-      throw new ConflictException(
-        'This request is not awaiting committee approval.',
-      );
-
-    const itemIds = new Set(pr.items.map((i) => i.id));
-    const dtoItemIds = new Set(dto.items.map((i) => i.purchaseRequestItemId));
-
-    if (
-      itemIds.size !== dtoItemIds.size ||
-      ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
-    ) {
-      throw new BadRequestException(
-        'Approved quantities must be provided for exactly every item on this request.',
-      );
-    }
-
-    for (const approval of dto.items) {
-      const item = pr.items.find(
-        (i) => i.id === approval.purchaseRequestItemId,
-      );
-      if (item && approval.approvedQuantity > Number(item.requestedQuantity)) {
-        throw new BadRequestException(
-          `Approved quantity for variant "${item.variant.variantName}" cannot exceed the requested quantity.`,
+        const { items, total } = await this.purchaseRequestsRepository.findMany(
+            {
+                skip: (page - 1) * limit,
+                take: limit,
+                status: dto.status,
+                requestedById: ownerScope ?? undefined,
+            },
         );
-      }
+
+        return {
+            items,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
 
-    return this.purchaseRequestsRepository.setCommitteeApprovedQuantities(
-      id,
-      dto.items,
-      approverId,
-    );
-  }
-
-  async committeeReject(id: string, dto: CommitteeRejectDto) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'pending_purchasing_committee')
-      throw new ConflictException(
-        'This request is not awaiting committee approval.',
-      );
-
-    return this.purchaseRequestsRepository.updateStatus(id, {
-      status: 'rejected',
-      committeeRejectionReason: dto.reason,
-    });
-  }
-
-  async markReadyForReceiving(id: string, userId: string) {
-    const pr = await this.findById(id);
-    if (pr.status !== 'approved') {
-      throw new ConflictException(
-        'This request must be approved by the committee before it can be marked ready for receiving.',
-      );
+    private async findById(id: string) {
+        const pr = await this.purchaseRequestsRepository.findById(id);
+        if (!pr) throw new NotFoundException('Purchase request not found.');
+        return pr;
     }
 
-    const missingQuantities = pr.items.some(
-      (item) => item.committeeApprovedQuantity === null,
-    );
-    if (missingQuantities)
-      throw new BadRequestException(
-        'Every item must have a committee-approved quantity first.',
-      );
+    async findByIdForUser(id: string, requestingUserId: string) {
+        const pr = await this.findById(id);
 
-    return this.purchaseRequestsRepository.updateStatus(id, {
-      status: 'ready_for_receiving',
-      committeeMarkedReadyById: userId,
-      committeeMarkedReadyAt: new Date(),
-    });
-  }
+        const ownerScope = await this.resolveOwnerScope(requestingUserId);
+        if (ownerScope && pr.requestedById !== ownerScope) {
+            throw new ForbiddenException(
+                'You can only view purchase requests you created.',
+            );
+        }
 
-  async cancel(id: string) {
-    const pr = await this.findById(id);
-    if (!CANCELLABLE_STATUSES.includes(pr.status)) {
-      throw new ConflictException(
-        `A request with status "${pr.status}" cannot be cancelled.`,
-      );
+        return pr;
     }
 
-    return this.purchaseRequestsRepository.updateStatus(id, {
-      status: 'cancelled',
-    });
-  }
+    async create(dto: CreatePurchaseRequestDto, requestedById: string) {
+        const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
+        await this.assertVariantsActive(variantIds);
 
-  private async resolveOwnerScope(
-    requestingUserId: string,
-  ): Promise<string | null> {
-    const user =
-      await this.purchaseRequestsRepository.findRequestingUserRole(
-        requestingUserId,
-      );
-    if (!user) throw new BadRequestException('Requesting user not found.');
-
-    if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
-    return requestingUserId;
-  }
-  private async assertVariantsActive(variantIds: string[]) {
-    const variants =
-      await this.purchaseRequestsRepository.findVariantsWithActivation(
-        variantIds,
-      );
-    if (variants.length !== variantIds.length)
-      throw new BadRequestException('One or more variants do not exist.');
-
-    const inactive = variants.filter((v) => !v.isActive || !v.product.isActive);
-    if (inactive.length > 0) {
-      throw new BadRequestException(
-        'One or more selected variants (or their parent product) are inactive.',
-      );
+        return this.purchaseRequestsRepository.create({
+            requestNumber: generateRequestNumber('PR'),
+            requestedById,
+            notes: dto.notes,
+            items: dto.items,
+        });
     }
-  }
+
+    async update(id: string, dto: UpdatePurchaseRequestDto) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'draft')
+            throw new ConflictException(
+                'Only draft purchase requests can be edited.',
+            );
+
+        if (dto.items) {
+            const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
+            await this.assertVariantsActive(variantIds);
+        }
+
+        return this.purchaseRequestsRepository.replaceItems(
+            id,
+            dto.notes,
+            dto.items,
+        );
+    }
+
+    async submit(id: string) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'draft')
+            throw new ConflictException(
+                'Only draft purchase requests can be submitted.',
+            );
+        if (pr.items.length === 0)
+            throw new BadRequestException(
+                'Cannot submit a purchase request with no items.',
+            );
+
+        return this.purchaseRequestsRepository.updateStatus(id, {
+            status: 'pending_hospital_approval',
+        });
+    }
+
+    async hospitalApprove(id: string, approverId: string) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'pending_hospital_approval')
+            throw new ConflictException(
+                'This request is not awaiting hospital approval.',
+            );
+
+        return this.purchaseRequestsRepository.updateStatus(id, {
+            status: 'pending_purchasing_committee',
+            hospitalApprovedById: approverId,
+            hospitalApprovedAt: new Date(),
+        });
+    }
+
+    async hospitalReject(id: string, dto: HospitalRejectDto) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'pending_hospital_approval')
+            throw new ConflictException(
+                'This request is not awaiting hospital approval.',
+            );
+
+        return this.purchaseRequestsRepository.updateStatus(id, {
+            status: 'rejected',
+            hospitalRejectionReason: dto.reason,
+        });
+    }
+
+    async committeeApprove(
+        id: string,
+        dto: CommitteeApproveDto,
+        approverId: string,
+    ) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'pending_purchasing_committee')
+            throw new ConflictException(
+                'This request is not awaiting committee approval.',
+            );
+
+        const itemIds = new Set(pr.items.map((i) => i.id));
+        const dtoItemIds = new Set(
+            dto.items.map((i) => i.purchaseRequestItemId),
+        );
+
+        if (
+            itemIds.size !== dtoItemIds.size ||
+            ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
+        ) {
+            throw new BadRequestException(
+                'Approved quantities must be provided for exactly every item on this request.',
+            );
+        }
+
+        for (const approval of dto.items) {
+            const item = pr.items.find(
+                (i) => i.id === approval.purchaseRequestItemId,
+            );
+            if (
+                item &&
+                approval.approvedQuantity > Number(item.requestedQuantity)
+            ) {
+                throw new BadRequestException(
+                    `Approved quantity for variant "${item.variant.variantName}" cannot exceed the requested quantity.`,
+                );
+            }
+        }
+
+        return this.purchaseRequestsRepository.setCommitteeApprovedQuantities(
+            id,
+            dto.items,
+            approverId,
+        );
+    }
+
+    async committeeReject(id: string, dto: CommitteeRejectDto) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'pending_purchasing_committee')
+            throw new ConflictException(
+                'This request is not awaiting committee approval.',
+            );
+
+        return this.purchaseRequestsRepository.updateStatus(id, {
+            status: 'rejected',
+            committeeRejectionReason: dto.reason,
+        });
+    }
+
+    async markReadyForReceiving(id: string, userId: string) {
+        const pr = await this.findById(id);
+        if (pr.status !== 'approved') {
+            throw new ConflictException(
+                'This request must be approved by the committee before it can be marked ready for receiving.',
+            );
+        }
+
+        const missingQuantities = pr.items.some(
+            (item) => item.committeeApprovedQuantity === null,
+        );
+        if (missingQuantities)
+            throw new BadRequestException(
+                'Every item must have a committee-approved quantity first.',
+            );
+
+        return this.purchaseRequestsRepository.updateStatus(id, {
+            status: 'ready_for_receiving',
+            committeeMarkedReadyById: userId,
+            committeeMarkedReadyAt: new Date(),
+        });
+    }
+
+    async cancel(id: string) {
+        const pr = await this.findById(id);
+        if (!CANCELLABLE_STATUSES.includes(pr.status)) {
+            throw new ConflictException(
+                `A request with status "${pr.status}" cannot be cancelled.`,
+            );
+        }
+
+        return this.purchaseRequestsRepository.updateStatus(id, {
+            status: 'cancelled',
+        });
+    }
+
+    private async resolveOwnerScope(
+        requestingUserId: string,
+    ): Promise<string | null> {
+        const user =
+            await this.purchaseRequestsRepository.findRequestingUserRole(
+                requestingUserId,
+            );
+        if (!user) throw new BadRequestException('Requesting user not found.');
+
+        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
+        return requestingUserId;
+    }
+    private async assertVariantsActive(variantIds: string[]) {
+        const variants =
+            await this.purchaseRequestsRepository.findVariantsWithActivation(
+                variantIds,
+            );
+        if (variants.length !== variantIds.length)
+            throw new BadRequestException('One or more variants do not exist.');
+
+        const inactive = variants.filter(
+            (v) => !v.isActive || !v.product.isActive,
+        );
+        if (inactive.length > 0) {
+            throw new BadRequestException(
+                'One or more selected variants (or their parent product) are inactive.',
+            );
+        }
+    }
 }

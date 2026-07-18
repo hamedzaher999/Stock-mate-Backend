@@ -4,8 +4,8 @@ import { StockSettingsService } from './stock-settings.service';
 import { StockSettingsRepository } from './stock-settings.repository';
 
 @Module({
-  controllers: [StockSettingsController],
-  providers: [StockSettingsService, StockSettingsRepository],
-  exports: [StockSettingsRepository],
+    controllers: [StockSettingsController],
+    providers: [StockSettingsService, StockSettingsRepository],
+    exports: [StockSettingsRepository],
 })
 export class StockSettingsModule {}

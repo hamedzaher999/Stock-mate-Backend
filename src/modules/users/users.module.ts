@@ -5,9 +5,9 @@ import { UsersRepository } from './users.repository';
 import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
-  imports: [RbacModule],
-  controllers: [UsersController],
-  providers: [UsersService, UsersRepository],
-  exports: [UsersRepository],
+    imports: [RbacModule],
+    controllers: [UsersController],
+    providers: [UsersService, UsersRepository],
+    exports: [UsersRepository],
 })
 export class UsersModule {}

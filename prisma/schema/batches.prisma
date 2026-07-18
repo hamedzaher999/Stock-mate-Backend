@@ -21,6 +21,7 @@ model Batch {
   inventoryTransactions InventoryTransaction[]
   inventoryAdjustments  InventoryAdjustment[]
   stockCountItems StockCountItem[]
+  prescriptionDispenseItems PrescriptionDispenseItem[]
   
   @@map("batches")
 }

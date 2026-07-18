@@ -14,23 +14,23 @@ import { StockCountsRepository } from './stock-counts/stock-counts.repository';
 import { InventoryLedgerService } from './transactions/inventory-ledger.service';
 
 @Module({
-  controllers: [
-    DepartmentInventoryController,
-    AdjustmentsController,
-    TransactionsController,
-    StockCountsController,
-  ],
-  providers: [
-    DepartmentInventoryService,
-    DepartmentInventoryRepository,
-    AdjustmentsService,
-    AdjustmentsRepository,
-    TransactionsService,
-    TransactionsRepository,
-    StockCountsService,
-    StockCountsRepository,
-    InventoryLedgerService,
-  ],
-  exports: [InventoryLedgerService],
+    controllers: [
+        DepartmentInventoryController,
+        AdjustmentsController,
+        TransactionsController,
+        StockCountsController,
+    ],
+    providers: [
+        DepartmentInventoryService,
+        DepartmentInventoryRepository,
+        AdjustmentsService,
+        AdjustmentsRepository,
+        TransactionsService,
+        TransactionsRepository,
+        StockCountsService,
+        StockCountsRepository,
+        InventoryLedgerService,
+    ],
+    exports: [InventoryLedgerService],
 })
 export class InventoryModule {}

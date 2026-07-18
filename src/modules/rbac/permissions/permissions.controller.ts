@@ -5,12 +5,12 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 
 @Controller('rbac/permissions')
 export class PermissionsController {
-  constructor(private readonly permissionsService: PermissionsService) {}
+    constructor(private readonly permissionsService: PermissionsService) {}
 
-  @Get()
-  @RequirePermissions(PERMISSIONS.MANAGE_ROLES)
-  async findAll() {
-    const data = await this.permissionsService.findAll();
-    return { message: 'Success', data };
-  }
+    @Get()
+    @RequirePermissions(PERMISSIONS.MANAGE_ROLES)
+    async findAll() {
+        const data = await this.permissionsService.findAll();
+        return { message: 'Success', data };
+    }
 }

@@ -9,31 +9,34 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 
 @Controller('purchasing/receipts')
 export class PurchaseReceivingController {
-  constructor(
-    private readonly purchaseReceivingService: PurchaseReceivingService,
-  ) {}
+    constructor(
+        private readonly purchaseReceivingService: PurchaseReceivingService,
+    ) {}
 
-  @Get()
-  @RequirePermissions(PERMISSIONS.VIEW_PURCHASING_HISTORY)
-  async findAll(@Query() query: ListPurchaseReceiptsDto) {
-    const data = await this.purchaseReceivingService.list(query);
-    return { message: 'Success', data };
-  }
+    @Get()
+    @RequirePermissions(PERMISSIONS.VIEW_PURCHASING_HISTORY)
+    async findAll(@Query() query: ListPurchaseReceiptsDto) {
+        const data = await this.purchaseReceivingService.list(query);
+        return { message: 'Success', data };
+    }
 
-  @Get(':id')
-  @RequirePermissions(PERMISSIONS.VIEW_PURCHASING_HISTORY)
-  async findOne(@Param('id') id: string) {
-    const data = await this.purchaseReceivingService.findById(id);
-    return { message: 'Success', data };
-  }
+    @Get(':id')
+    @RequirePermissions(PERMISSIONS.VIEW_PURCHASING_HISTORY)
+    async findOne(@Param('id') id: string) {
+        const data = await this.purchaseReceivingService.findById(id);
+        return { message: 'Success', data };
+    }
 
-  @Post()
-  @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
-  async create(
-    @Body() dto: CreatePurchaseReceiptDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.purchaseReceivingService.create(dto, user.sub);
-    return { message: 'Purchase receipt recorded and batches created.', data };
-  }
+    @Post()
+    @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
+    async create(
+        @Body() dto: CreatePurchaseReceiptDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.purchaseReceivingService.create(dto, user.sub);
+        return {
+            message: 'Purchase receipt recorded and batches created.',
+            data,
+        };
+    }
 }

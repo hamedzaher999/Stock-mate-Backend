@@ -3,9 +3,11 @@ import { PermissionsRepository } from './permissions.repository';
 
 @Injectable()
 export class PermissionsService {
-  constructor(private readonly permissionsRepository: PermissionsRepository) {}
+    constructor(
+        private readonly permissionsRepository: PermissionsRepository,
+    ) {}
 
-  findAll() {
-    return this.permissionsRepository.findAll();
-  }
+    findAll() {
+        return this.permissionsRepository.findAll();
+    }
 }

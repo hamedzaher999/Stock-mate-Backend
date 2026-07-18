@@ -16,7 +16,7 @@ model DepartmentQueue {
   addedBy    User       @relation("QueueAddedBy", fields: [addedById], references: [id])
   lockedBy   User?      @relation("QueueLockedBy", fields: [lockedById], references: [id])
   removedBy  User?      @relation("QueueRemovedBy", fields: [removedById], references: [id])
-
+  medicalVisit  MedicalVisit?
   @@index([departmentId, status])
   @@map("department_queues")
 }

@@ -1,44 +1,44 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMinSize,
-  IsArray,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Min,
-  ValidateNested,
+    ArrayMinSize,
+    IsArray,
+    IsNumber,
+    IsOptional,
+    IsString,
+    IsUUID,
+    Min,
+    ValidateNested,
 } from 'class-validator';
 
 class PurchaseRequestItemInputDto {
-  @IsUUID()
-  variantId!: string;
+    @IsUUID()
+    variantId!: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0.01)
-  requestedQuantity!: number;
+    @Type(() => Number)
+    @IsNumber()
+    @Min(0.01)
+    requestedQuantity!: number;
 
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  estimatedPrice?: number;
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @Min(0)
+    estimatedPrice?: number;
 
-  @IsOptional()
-  @IsString()
-  notes?: string;
+    @IsOptional()
+    @IsString()
+    notes?: string;
 }
 
 export class UpdatePurchaseRequestDto {
-  @IsOptional()
-  @IsArray()
-  @ArrayMinSize(1)
-  @ValidateNested({ each: true })
-  @Type(() => PurchaseRequestItemInputDto)
-  items?: PurchaseRequestItemInputDto[];
+    @IsOptional()
+    @IsArray()
+    @ArrayMinSize(1)
+    @ValidateNested({ each: true })
+    @Type(() => PurchaseRequestItemInputDto)
+    items?: PurchaseRequestItemInputDto[];
 
-  @IsOptional()
-  @IsString()
-  notes?: string;
+    @IsOptional()
+    @IsString()
+    notes?: string;
 }

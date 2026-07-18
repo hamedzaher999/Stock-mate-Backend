@@ -10,37 +10,43 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 @Controller('inventory/department-inventory')
 @RequirePermissions(PERMISSIONS.VIEW_INVENTORY)
 export class DepartmentInventoryController {
-  constructor(
-    private readonly departmentInventoryService: DepartmentInventoryService,
-  ) {}
+    constructor(
+        private readonly departmentInventoryService: DepartmentInventoryService,
+    ) {}
 
-  @Get()
-  async findAll(
-    @Query() query: ListDepartmentInventoryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentInventoryService.list(query, user.sub);
-    return { message: 'Success', data };
-  }
+    @Get()
+    async findAll(
+        @Query() query: ListDepartmentInventoryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentInventoryService.list(
+            query,
+            user.sub,
+        );
+        return { message: 'Success', data };
+    }
 
-  @Get('live-stock')
-  async liveStock(
-    @Query() query: LiveStockQueryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentInventoryService.getLiveStock(
-      query.departmentId,
-      user.sub,
-    );
-    return { message: 'Success', data };
-  }
+    @Get('live-stock')
+    async liveStock(
+        @Query() query: LiveStockQueryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentInventoryService.getLiveStock(
+            query.departmentId,
+            user.sub,
+        );
+        return { message: 'Success', data };
+    }
 
-  @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentInventoryService.findById(id, user.sub);
-    return { message: 'Success', data };
-  }
+    @Get(':id')
+    async findOne(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentInventoryService.findById(
+            id,
+            user.sub,
+        );
+        return { message: 'Success', data };
+    }
 }

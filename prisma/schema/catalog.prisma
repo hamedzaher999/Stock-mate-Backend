@@ -72,7 +72,9 @@ model ProductVariant {
   inventoryTransactions InventoryTransaction[]
   inventoryAdjustments  InventoryAdjustment[]
   stockCountItems StockCountItem[]
-  
+  prescriptionItems PrescriptionItem[]
+  prescriptionDispenseItems PrescriptionDispenseItem[]
+//   periodicRefillScheduleItems PeriodicRefillScheduleItem[]
   @@map("product_variants")
 }
 

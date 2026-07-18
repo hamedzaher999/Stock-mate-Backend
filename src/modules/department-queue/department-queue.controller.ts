@@ -1,11 +1,11 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
+    Body,
+    Controller,
+    Get,
+    Param,
+    Patch,
+    Post,
+    Query,
 } from '@nestjs/common';
 import { DepartmentQueueService } from './department-queue.service';
 import { CreateQueueEntryDto } from './dto/create-queue-entry.dto';
@@ -19,63 +19,64 @@ import { PERMISSIONS } from '../../common/constants/permissions.constants';
 
 @Controller('department-queue')
 export class DepartmentQueueController {
-  constructor(
-    private readonly departmentQueueService: DepartmentQueueService,
-  ) {}
+    constructor(
+        private readonly departmentQueueService: DepartmentQueueService,
+    ) {}
 
-  @Get()
-  async findAll(
-    @Query() query: ListQueueDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentQueueService.list(query, user.sub);
-    return { message: 'Success', data };
-  }
+    @Get()
+    async findAll(
+        @Query() query: ListQueueDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentQueueService.list(query, user.sub);
+        return { message: 'Success', data };
+    }
 
-  @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentQueueService.findById(id, user.sub);
-    return { message: 'Success', data };
-  }
+    @Get(':id')
+    async findOne(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentQueueService.findById(id, user.sub);
+        return { message: 'Success', data };
+    }
 
-  @Post()
-  @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
-  async create(
-    @Body() dto: CreateQueueEntryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentQueueService.create(dto, user.sub);
-    return { message: 'Patient added to the queue.', data };
-  }
+    @Post()
+    @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
+    async create(
+        @Body() dto: CreateQueueEntryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentQueueService.create(dto, user.sub);
+        return { message: 'Patient added to the queue.', data };
+    }
 
-  @Post(':id/lock')
-  @RequirePermissions(PERMISSIONS.START_CONSULTATION)
-  async lock(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    const data = await this.departmentQueueService.lock(id, user.sub);
-    return { message: 'Patient locked for consultation.', data };
-  }
+    @Patch(':id/release')
+    async release(
+        @Param('id') id: string,
+        @Body() dto: ReleaseQueueEntryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentQueueService.release(
+            id,
+            dto,
+            user.sub,
+        );
+        return { message: 'Patient released back to the waiting queue.', data };
+    }
 
-  @Patch(':id/release')
-  async release(
-    @Param('id') id: string,
-    @Body() dto: ReleaseQueueEntryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentQueueService.release(id, dto, user.sub);
-    return { message: 'Patient released back to the waiting queue.', data };
-  }
-
-  @Patch(':id/remove')
-  @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
-  async remove(
-    @Param('id') id: string,
-    @Body() dto: RemoveQueueEntryDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.departmentQueueService.remove(id, dto, user.sub);
-    return { message: 'Patient removed from the queue.', data };
-  }
+    @Patch(':id/remove')
+    @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
+    async remove(
+        @Param('id') id: string,
+        @Body() dto: RemoveQueueEntryDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentQueueService.remove(
+            id,
+            dto,
+            user.sub,
+        );
+        return { message: 'Patient removed from the queue.', data };
+    }
 }

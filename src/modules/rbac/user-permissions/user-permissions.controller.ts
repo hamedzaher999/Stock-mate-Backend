@@ -9,42 +9,42 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 @Controller('rbac/users/:userId/permissions')
 @RequirePermissions(PERMISSIONS.MANAGE_USER_PERMISSIONS)
 export class UserPermissionsController {
-  constructor(
-    private readonly userPermissionsService: UserPermissionsService,
-  ) {}
+    constructor(
+        private readonly userPermissionsService: UserPermissionsService,
+    ) {}
 
-  @Get()
-  async findAll(@Param('userId') userId: string) {
-    const data = await this.userPermissionsService.findAllForUser(userId);
-    return { message: 'Success', data };
-  }
+    @Get()
+    async findAll(@Param('userId') userId: string) {
+        const data = await this.userPermissionsService.findAllForUser(userId);
+        return { message: 'Success', data };
+    }
 
-  @Post()
-  async upsert(
-    @Param('userId') userId: string,
-    @Body() dto: UpsertUserPermissionDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.userPermissionsService.upsert(
-      userId,
-      dto,
-      user.sub,
-    );
-    return { message: 'Permission override saved.', data };
-  }
+    @Post()
+    async upsert(
+        @Param('userId') userId: string,
+        @Body() dto: UpsertUserPermissionDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.userPermissionsService.upsert(
+            userId,
+            dto,
+            user.sub,
+        );
+        return { message: 'Permission override saved.', data };
+    }
 
-  @Delete(':permissionCode')
-  async remove(
-    @Param('userId') userId: string,
-    @Param('permissionCode') permissionCode: string,
-  ) {
-    await this.userPermissionsService.remove(userId, permissionCode);
-    return { message: 'Permission override removed.', data: null };
-  }
+    @Delete(':permissionCode')
+    async remove(
+        @Param('userId') userId: string,
+        @Param('permissionCode') permissionCode: string,
+    ) {
+        await this.userPermissionsService.remove(userId, permissionCode);
+        return { message: 'Permission override removed.', data: null };
+    }
 
-  @Delete()
-  async reset(@Param('userId') userId: string) {
-    await this.userPermissionsService.resetToDefault(userId);
-    return { message: 'Permissions reset to role defaults.', data: null };
-  }
+    @Delete()
+    async reset(@Param('userId') userId: string) {
+        await this.userPermissionsService.resetToDefault(userId);
+        return { message: 'Permissions reset to role defaults.', data: null };
+    }
 }

@@ -3,11 +3,11 @@ import { StockCountStatus } from '@prisma/client';
 import { PaginationDto } from '../../../../common/dto/pagination.dto';
 
 export class ListStockCountSessionsDto extends PaginationDto {
-  @IsOptional()
-  @IsUUID()
-  departmentId?: string;
+    @IsOptional()
+    @IsUUID()
+    departmentId?: string;
 
-  @IsOptional()
-  @IsEnum(StockCountStatus)
-  status?: StockCountStatus;
+    @IsOptional()
+    @IsEnum(StockCountStatus)
+    status?: StockCountStatus;
 }

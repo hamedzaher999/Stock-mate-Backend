@@ -1,0 +1,26 @@
+model MedicalVisit {
+  id                  String      @id @default(uuid()) @db.Uuid
+  patientId           String      @map("patient_id") @db.Uuid
+  doctorId            String      @map("doctor_id") @db.Uuid
+  departmentId        String      @map("department_id") @db.Uuid
+  queueEntryId        String?     @unique @map("queue_entry_id") @db.Uuid
+  visitDate           DateTime    @default(now()) @map("visit_date")
+  clinicalNotes       String?     @map("clinical_notes")
+  diagnosis           String?
+  externalMedications String?     @map("external_medications")
+  status              VisitStatus
+  cancelReason        String?     @map("cancel_reason")
+  cancelledById       String?     @map("cancelled_by") @db.Uuid
+  cancelledAt         DateTime?   @map("cancelled_at")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime?   @updatedAt @map("updated_at")
+
+  patient     Patient          @relation(fields: [patientId], references: [id])
+  doctor      User             @relation("VisitDoctor", fields: [doctorId], references: [id])
+  cancelledBy User?            @relation("VisitCancelledBy", fields: [cancelledById], references: [id])
+  department  Department       @relation(fields: [departmentId], references: [id])
+  queueEntry  DepartmentQueue? @relation(fields: [queueEntryId], references: [id])
+  prescriptions Prescription[]
+  
+  @@map("medical_visits")
+}

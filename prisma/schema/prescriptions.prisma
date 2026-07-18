@@ -1,0 +1,70 @@
+model Prescription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  visitId                String             @map("visit_id") @db.Uuid
+  patientId              String             @map("patient_id") @db.Uuid
+  doctorId               String             @map("doctor_id") @db.Uuid
+  status                 PrescriptionStatus @default(active)
+  frequencyUnit          FrequencyUnit?     @map("frequency_unit")
+  frequencyInterval      Int?               @map("frequency_interval")
+  startDate              DateTime           @map("start_date") @db.Date
+  totalCycles            Int?               @map("total_cycles")
+
+  currentCycleNumber Int         @default(1) @map("current_cycle_number")
+  currentCycleStart  DateTime    @map("current_cycle_start") @db.Date
+  currentCycleEnd    DateTime    @map("current_cycle_end") @db.Date
+  currentCycleStatus CycleStatus @default(ready) @map("current_cycle_status")
+
+  renewedFromPrescriptionId String?   @map("renewed_from_prescription_id") @db.Uuid
+
+  cancelReason  String?   @map("cancel_reason")
+  cancelledById String?   @map("cancelled_by") @db.Uuid
+  cancelledAt   DateTime? @map("cancelled_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  visit            MedicalVisit          @relation(fields: [visitId], references: [id])
+  patient           Patient               @relation(fields: [patientId], references: [id])
+  doctor            User                  @relation("PrescriptionDoctor", fields: [doctorId], references: [id])
+  cancelledBy        User?                 @relation("PrescriptionCancelledBy", fields: [cancelledById], references: [id])
+  renewedFrom        Prescription?         @relation("PrescriptionRenewal", fields: [renewedFromPrescriptionId], references: [id])
+  renewals            Prescription[]        @relation("PrescriptionRenewal")
+  items               PrescriptionItem[]
+  cycleLog            PrescriptionCycleLog[]
+  dispenseQueueEntry  PharmacyDispenseQueue?
+  dispenses PrescriptionDispense[]
+
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  prescriptionId      String   @map("prescription_id") @db.Uuid
+  variantId           String   @map("variant_id") @db.Uuid
+  prescribedQuantity  Decimal  @map("prescribed_quantity")
+  dosage              String?
+  frequency           String?
+  durationDays        Int?     @map("duration_days")
+  dispensedQuantity   Decimal  @default(0) @map("dispensed_quantity")
+
+  prescription Prescription   @relation(fields: [prescriptionId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  dispenseItems PrescriptionDispenseItem[]
+  
+  @@map("prescription_items")
+}
+
+model PrescriptionCycleLog {
+  id             String      @id @default(uuid()) @db.Uuid
+  prescriptionId String      @map("prescription_id") @db.Uuid
+  cycleNumber    Int         @map("cycle_number")
+  periodStart    DateTime    @map("period_start") @db.Date
+  periodEnd      DateTime    @map("period_end") @db.Date
+  resolvedStatus CycleStatus @map("resolved_status")
+  resolvedAt     DateTime    @map("resolved_at")
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id])
+
+  @@unique([prescriptionId, cycleNumber])
+  @@map("prescription_cycle_log")
+}

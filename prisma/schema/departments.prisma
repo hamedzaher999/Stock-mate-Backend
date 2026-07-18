@@ -17,6 +17,8 @@ model Department {
   inventoryAdjustments  InventoryAdjustment[]
   stockCountSessions StockCountSession[]
   queueEntries DepartmentQueue[]
-  
+  medicalVisits MedicalVisit[]
+  periodicRefillSchedules PeriodicRefillSchedule[]
+
   @@map("departments")
 }

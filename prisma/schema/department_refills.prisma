@@ -1,22 +1,30 @@
 model DepartmentRefillRequest {
-  id                       String              @id @default(uuid()) @db.Uuid
-  requestNumber            String              @unique @map("request_number")
-  departmentId             String              @map("department_id") @db.Uuid
-  requestedById            String              @map("requested_by") @db.Uuid
-  status                   RefillRequestStatus @default(draft)
-  hospitalApprovedById     String?             @map("hospital_approved_by") @db.Uuid
-  hospitalApprovedAt       DateTime?           @map("hospital_approved_at")
-  hospitalRejectionReason  String?             @map("hospital_rejection_reason")
-  notes                    String?
-  createdAt                DateTime            @default(now()) @map("created_at")
-  updatedAt                DateTime?           @updatedAt @map("updated_at")
+  id                      String                @id @default(uuid()) @db.Uuid
+  requestNumber           String                @unique @map("request_number")
+  departmentId            String                @map("department_id") @db.Uuid
+  requestedById           String                @map("requested_by") @db.Uuid
+  status                  RefillRequestStatus   @default(draft)
+  priority                RefillRequestPriority @default(normal)
+  requestType             RefillRequestType     @default(normal) @map("request_type")
+  frequencyInterval       Int?                  @map("frequency_interval") // period count; only set when requestType != normal
+  periodicScheduleId      String?               @map("periodic_schedule_id") @db.Uuid // set once this request is linked to a schedule (as origin or as a generated instance)
+  hospitalApprovedById    String?               @map("hospital_approved_by") @db.Uuid
+  hospitalApprovedAt      DateTime?             @map("hospital_approved_at")
+  hospitalRejectionReason String?               @map("hospital_rejection_reason")
+  notes                   String?
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime?             @updatedAt @map("updated_at")
 
-  department         Department                 @relation(fields: [departmentId], references: [id])
+  department          Department                 @relation(fields: [departmentId], references: [id])
   requestedBy         User                       @relation("DRRequestedBy", fields: [requestedById], references: [id])
   hospitalApprovedBy  User?                      @relation("DRHospitalApprovedBy", fields: [hospitalApprovedById], references: [id])
+  periodicSchedule    PeriodicRefillSchedule?    @relation("PeriodicScheduleGenerated", fields: [periodicScheduleId], references: [id])
+  originatesSchedule  PeriodicRefillSchedule?    @relation("PeriodicScheduleOrigin") // mirror side -- no @relation attribute needed here, FK lives on PeriodicRefillSchedule.originRequestId
   items               DepartmentRefillItem[]
   deliveries          DepartmentRefillDelivery[]
 
+  @@index([departmentId, status])
+  @@index([periodicScheduleId])
   @@map("department_refill_requests")
 }
 

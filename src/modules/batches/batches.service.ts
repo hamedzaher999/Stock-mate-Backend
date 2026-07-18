@@ -5,25 +5,31 @@ import { PaginatedResult } from '../../core/interfaces/paginated-result.interfac
 
 @Injectable()
 export class BatchesService {
-  constructor(private readonly batchesRepository: BatchesRepository) {}
+    constructor(private readonly batchesRepository: BatchesRepository) {}
 
-  async list(dto: ListBatchesDto): Promise<PaginatedResult<unknown>> {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    async list(dto: ListBatchesDto): Promise<PaginatedResult<unknown>> {
+        const page = dto.page ?? 1;
+        const limit = dto.limit ?? 20;
 
-    const { items, total } = await this.batchesRepository.findMany({
-      skip: (page - 1) * limit,
-      take: limit,
-      variantId: dto.variantId,
-      departmentId: dto.departmentId,
-    });
+        const { items, total } = await this.batchesRepository.findMany({
+            skip: (page - 1) * limit,
+            take: limit,
+            variantId: dto.variantId,
+            departmentId: dto.departmentId,
+        });
 
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
-  }
+        return {
+            items,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
+    }
 
-  async findById(id: string) {
-    const batch = await this.batchesRepository.findById(id);
-    if (!batch) throw new NotFoundException('Batch not found.');
-    return batch;
-  }
+    async findById(id: string) {
+        const batch = await this.batchesRepository.findById(id);
+        if (!batch) throw new NotFoundException('Batch not found.');
+        return batch;
+    }
 }

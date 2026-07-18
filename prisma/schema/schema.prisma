@@ -128,3 +128,67 @@ enum QueueStatus {
 
   @@map("queue_status")
 }
+
+enum VisitStatus {
+  completed
+  cancelled
+
+  @@map("visit_status")
+}
+
+enum PrescriptionStatus {
+  active
+  completed
+  cancelled
+
+  @@map("prescription_status")
+}
+
+enum CycleStatus {
+  ready
+  partially_delivered
+  delivered
+  missed
+  cancelled
+
+  @@map("cycle_status")
+}
+
+enum FrequencyUnit {
+  day
+  week
+  month
+
+  @@map("frequency_unit")
+}
+
+
+enum RefillRequestPriority {
+  normal
+  urgent
+
+  @@map("refill_request_priority")
+}
+
+enum RefillRequestType {
+  normal
+  daily
+  weekly
+  monthly
+
+  @@map("refill_request_type")
+}
+
+enum PeriodicScheduleStatus {
+  active
+  cancelled
+
+  @@map("periodic_schedule_status")
+}
+
+enum ScheduleApprovalPolicy {
+  auto_approved
+  approval_required_each_cycle
+
+  @@map("schedule_approval_policy")
+}

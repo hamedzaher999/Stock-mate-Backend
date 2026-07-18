@@ -1,33 +1,47 @@
-import { Type } from 'class-transformer';
 import {
-  ArrayMinSize,
-  IsArray,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Min,
-  ValidateNested,
+    ArrayMinSize,
+    IsArray,
+    IsEnum,
+    IsInt,
+    IsOptional,
+    IsPositive,
+    IsString,
+    IsUUID,
+    Min,
+    ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { RefillRequestPriority, RefillRequestType } from '@prisma/client';
 
-class RefillItemInputDto {
-  @IsUUID()
-  variantId!: string;
+class RefillRequestItemInputDto {
+    @IsUUID()
+    variantId!: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0.01)
-  requestedQuantity!: number;
+    @IsPositive()
+    requestedQuantity!: number;
 }
 
 export class CreateRefillRequestDto {
-  @IsArray()
-  @ArrayMinSize(1)
-  @ValidateNested({ each: true })
-  @Type(() => RefillItemInputDto)
-  items!: RefillItemInputDto[];
+    @IsOptional()
+    @IsEnum(RefillRequestPriority)
+    priority?: RefillRequestPriority;
 
-  @IsOptional()
-  @IsString()
-  notes?: string;
+    @IsOptional()
+    @IsEnum(RefillRequestType)
+    requestType?: RefillRequestType;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    frequencyInterval?: number;
+
+    @IsOptional()
+    @IsString()
+    notes?: string;
+
+    @IsArray()
+    @ArrayMinSize(1)
+    @ValidateNested({ each: true })
+    @Type(() => RefillRequestItemInputDto)
+    items!: RefillRequestItemInputDto[];
 }

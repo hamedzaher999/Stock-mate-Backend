@@ -11,20 +11,20 @@ import { UserPermissionsRepository } from './user-permissions/user-permissions.r
 import { PermissionsResolverService } from './permissions-resolver.service';
 
 @Module({
-  controllers: [
-    RolesController,
-    PermissionsController,
-    UserPermissionsController,
-  ],
-  providers: [
-    RolesService,
-    RolesRepository,
-    PermissionsService,
-    PermissionsRepository,
-    UserPermissionsService,
-    UserPermissionsRepository,
-    PermissionsResolverService,
-  ],
-  exports: [PermissionsResolverService],
+    controllers: [
+        RolesController,
+        PermissionsController,
+        UserPermissionsController,
+    ],
+    providers: [
+        RolesService,
+        RolesRepository,
+        PermissionsService,
+        PermissionsRepository,
+        UserPermissionsService,
+        UserPermissionsRepository,
+        PermissionsResolverService,
+    ],
+    exports: [PermissionsResolverService],
 })
 export class RbacModule {}

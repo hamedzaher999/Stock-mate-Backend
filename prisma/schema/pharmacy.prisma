@@ -1,0 +1,51 @@
+model PharmacyDispenseQueue {
+  id                 String      @id @default(uuid()) @db.Uuid
+  patientId          String      @map("patient_id") @db.Uuid
+  nationalId         String?     @map("national_id")
+  familyBookNumber   String?     @map("family_book_number")
+  patientName        String      @map("patient_name")
+  prescriptionId     String      @unique @map("prescription_id") @db.Uuid
+  cycleNumber        Int         @map("cycle_number")
+  medicationSummary  String?     @map("medication_summary")
+  status             CycleStatus @default(ready)
+  readySince         DateTime    @map("ready_since")
+  updatedAt          DateTime?   @updatedAt @map("updated_at")
+
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  prescription Prescription @relation(fields: [prescriptionId], references: [id])
+
+  @@index([nationalId])
+  @@index([familyBookNumber])
+  @@index([patientId])
+  @@map("pharmacy_dispense_queue")
+}
+model PrescriptionDispense {
+  id            String    @id @default(uuid()) @db.Uuid
+  prescriptionId String   @map("prescription_id") @db.Uuid
+  cycleNumber   Int       @map("cycle_number")
+  dispensedById String    @map("dispensed_by") @db.Uuid
+  dispensedAt   DateTime  @default(now()) @map("dispensed_at")
+  notes         String?
+
+  prescription Prescription           @relation(fields: [prescriptionId], references: [id])
+  dispensedBy  User                   @relation(fields: [dispensedById], references: [id])
+  items        PrescriptionDispenseItem[]
+
+  @@map("prescription_dispenses")
+}
+
+model PrescriptionDispenseItem {
+  id                  String  @id @default(uuid()) @db.Uuid
+  dispenseId          String  @map("dispense_id") @db.Uuid
+  prescriptionItemId  String  @map("prescription_item_id") @db.Uuid
+  variantId           String  @map("variant_id") @db.Uuid
+  batchId             String  @map("batch_id") @db.Uuid
+  quantity            Decimal
+
+  dispense         PrescriptionDispense @relation(fields: [dispenseId], references: [id])
+  prescriptionItem PrescriptionItem     @relation(fields: [prescriptionItemId], references: [id])
+  variant          ProductVariant       @relation(fields: [variantId], references: [id])
+  batch            Batch                @relation(fields: [batchId], references: [id])
+
+  @@map("prescription_dispense_items")
+}

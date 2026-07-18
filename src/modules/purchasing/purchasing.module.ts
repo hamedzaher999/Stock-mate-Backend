@@ -11,20 +11,20 @@ import { PurchaseReceivingRepository } from './purchase-receiving/purchase-recei
 import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
-  imports: [InventoryModule],
+    imports: [InventoryModule],
 
-  controllers: [
-    PurchaseRequestsController,
-    PurchaseOrdersController,
-    PurchaseReceivingController,
-  ],
-  providers: [
-    PurchaseRequestsService,
-    PurchaseRequestsRepository,
-    PurchaseOrdersService,
-    PurchaseOrdersRepository,
-    PurchaseReceivingService,
-    PurchaseReceivingRepository,
-  ],
+    controllers: [
+        PurchaseRequestsController,
+        PurchaseOrdersController,
+        PurchaseReceivingController,
+    ],
+    providers: [
+        PurchaseRequestsService,
+        PurchaseRequestsRepository,
+        PurchaseOrdersService,
+        PurchaseOrdersRepository,
+        PurchaseReceivingService,
+        PurchaseReceivingRepository,
+    ],
 })
 export class PurchasingModule {}

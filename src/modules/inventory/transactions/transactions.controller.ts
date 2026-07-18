@@ -9,14 +9,14 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 @Controller('inventory/transactions')
 @RequirePermissions(PERMISSIONS.VIEW_INVENTORY)
 export class TransactionsController {
-  constructor(private readonly transactionsService: TransactionsService) {}
+    constructor(private readonly transactionsService: TransactionsService) {}
 
-  @Get()
-  async findAll(
-    @Query() query: ListTransactionsDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const data = await this.transactionsService.list(query, user.sub);
-    return { message: 'Success', data };
-  }
+    @Get()
+    async findAll(
+        @Query() query: ListTransactionsDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.transactionsService.list(query, user.sub);
+        return { message: 'Success', data };
+    }
 }

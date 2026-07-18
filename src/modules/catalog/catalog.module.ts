@@ -13,22 +13,22 @@ import { VariantsService } from './variants/variants.service';
 import { VariantsRepository } from './variants/variants.repository';
 
 @Module({
-  controllers: [
-    UnitsController,
-    CategoriesController,
-    ProductsController,
-    VariantsController,
-  ],
-  providers: [
-    UnitsService,
-    UnitsRepository,
-    CategoriesService,
-    CategoriesRepository,
-    ProductsService,
-    ProductsRepository,
-    VariantsService,
-    VariantsRepository,
-  ],
-  exports: [VariantsRepository, ProductsRepository],
+    controllers: [
+        UnitsController,
+        CategoriesController,
+        ProductsController,
+        VariantsController,
+    ],
+    providers: [
+        UnitsService,
+        UnitsRepository,
+        CategoriesService,
+        CategoriesRepository,
+        ProductsService,
+        ProductsRepository,
+        VariantsService,
+        VariantsRepository,
+    ],
+    exports: [VariantsRepository, ProductsRepository],
 })
 export class CatalogModule {}
