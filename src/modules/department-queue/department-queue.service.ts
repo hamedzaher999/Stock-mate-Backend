@@ -95,6 +95,11 @@ export class DepartmentQueueService {
                 'Patients can only be queued at clinical (standard) departments.',
             );
         }
+        if (!department.hasQueue) {
+            throw new BadRequestException(
+                'This department does not have a patient queue enabled.',
+            );
+        }
 
         const patient = await this.departmentQueueRepository.patientExists(
             dto.patientId,

@@ -32,8 +32,10 @@ export const PERMISSIONS = {
     RECORD_DEPARTMENT_CONSUMPTION: 'record_department_consumption',
 
     ADD_PATIENT: 'add_patient',
+    VIEW_PATIENTS: 'view_patients',
     VIEW_PATIENT_HISTORY: 'view_patient_history',
     MANAGE_DEPARTMENT_QUEUE: 'manage_department_queue',
+    CANCEL_VISIT: 'cancel_visit',
 
     START_CONSULTATION: 'start_consultation',
     CREATE_PRESCRIPTION: 'create_prescription',

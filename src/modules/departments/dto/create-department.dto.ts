@@ -1,4 +1,5 @@
 import {
+    IsBoolean,
     IsEnum,
     IsOptional,
     IsString,
@@ -18,4 +19,8 @@ export class CreateDepartmentDto {
     @IsOptional()
     @IsUUID()
     managerId?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    hasQueue?: boolean;
 }

@@ -7,6 +7,7 @@ const departmentSelect = {
     name: true,
     type: true,
     isActive: true,
+    hasQueue: true,
     managerId: true,
     manager: { select: { id: true, fullName: true, phone: true, email: true } },
     createdAt: true,
@@ -61,14 +62,19 @@ export class DepartmentsRepository {
         return this.prisma.department.count({ where: { type } });
     }
 
-    create(data: { name: string; type: DepartmentType; managerId?: string }) {
+    create(data: {
+        name: string;
+        type: DepartmentType;
+        managerId?: string;
+        hasQueue?: boolean;
+    }) {
         return this.prisma.department.create({
             data,
             select: departmentSelect,
         });
     }
 
-    update(id: string, data: { name?: string }) {
+    update(id: string, data: { name?: string; hasQueue?: boolean }) {
         return this.prisma.department.update({
             where: { id },
             data,

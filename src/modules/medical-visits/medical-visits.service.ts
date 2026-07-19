@@ -14,8 +14,8 @@ import { CancelVisitDto } from './dto/cancel-visit.dto';
 import { ListMedicalVisitsDto } from './dto/list-medical-visits.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
-
-const CANCEL_VISIT_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'reception_staff'];
+import { PermissionsResolverService } from '../rbac/permissions-resolver.service';
+import { PERMISSIONS } from '../../common/constants/permissions.constants';
 
 @Injectable()
 export class MedicalVisitsService {
@@ -23,6 +23,7 @@ export class MedicalVisitsService {
         private readonly medicalVisitsRepository: MedicalVisitsRepository,
         private readonly patientsRepository: PatientsRepository,
         private readonly departmentQueueRepository: DepartmentQueueRepository,
+        private readonly permissionsResolver: PermissionsResolverService,
     ) {}
 
     async list(
@@ -63,7 +64,64 @@ export class MedicalVisitsService {
         const visits =
             await this.medicalVisitsRepository.findAllForPatient(patientId);
 
-        return { patient, visits };
+        const departmentsMap = new Map<
+            string,
+            {
+                id: string;
+                name: string;
+                visits: {
+                    id: string;
+                    visitDate: Date;
+                    status: string;
+                    clinicalNotes: string | null;
+                    diagnosis: string | null;
+                    externalMedications: string | null;
+                    cancelReason: string | null;
+                    doctor: {
+                        id: string;
+                        fullName: string;
+                        specialty: string | null;
+                    };
+                }[];
+            }
+        >();
+
+        for (const visit of visits) {
+            if (!departmentsMap.has(visit.departmentId)) {
+                departmentsMap.set(visit.departmentId, {
+                    id: visit.department.id,
+                    name: visit.department.name,
+                    visits: [],
+                });
+            }
+
+            departmentsMap.get(visit.departmentId)!.visits.push({
+                id: visit.id,
+                visitDate: visit.visitDate,
+                status: visit.status,
+                clinicalNotes: visit.clinicalNotes,
+                diagnosis: visit.diagnosis,
+                externalMedications: visit.externalMedications,
+                cancelReason: visit.cancelReason,
+                doctor: {
+                    id: visit.doctor.id,
+                    fullName: visit.doctor.fullName,
+                    specialty: visit.doctor.specialty,
+                },
+            });
+        }
+
+        const departments = Array.from(departmentsMap.values());
+
+        return {
+            patient: {
+                id: patient.id,
+                fullName: patient.fullName,
+                nationalId: patient.nationalId,
+                patientId: patient.patientId,
+            },
+            departments,
+        };
     }
 
     async selectPatient(dto: SelectPatientDto, doctorId: string) {
@@ -147,13 +205,13 @@ export class MedicalVisitsService {
 
         const isOwner = visit.doctorId === requestingUserId;
         if (!isOwner) {
-            const user =
-                await this.medicalVisitsRepository.findRequestingUserContext(
+            const permissions =
+                await this.permissionsResolver.getEffectivePermissions(
                     requestingUserId,
                 );
-            if (!user || !CANCEL_VISIT_ROLES.includes(user.role.name)) {
+            if (!permissions.has(PERMISSIONS.CANCEL_VISIT)) {
                 throw new ForbiddenException(
-                    'Only the doctor who documented this visit, reception staff, or the hospital manager can cancel it.',
+                    'Only the doctor who documented this visit, or a user with visit-cancellation permission, can cancel it.',
                 );
             }
         }

@@ -114,7 +114,7 @@ export class DepartmentQueueRepository {
     findDepartmentType(id: string) {
         return this.prisma.department.findUnique({
             where: { id },
-            select: { id: true, type: true, isActive: true },
+            select: { id: true, type: true, isActive: true, hasQueue: true },
         });
     }
 

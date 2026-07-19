@@ -22,14 +22,14 @@ export class PatientsController {
     constructor(private readonly patientsService: PatientsService) {}
 
     @Get()
-    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    @RequirePermissions(PERMISSIONS.VIEW_PATIENTS)
     async findAll(@Query() query: ListPatientsDto) {
         const data = await this.patientsService.list(query);
         return { message: 'Success', data };
     }
 
     @Get('lookup')
-    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    @RequirePermissions(PERMISSIONS.VIEW_PATIENTS)
     async lookup(@Query() query: LookupPatientDto) {
         const data = await this.patientsService.lookup(query);
         return {
@@ -39,7 +39,7 @@ export class PatientsController {
     }
 
     @Get(':id')
-    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    @RequirePermissions(PERMISSIONS.VIEW_PATIENTS)
     async findOne(@Param('id') id: string) {
         const data = await this.patientsService.findById(id);
         return { message: 'Success', data };

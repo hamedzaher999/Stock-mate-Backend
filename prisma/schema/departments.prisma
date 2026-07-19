@@ -5,6 +5,7 @@ model Department {
   managerId String?        @unique @map("manager_id") @db.Uuid
   isActive  Boolean        @default(true) @map("is_active")
   tracksInventory Boolean  @default(true) @map("tracks_inventory")
+  hasQueue  Boolean        @default(true) @map("has_queue")
   createdAt DateTime       @default(now()) @map("created_at")
   updatedAt DateTime?      @updatedAt @map("updated_at")
 

@@ -77,6 +77,7 @@ export class DepartmentsService {
             name: dto.name,
             type: dto.type,
             managerId: dto.managerId,
+            hasQueue: dto.hasQueue,
         });
 
         if (dto.managerId) {
