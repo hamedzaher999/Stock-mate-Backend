@@ -4,6 +4,7 @@ model Department {
   type      DepartmentType @default(standard)
   managerId String?        @unique @map("manager_id") @db.Uuid
   isActive  Boolean        @default(true) @map("is_active")
+  tracksInventory Boolean  @default(true) @map("tracks_inventory")
   createdAt DateTime       @default(now()) @map("created_at")
   updatedAt DateTime?      @updatedAt @map("updated_at")
 
@@ -12,7 +13,6 @@ model Department {
   batchStocks   BatchStock[]
   stockSettings DepartmentStockSetting[]
   refillRequests       DepartmentRefillRequest[]
-  departmentInventories DepartmentInventory[]
   inventoryTransactions InventoryTransaction[]
   inventoryAdjustments  InventoryAdjustment[]
   stockCountSessions StockCountSession[]

@@ -15,7 +15,6 @@ import { PaginatedResult } from '../../../core/interfaces/paginated-result.inter
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { HospitalApproveRefillRequestDto } from './dto/hospital-approve-refill-request.dto';
-
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'warehouse_manager'];
 const CANCELLABLE_STATUSES = [
     'draft',
@@ -172,14 +171,6 @@ export class RefillRequestsService {
             throw new BadRequestException(
                 'Cannot submit a refill request with no items.',
             );
-
-        if (request.department.type !== 'pharmacy') {
-            const variantIds = request.items.map((i) => i.variantId);
-            await this.refillRequestsRepository.zeroDepartmentInventoryOnSubmit(
-                request.departmentId,
-                variantIds,
-            );
-        }
 
         return this.refillRequestsRepository.updateStatus(id, {
             status: 'pending_hospital_approval',

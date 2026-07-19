@@ -8,9 +8,9 @@ import { CreateAdjustmentDto } from './dto/create-adjustment.dto';
 import { ListAdjustmentsDto } from './dto/list-adjustments.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
-
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 const INCREASING_ADJUSTMENT_TYPES = ['found'];
+const FIXED_ASSET_ALLOWED_TYPES = ['damaged', 'shrinkage'];
 
 @Injectable()
 export class AdjustmentsService {
@@ -64,8 +64,27 @@ export class AdjustmentsService {
             throw new BadRequestException('Department does not exist.');
         if (!department.isActive)
             throw new BadRequestException('Department is inactive.');
+        if (!department.tracksInventory) {
+            throw new BadRequestException(
+                'This department does not track inventory.',
+            );
+        }
 
         await this.assertDepartmentScope(reportedById, dto.departmentId);
+
+        const variant =
+            await this.adjustmentsRepository.findVariantMaterialType(
+                dto.variantId,
+            );
+        if (!variant) throw new BadRequestException('Variant does not exist.');
+        if (
+            variant.product.materialType === 'fixed_asset' &&
+            !FIXED_ASSET_ALLOWED_TYPES.includes(dto.adjustmentType)
+        ) {
+            throw new BadRequestException(
+                'Fixed assets can only be adjusted as damaged or shrinkage.',
+            );
+        }
 
         if (dto.stockCountSessionId) {
             const sessionExists =
@@ -78,66 +97,18 @@ export class AdjustmentsService {
                 );
         }
 
-        const isLiveTracked =
-            department.type === 'central_warehouse' ||
-            department.type === 'pharmacy';
         const isIncreasing = INCREASING_ADJUSTMENT_TYPES.includes(
             dto.adjustmentType,
         );
 
-        if (!isLiveTracked && dto.adjustmentType === 'shrinkage') {
-            throw new BadRequestException(
-                'Only the Central Warehouse or Pharmacy can report shrinkage; other departments may only report damaged or expired items.',
-            );
-        }
-
         if (!isIncreasing) {
-            if (isLiveTracked) {
-                const batchStock =
-                    await this.adjustmentsRepository.findBatchStock(
-                        dto.batchId,
-                        dto.departmentId,
-                    );
-                if (!batchStock || Number(batchStock.quantity) < dto.quantity) {
-                    throw new BadRequestException(
-                        'Insufficient stock in this batch at this department for the requested adjustment.',
-                    );
-                }
-            } else {
-                const everReceived =
-                    await this.adjustmentsRepository.hasDepartmentReceivedBatch(
-                        dto.departmentId,
-                        dto.batchId,
-                    );
-                if (!everReceived) {
-                    throw new BadRequestException(
-                        'This department has no record of ever receiving this batch.',
-                    );
-                }
-
-                const inventoryRow =
-                    await this.adjustmentsRepository.findDepartmentInventory(
-                        dto.departmentId,
-                        dto.variantId,
-                    );
-                if (
-                    !inventoryRow ||
-                    Number(inventoryRow.currentQuantity) < dto.quantity
-                ) {
-                    throw new BadRequestException(
-                        'Adjustment quantity exceeds the currently recorded stock for this variant.',
-                    );
-                }
-            }
-        } else if (!isLiveTracked) {
-            const everReceived =
-                await this.adjustmentsRepository.hasDepartmentReceivedBatch(
-                    dto.departmentId,
-                    dto.batchId,
-                );
-            if (!everReceived) {
+            const batchStock = await this.adjustmentsRepository.findBatchStock(
+                dto.batchId,
+                dto.departmentId,
+            );
+            if (!batchStock || Number(batchStock.quantity) < dto.quantity) {
                 throw new BadRequestException(
-                    'This department has no record of ever receiving this batch.',
+                    'Insufficient stock in this batch at this department for the requested adjustment.',
                 );
             }
         }
@@ -145,7 +116,6 @@ export class AdjustmentsService {
         return this.adjustmentsRepository.createAdjustment({
             ...dto,
             reportedById,
-            isLiveTracked,
         });
     }
 

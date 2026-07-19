@@ -29,6 +29,7 @@ export const PERMISSIONS = {
     TRANSFER_INVENTORY: 'transfer_inventory',
     PERFORM_INVENTORY_ADJUSTMENT: 'perform_inventory_adjustment',
     PERFORM_STOCK_COUNT: 'perform_stock_count',
+    RECORD_DEPARTMENT_CONSUMPTION: 'record_department_consumption',
 
     ADD_PATIENT: 'add_patient',
     VIEW_PATIENT_HISTORY: 'view_patient_history',

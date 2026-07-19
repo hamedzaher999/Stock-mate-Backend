@@ -12,7 +12,6 @@ import { UpdateStockCountItemDto } from './dto/update-item.dto';
 import { ListStockCountSessionsDto } from './dto/list-sessions.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
-
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
@@ -74,6 +73,11 @@ export class StockCountsService {
             throw new BadRequestException('Department does not exist.');
         if (!department.isActive)
             throw new BadRequestException('Department is inactive.');
+        if (!department.tracksInventory) {
+            throw new BadRequestException(
+                'This department does not track inventory.',
+            );
+        }
 
         await this.assertDepartmentScope(initiatedById, dto.departmentId);
 
@@ -101,48 +105,24 @@ export class StockCountsService {
         );
         if (!variant) throw new BadRequestException('Variant does not exist.');
 
-        const isLiveTracked =
-            session.department.type === 'central_warehouse' ||
-            session.department.type === 'pharmacy';
-
-        let expectedQuantity: number;
-
-        if (isLiveTracked) {
-            if (!dto.batchId) {
-                throw new BadRequestException(
-                    'A batchId is required when counting stock at the Central Warehouse or Pharmacy.',
-                );
-            }
-            const batch = await this.stockCountsRepository.findBatch(
-                dto.batchId,
+        if (!dto.batchId) {
+            throw new BadRequestException(
+                'A batchId is required for stock counting.',
             );
-            if (!batch) throw new BadRequestException('Batch does not exist.');
-            if (batch.variantId !== dto.variantId)
-                throw new BadRequestException(
-                    'Batch does not match the given variant.',
-                );
-
-            const stockRow =
-                await this.stockCountsRepository.getLiveBatchQuantity(
-                    dto.batchId,
-                    session.departmentId,
-                );
-            expectedQuantity = stockRow ? Number(stockRow.quantity) : 0;
-        } else {
-            if (dto.batchId) {
-                throw new BadRequestException(
-                    'Batch-level counting only applies to the Central Warehouse and Pharmacy.',
-                );
-            }
-            const inventoryRow =
-                await this.stockCountsRepository.getDepartmentInventoryQuantity(
-                    session.departmentId,
-                    dto.variantId,
-                );
-            expectedQuantity = inventoryRow
-                ? Number(inventoryRow.currentQuantity)
-                : 0;
         }
+        const batch = await this.stockCountsRepository.findBatch(dto.batchId);
+        if (!batch) throw new BadRequestException('Batch does not exist.');
+        if (batch.variantId !== dto.variantId) {
+            throw new BadRequestException(
+                'Batch does not match the given variant.',
+            );
+        }
+
+        const stockRow = await this.stockCountsRepository.getLiveBatchQuantity(
+            dto.batchId,
+            session.departmentId,
+        );
+        const expectedQuantity = stockRow ? Number(stockRow.quantity) : 0;
 
         return this.stockCountsRepository.addItem({
             sessionId,

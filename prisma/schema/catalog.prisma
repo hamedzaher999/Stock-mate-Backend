@@ -68,13 +68,11 @@ model ProductVariant {
   purchaseReceiptItems PurchaseReceiptItem[]
   batches              Batch[]
   refillItems           DepartmentRefillItem[]
-  departmentInventories DepartmentInventory[]
   inventoryTransactions InventoryTransaction[]
   inventoryAdjustments  InventoryAdjustment[]
   stockCountItems StockCountItem[]
   prescriptionItems PrescriptionItem[]
   prescriptionDispenseItems PrescriptionDispenseItem[]
-//   periodicRefillScheduleItems PeriodicRefillScheduleItem[]
   @@map("product_variants")
 }
 

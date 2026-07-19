@@ -1,54 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
-
-const snapshotSelect = {
-    id: true,
-    departmentId: true,
-    variantId: true,
-    currentQuantity: true,
-    lastRefillQuantity: true,
-    lastRefillDate: true,
-    updatedAt: true,
-    department: { select: { id: true, name: true, type: true } },
-    variant: { select: { id: true, variantName: true, sku: true } },
-} satisfies Prisma.DepartmentInventorySelect;
 
 @Injectable()
 export class DepartmentInventoryRepository {
     constructor(private readonly prisma: PrismaService) {}
-
-    async findMany(params: {
-        skip: number;
-        take: number;
-        departmentId?: string;
-        variantId?: string;
-    }) {
-        const where: Prisma.DepartmentInventoryWhereInput = {
-            departmentId: params.departmentId,
-            variantId: params.variantId,
-        };
-
-        const [items, total] = await this.prisma.$transaction([
-            this.prisma.departmentInventory.findMany({
-                where,
-                select: snapshotSelect,
-                skip: params.skip,
-                take: params.take,
-                orderBy: { updatedAt: 'desc' },
-            }),
-            this.prisma.departmentInventory.count({ where }),
-        ]);
-
-        return { items, total };
-    }
-
-    findById(id: string) {
-        return this.prisma.departmentInventory.findUnique({
-            where: { id },
-            select: snapshotSelect,
-        });
-    }
 
     findRequestingUserContext(userId: string) {
         return this.prisma.user.findUnique({
@@ -60,7 +15,7 @@ export class DepartmentInventoryRepository {
     findDepartmentType(id: string) {
         return this.prisma.department.findUnique({
             where: { id },
-            select: { id: true, type: true },
+            select: { id: true, type: true, tracksInventory: true },
         });
     }
 

@@ -1,6 +1,5 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { DepartmentInventoryService } from './department-inventory.service';
-import { ListDepartmentInventoryDto } from './dto/list-department-inventory.dto';
 import { LiveStockQueryDto } from './dto/live-stock-query.dto';
 import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
@@ -14,18 +13,6 @@ export class DepartmentInventoryController {
         private readonly departmentInventoryService: DepartmentInventoryService,
     ) {}
 
-    @Get()
-    async findAll(
-        @Query() query: ListDepartmentInventoryDto,
-        @CurrentUser() user: AuthenticatedUser,
-    ) {
-        const data = await this.departmentInventoryService.list(
-            query,
-            user.sub,
-        );
-        return { message: 'Success', data };
-    }
-
     @Get('live-stock')
     async liveStock(
         @Query() query: LiveStockQueryDto,
@@ -33,18 +20,6 @@ export class DepartmentInventoryController {
     ) {
         const data = await this.departmentInventoryService.getLiveStock(
             query.departmentId,
-            user.sub,
-        );
-        return { message: 'Success', data };
-    }
-
-    @Get(':id')
-    async findOne(
-        @Param('id') id: string,
-        @CurrentUser() user: AuthenticatedUser,
-    ) {
-        const data = await this.departmentInventoryService.findById(
-            id,
             user.sub,
         );
         return { message: 'Success', data };

@@ -9,7 +9,6 @@ import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
-
 const refillRequestDetailSelect = {
     id: true,
     requestNumber: true,
@@ -181,9 +180,6 @@ export class RefillRequestsRepository {
         });
     }
 
-    // Approves the request and, only if this is a brand-new recurring
-    // proposal (approvalPolicy provided), creates the PeriodicRefillSchedule
-    // in the same transaction and links the request back to it.
     hospitalApproveAndMaybeCreateSchedule(
         id: string,
         approverId: string,
@@ -266,18 +262,5 @@ export class RefillRequestsRepository {
                 select: refillRequestDetailSelect,
             });
         });
-    }
-
-    async zeroDepartmentInventoryOnSubmit(
-        departmentId: string,
-        variantIds: string[],
-    ) {
-        for (const variantId of variantIds) {
-            await this.prisma.departmentInventory.upsert({
-                where: { departmentId_variantId: { departmentId, variantId } },
-                update: { currentQuantity: 0 },
-                create: { departmentId, variantId, currentQuantity: 0 },
-            });
-        }
     }
 }

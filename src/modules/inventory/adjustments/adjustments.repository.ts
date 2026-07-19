@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../transactions/inventory-ledger.service';
 import { Prisma, AdjustmentType, TransactionType } from '@prisma/client';
-
 const adjustmentSelect = {
     id: true,
     variantId: true,
@@ -79,30 +78,28 @@ export class AdjustmentsRepository {
     findDepartmentType(id: string) {
         return this.prisma.department.findUnique({
             where: { id },
-            select: { id: true, type: true, isActive: true },
+            select: {
+                id: true,
+                type: true,
+                isActive: true,
+                tracksInventory: true,
+            },
+        });
+    }
+
+    findVariantMaterialType(id: string) {
+        return this.prisma.productVariant.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                product: { select: { materialType: true } },
+            },
         });
     }
 
     findBatchStock(batchId: string, departmentId: string) {
         return this.prisma.batchStock.findUnique({
             where: { batchId_departmentId: { batchId, departmentId } },
-        });
-    }
-
-    findDepartmentInventory(departmentId: string, variantId: string) {
-        return this.prisma.departmentInventory.findUnique({
-            where: { departmentId_variantId: { departmentId, variantId } },
-        });
-    }
-
-    hasDepartmentReceivedBatch(departmentId: string, batchId: string) {
-        return this.prisma.departmentRefillDeliveryItem.findFirst({
-            where: {
-                batchId,
-                receivedQuantity: { not: null },
-                delivery: { refillRequest: { departmentId } },
-            },
-            select: { id: true },
         });
     }
 
@@ -121,7 +118,6 @@ export class AdjustmentsRepository {
         quantity: number;
         notes?: string;
         reportedById: string;
-        isLiveTracked: boolean;
         stockCountSessionId?: string;
     }) {
         return this.prisma.$transaction(async (tx) => {
@@ -144,39 +140,21 @@ export class AdjustmentsRepository {
             const isIncreasing = INCREASING_ADJUSTMENT_TYPES.includes(
                 params.adjustmentType,
             );
-            let balanceAfter: number;
 
-            if (params.isLiveTracked) {
-                const updatedStock = await tx.batchStock.update({
-                    where: {
-                        batchId_departmentId: {
-                            batchId: params.batchId,
-                            departmentId: params.departmentId,
-                        },
+            const updatedStock = await tx.batchStock.update({
+                where: {
+                    batchId_departmentId: {
+                        batchId: params.batchId,
+                        departmentId: params.departmentId,
                     },
-                    data: {
-                        quantity: isIncreasing
-                            ? { increment: params.quantity }
-                            : { decrement: params.quantity },
-                    },
-                });
-                balanceAfter = Number(updatedStock.quantity);
-            } else {
-                const updatedInventory = await tx.departmentInventory.update({
-                    where: {
-                        departmentId_variantId: {
-                            departmentId: params.departmentId,
-                            variantId: params.variantId,
-                        },
-                    },
-                    data: {
-                        currentQuantity: isIncreasing
-                            ? { increment: params.quantity }
-                            : { decrement: params.quantity },
-                    },
-                });
-                balanceAfter = Number(updatedInventory.currentQuantity);
-            }
+                },
+                data: {
+                    quantity: isIncreasing
+                        ? { increment: params.quantity }
+                        : { decrement: params.quantity },
+                },
+            });
+            const balanceAfter = Number(updatedStock.quantity);
 
             await this.inventoryLedger.record(tx, {
                 transactionType:

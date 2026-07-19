@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { Prisma } from '@prisma/client';
-
 const deliveryDetailSelect = {
     id: true,
     refillRequestId: true,
@@ -77,7 +76,9 @@ export class RefillDeliveriesRepository {
                 id: true,
                 status: true,
                 departmentId: true,
-                department: { select: { id: true, type: true } },
+                department: {
+                    select: { id: true, type: true, tracksInventory: true },
+                },
                 items: {
                     select: {
                         id: true,
@@ -200,7 +201,6 @@ export class RefillDeliveriesRepository {
         deliveryId: string;
         refillRequestId: string;
         departmentId: string;
-        departmentType: string;
         confirmedById: string;
         notes?: string;
         confirmations: {
@@ -221,39 +221,37 @@ export class RefillDeliveriesRepository {
                     },
                 });
 
-                if (params.departmentType === 'pharmacy') {
-                    const updatedStock = await tx.batchStock.upsert({
-                        where: {
-                            batchId_departmentId: {
-                                batchId: c.batchId,
-                                departmentId: params.departmentId,
-                            },
-                        },
-                        update: { quantity: { increment: c.received } },
-                        create: {
+                const updatedStock = await tx.batchStock.upsert({
+                    where: {
+                        batchId_departmentId: {
                             batchId: c.batchId,
                             departmentId: params.departmentId,
-                            quantity: c.received,
                         },
-                    });
-
-                    const batch = await tx.batch.findUniqueOrThrow({
-                        where: { id: c.batchId },
-                        select: { variantId: true },
-                    });
-
-                    await this.inventoryLedger.record(tx, {
-                        transactionType: 'department_transfer_in',
-                        variantId: batch.variantId,
+                    },
+                    update: { quantity: { increment: c.received } },
+                    create: {
                         batchId: c.batchId,
                         departmentId: params.departmentId,
                         quantity: c.received,
-                        balanceAfter: Number(updatedStock.quantity),
-                        referenceType: 'department_refill_delivery_item',
-                        referenceId: c.deliveryItemId,
-                        performedById: params.confirmedById,
-                    });
-                }
+                    },
+                });
+
+                const batch = await tx.batch.findUniqueOrThrow({
+                    where: { id: c.batchId },
+                    select: { variantId: true },
+                });
+
+                await this.inventoryLedger.record(tx, {
+                    transactionType: 'department_transfer_in',
+                    variantId: batch.variantId,
+                    batchId: c.batchId,
+                    departmentId: params.departmentId,
+                    quantity: c.received,
+                    balanceAfter: Number(updatedStock.quantity),
+                    referenceType: 'department_refill_delivery_item',
+                    referenceId: c.deliveryItemId,
+                    performedById: params.confirmedById,
+                });
             }
 
             await tx.departmentRefillDelivery.update({
@@ -293,35 +291,6 @@ export class RefillDeliveriesRepository {
                             deliveredQuantity,
                     },
                 });
-
-                if (params.departmentType !== 'pharmacy') {
-                    const receivedInThisConfirmation = params.confirmations
-                        .filter((c) => c.refillItemId === refillItemId)
-                        .reduce((sum, c) => sum + c.received, 0);
-
-                    await tx.departmentInventory.upsert({
-                        where: {
-                            departmentId_variantId: {
-                                departmentId: params.departmentId,
-                                variantId: item.variantId,
-                            },
-                        },
-                        update: {
-                            currentQuantity: {
-                                increment: receivedInThisConfirmation,
-                            },
-                            lastRefillQuantity: deliveredQuantity,
-                            lastRefillDate: new Date(),
-                        },
-                        create: {
-                            departmentId: params.departmentId,
-                            variantId: item.variantId,
-                            currentQuantity: deliveredQuantity,
-                            lastRefillQuantity: deliveredQuantity,
-                            lastRefillDate: new Date(),
-                        },
-                    });
-                }
             }
 
             const allItems = await tx.departmentRefillItem.findMany({

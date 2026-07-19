@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { Prisma, StockCountStatus } from '@prisma/client';
-
 const sessionDetailSelect = {
     id: true,
     departmentId: true,
@@ -74,13 +73,6 @@ export class StockCountsRepository {
         });
     }
 
-    sessionExists(id: string) {
-        return this.prisma.stockCountSession.findUnique({
-            where: { id },
-            select: { id: true },
-        });
-    }
-
     findRequestingUserContext(userId: string) {
         return this.prisma.user.findUnique({
             where: { id: userId },
@@ -91,7 +83,12 @@ export class StockCountsRepository {
     findDepartmentType(id: string) {
         return this.prisma.department.findUnique({
             where: { id },
-            select: { id: true, type: true, isActive: true },
+            select: {
+                id: true,
+                type: true,
+                isActive: true,
+                tracksInventory: true,
+            },
         });
     }
 
@@ -116,13 +113,6 @@ export class StockCountsRepository {
         });
     }
 
-    getDepartmentInventoryQuantity(departmentId: string, variantId: string) {
-        return this.prisma.departmentInventory.findUnique({
-            where: { departmentId_variantId: { departmentId, variantId } },
-            select: { currentQuantity: true },
-        });
-    }
-
     createSession(data: {
         departmentId: string;
         initiatedById: string;
@@ -138,7 +128,7 @@ export class StockCountsRepository {
     addItem(data: {
         sessionId: string;
         variantId: string;
-        batchId?: string;
+        batchId: string;
         expectedQuantity: number;
         countedQuantity: number;
         notes?: string;

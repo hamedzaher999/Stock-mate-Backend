@@ -7,7 +7,6 @@ import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
-
 @Injectable()
 export class ScheduleGenerationService {
     private readonly logger = new Logger(ScheduleGenerationService.name);
@@ -63,25 +62,6 @@ export class ScheduleGenerationService {
                         },
                     },
                 });
-
-                if (schedule.department.type !== 'pharmacy') {
-                    for (const item of schedule.originRequest.items) {
-                        await tx.departmentInventory.upsert({
-                            where: {
-                                departmentId_variantId: {
-                                    departmentId: schedule.departmentId,
-                                    variantId: item.variantId,
-                                },
-                            },
-                            update: { currentQuantity: 0 },
-                            create: {
-                                departmentId: schedule.departmentId,
-                                variantId: item.variantId,
-                                currentQuantity: 0,
-                            },
-                        });
-                    }
-                }
 
                 const unit = requestTypeToFrequencyUnit(
                     schedule.requestType as 'daily' | 'weekly' | 'monthly',

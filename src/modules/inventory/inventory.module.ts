@@ -12,13 +12,16 @@ import { StockCountsController } from './stock-counts/stock-counts.controller';
 import { StockCountsService } from './stock-counts/stock-counts.service';
 import { StockCountsRepository } from './stock-counts/stock-counts.repository';
 import { InventoryLedgerService } from './transactions/inventory-ledger.service';
-
+import { ConsumptionController } from './consumption/consumption.controller';
+import { ConsumptionService } from './consumption/consumption.service';
+import { ConsumptionRepository } from './consumption/consumption.repository';
 @Module({
     controllers: [
         DepartmentInventoryController,
         AdjustmentsController,
         TransactionsController,
         StockCountsController,
+        ConsumptionController,
     ],
     providers: [
         DepartmentInventoryService,
@@ -30,6 +33,8 @@ import { InventoryLedgerService } from './transactions/inventory-ledger.service'
         StockCountsService,
         StockCountsRepository,
         InventoryLedgerService,
+        ConsumptionService,
+        ConsumptionRepository,
     ],
     exports: [InventoryLedgerService],
 })

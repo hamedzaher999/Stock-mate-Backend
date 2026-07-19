@@ -11,7 +11,6 @@ import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-
 const SHIPPABLE_STATUSES = ['ready_for_delivery', 'partially_delivered'];
 
 @Injectable()
@@ -214,7 +213,6 @@ export class RefillDeliveriesService {
             deliveryId,
             refillRequestId: request.id,
             departmentId: request.departmentId,
-            departmentType: request.department.type,
             confirmedById: confirmerId,
             notes: dto.notes,
             confirmations,

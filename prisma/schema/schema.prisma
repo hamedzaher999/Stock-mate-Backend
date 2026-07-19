@@ -85,6 +85,7 @@ enum TransactionType {
   department_transfer_out
   department_transfer_in
   prescription_dispense
+  department_consumption
   adjustment_damaged
   adjustment_expired
   adjustment_shrinkage
