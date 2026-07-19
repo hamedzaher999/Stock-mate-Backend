@@ -1,230 +1,164 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PermissionEffect } from '@prisma/client';
+export const PERMISSIONS = {
+    MANAGE_DEPARTMENTS: 'manage_departments',
+    MANAGE_ACCOUNTS: 'manage_accounts',
+    MANAGE_ROLES: 'manage_roles',
+    MANAGE_USER_PERMISSIONS: 'manage_user_permissions',
+    MANAGE_DOCTORS: 'manage_doctors',
+
+    MANAGE_MATERIALS: 'manage_materials',
+    MANAGE_DEPARTMENT_MATERIALS: 'manage_department_materials',
+    MANAGE_UNITS: 'manage_units',
+    MANAGE_CATEGORIES: 'manage_categories',
+    MANAGE_SUPPLIERS: 'manage_suppliers',
+    MANAGE_MATERIAL_SUPPLIERS: 'manage_material_suppliers',
+
+    CREATE_PURCHASE_REQUEST: 'create_purchase_request',
+    APPROVE_PURCHASE_REQUEST_HOSPITAL: 'approve_purchase_request_hospital',
+    APPROVE_PURCHASE_REQUEST_COMMITTEE: 'approve_purchase_request_committee',
+    MANAGE_PURCHASE_ORDERS: 'manage_purchase_orders',
+    RECEIVE_PURCHASE: 'receive_purchase',
+    VIEW_PURCHASING_HISTORY: 'view_purchasing_history',
+    VIEW_PURCHASING_REPORTS: 'view_purchasing_reports',
+
+    CREATE_DEPARTMENT_REFILL_REQUEST: 'create_department_refill_request',
+    APPROVE_DEPARTMENT_REFILL_REQUEST: 'approve_department_refill_request',
+    PREPARE_DEPARTMENT_REFILL: 'prepare_department_refill',
+    CONFIRM_DEPARTMENT_DELIVERY: 'confirm_department_delivery',
+
+    VIEW_INVENTORY: 'view_inventory',
+    TRANSFER_INVENTORY: 'transfer_inventory',
+    PERFORM_INVENTORY_ADJUSTMENT: 'perform_inventory_adjustment',
+    PERFORM_STOCK_COUNT: 'perform_stock_count',
+    RECORD_DEPARTMENT_CONSUMPTION: 'record_department_consumption',
+
+    ADD_PATIENT: 'add_patient',
+    VIEW_PATIENTS: 'view_patients',
+    VIEW_PATIENT_HISTORY: 'view_patient_history',
+    MANAGE_DEPARTMENT_QUEUE: 'manage_department_queue',
+    CANCEL_VISIT: 'cancel_visit',
+
+    START_CONSULTATION: 'start_consultation',
+    CREATE_PRESCRIPTION: 'create_prescription',
+    RENEW_PRESCRIPTION: 'renew_prescription',
+    CANCEL_PRESCRIPTION: 'cancel_prescription',
+    MANAGE_ALL_PRESCRIPTIONS: 'manage_all_prescriptions',
+
+    DISPENSE_PRESCRIPTION: 'dispense_prescription',
+
+    VIEW_REPORTS: 'view_reports',
+    VIEW_AI_INSIGHTS: 'view_ai_insights',
+    REVIEW_AI_INSIGHTS: 'review_ai_insights',
+    MANAGE_PERIODIC_REFILL_SCHEDULES: 'manage_periodic_refill_schedules',
+} as const;
+
+export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 const prisma = new PrismaClient();
 
 async function main() {
-    // Existing roles
-    const doctorRole = await prisma.role.findUniqueOrThrow({
-        where: { name: 'doctor' },
-    });
+    console.log('Seeding missing permissions...');
 
-    // Departments
-    const cardiology = await prisma.department.create({
-        data: {
-            name: 'Cardiology',
-            type: 'standard',
-            tracksInventory: false,
-        },
-    });
+    // 1. Add missing permissions
+    const permissionEntries = Object.entries(PERMISSIONS);
 
-    const neurology = await prisma.department.create({
-        data: {
-            name: 'Neurology',
-            type: 'standard',
-            tracksInventory: false,
-        },
-    });
+    const permissionsMap = new Map<string, string>();
 
-    // Doctors
-    const d1 = await prisma.user.create({
-        data: {
-            fullName: 'Doctor One',
-            email: 'd1@gmail.com',
-            roleId: doctorRole.id,
-            departmentId: cardiology.id,
-            specialty: 'Cardiology',
-        },
-    });
+    for (const [key, code] of permissionEntries) {
+        const permission = await prisma.permission.upsert({
+            where: {
+                code,
+            },
 
-    const d2 = await prisma.user.create({
-        data: {
-            fullName: 'Doctor Two',
-            email: 'd2@gmail.com',
-            roleId: doctorRole.id,
-            departmentId: neurology.id,
-            specialty: 'Neurology',
-        },
-    });
+            update: {},
 
-    // Third doctor for second prescription requirement
-    const d3 = await prisma.user.create({
-        data: {
-            fullName: 'Doctor Three',
-            email: 'd3@gmail.com',
-            roleId: doctorRole.id,
-            departmentId: cardiology.id,
-            specialty: 'Internal Medicine',
-        },
-    });
-
-    // Patients
-    const patient1 = await prisma.patient.create({
-        data: {
-            fullName: 'Ahmad Hassan',
-            nationalId: '100000001',
-            familyBookNumber: 'FB001',
-            patientId: 'PT-001',
-            registeredById: d1.id,
-        },
-    });
-
-    const patient2 = await prisma.patient.create({
-        data: {
-            fullName: 'Sara Ali',
-            nationalId: '100000002',
-            familyBookNumber: 'FB002',
-            patientId: 'PT-002',
-            registeredById: d2.id,
-        },
-    });
-
-    // Helper function for visits
-    async function createVisit(
-        patientId: string,
-        doctorId: string,
-        departmentId: string,
-        notes: string,
-        diagnosis: string,
-    ) {
-        return prisma.medicalVisit.create({
-            data: {
-                patientId,
-                doctorId,
-                departmentId,
-                clinicalNotes: notes,
-                diagnosis,
-                status: 'completed',
+            create: {
+                code,
+                name: key.toLowerCase().replaceAll('_', ' '),
             },
         });
+
+        permissionsMap.set(code, permission.id);
     }
 
-    // Patient 1 history
-    const p1v1 = await createVisit(
-        patient1.id,
-        d1.id,
-        cardiology.id,
-        'Patient complained about chest discomfort.',
-        'Mild hypertension',
-    );
+    console.log(`✅ Permissions synced: ${permissionsMap.size}`);
 
-    const p1v2 = await createVisit(
-        patient1.id,
-        d2.id,
-        neurology.id,
-        'Patient reported recurring headaches.',
-        'Migraine symptoms',
-    );
+    // 2. Find doctor
+    const doctor = await prisma.user.findUnique({
+        where: {
+            email: 'd1@gmail.com',
+        },
 
-    const p1v3 = await createVisit(
-        patient1.id,
-        d1.id,
-        cardiology.id,
-        'Follow up visit. Blood pressure improved.',
-        'Controlled hypertension',
-    );
-
-    // Patient 2 history
-    const p2v1 = await createVisit(
-        patient2.id,
-        d2.id,
-        neurology.id,
-        'Initial neurological examination.',
-        'Neurological evaluation',
-    );
-
-    const p2v2 = await createVisit(
-        patient2.id,
-        d1.id,
-        cardiology.id,
-        'Routine cardiac check.',
-        'Normal cardiac function',
-    );
-
-    const p2v3 = await createVisit(
-        patient2.id,
-        d3.id,
-        cardiology.id,
-        'Follow up and medication adjustment.',
-        'Stable condition',
-    );
-
-    // Get any medication variant already seeded
-    const variant = await prisma.productVariant.findFirstOrThrow();
-
-    // Patient 1: two prescriptions from d1 and d3
-    await prisma.prescription.create({
-        data: {
-            visitId: p1v3.id,
-            patientId: patient1.id,
-            doctorId: d1.id,
-            frequencyUnit: 'day',
-            frequencyInterval: 1,
-            totalCycles: 30,
-            startDate: new Date(),
-            currentCycleStart: new Date(),
-            currentCycleEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            items: {
-                create: {
-                    variantId: variant.id,
-                    prescribedQuantity: 30,
-                    dosage: '1 tablet',
-                    frequency: 'Once daily',
-                    durationDays: 30,
-                },
-            },
+        include: {
+            role: true,
         },
     });
 
-    await prisma.prescription.create({
-        data: {
-            visitId: p1v2.id,
-            patientId: patient1.id,
-            doctorId: d3.id,
-            frequencyUnit: 'day',
-            frequencyInterval: 1,
-            totalCycles: 10,
-            startDate: new Date(),
-            currentCycleStart: new Date(),
-            currentCycleEnd: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-            items: {
-                create: {
-                    variantId: variant.id,
-                    prescribedQuantity: 10,
-                    dosage: '1 capsule',
-                    frequency: 'Every morning',
-                    durationDays: 10,
-                },
-            },
+    if (!doctor) {
+        throw new Error('Doctor with email d1@gmail.com not found');
+    }
+
+    console.log(`Doctor found: ${doctor.fullName} (${doctor.role.name})`);
+
+    // 3. Get patient history permission
+    const patientHistoryPermission = await prisma.permission.findUnique({
+        where: {
+            code: PERMISSIONS.VIEW_PATIENT_HISTORY,
         },
     });
 
-    // Patient 2: one prescription
-    await prisma.prescription.create({
-        data: {
-            visitId: p2v3.id,
-            patientId: patient2.id,
-            doctorId: d3.id,
-            frequencyUnit: 'week',
-            frequencyInterval: 1,
-            totalCycles: 4,
-            startDate: new Date(),
-            currentCycleStart: new Date(),
-            currentCycleEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            items: {
-                create: {
-                    variantId: variant.id,
-                    prescribedQuantity: 4,
-                    dosage: '1 dose',
-                    frequency: 'Weekly',
-                    durationDays: 28,
-                },
+    if (!patientHistoryPermission) {
+        throw new Error('VIEW_PATIENT_HISTORY permission missing');
+    }
+
+    // 4. Find user who grants permission
+    const grantedBy = await prisma.user.findFirst();
+
+    if (!grantedBy) {
+        throw new Error('No users exist in database');
+    }
+
+    // 5. Link permission to doctor
+    await prisma.userPermission.upsert({
+        where: {
+            userId_permissionId: {
+                userId: doctor.id,
+
+                permissionId: patientHistoryPermission.id,
             },
+        },
+
+        update: {
+            effect: PermissionEffect.grant,
+
+            grantedById: grantedBy.id,
+
+            reason: 'Doctor needs access to patient medical history',
+        },
+
+        create: {
+            userId: doctor.id,
+
+            permissionId: patientHistoryPermission.id,
+
+            effect: PermissionEffect.grant,
+
+            grantedById: grantedBy.id,
+
+            reason: 'Doctor needs access to patient medical history',
         },
     });
 
-    console.log('Medical history seed completed');
+    console.log('✅ VIEW_PATIENT_HISTORY granted to doctor');
 }
 
 main()
-    .catch(console.error)
-    .finally(() => prisma.$disconnect());
+    .catch((error) => {
+        console.error(error);
+
+        process.exit(1);
+    })
+
+    .finally(async () => {
+        await prisma.$disconnect();
+    });

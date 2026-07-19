@@ -25,6 +25,7 @@ import { PatientsModule } from './modules/patients/patients.module';
 import { DepartmentQueueModule } from './modules/department-queue/department-queue.module';
 import { MedicalVisitsModule } from './modules/medical-visits/medical-visits.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 
 @Module({
     imports: [
@@ -53,6 +54,7 @@ import { ScheduleModule } from '@nestjs/schedule';
         PatientsModule,
         DepartmentQueueModule,
         MedicalVisitsModule,
+        PrescriptionsModule,
     ],
     controllers: [AppController],
     providers: [
