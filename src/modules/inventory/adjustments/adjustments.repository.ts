@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../transactions/inventory-ledger.service';
 import { Prisma, AdjustmentType, TransactionType } from '@prisma/client';
+import { variantInventorySelect } from '../../../common/selects/variant.select';
 const adjustmentSelect = {
     id: true,
     variantId: true,
@@ -11,7 +12,7 @@ const adjustmentSelect = {
     quantity: true,
     notes: true,
     createdAt: true,
-    variant: { select: { id: true, variantName: true, sku: true } },
+    variant: { select: variantInventorySelect },
     department: { select: { id: true, name: true } },
     batch: { select: { id: true, batchNumber: true } },
     reportedBy: { select: { id: true, fullName: true } },

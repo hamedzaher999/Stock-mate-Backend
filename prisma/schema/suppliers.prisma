@@ -12,6 +12,8 @@ model Supplier {
   purchaseOrders       PurchaseOrder[]
   purchaseReceiptItems PurchaseReceiptItem[]
   batches              Batch[]
-
+  
+  @@unique([name, phone])
+  @@unique([name, email])
   @@map("suppliers")
 }

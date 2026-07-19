@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { DepartmentInventoryRepository } from './department-inventory.repository';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
@@ -13,7 +14,12 @@ export class DepartmentInventoryService {
         private readonly departmentInventoryRepository: DepartmentInventoryRepository,
     ) {}
 
-    async getLiveStock(departmentId: string, requestingUserId: string) {
+    async getLiveStock(
+        departmentId: string,
+        requestingUserId: string,
+        page = 1,
+        limit = 20,
+    ): Promise<PaginatedResult<unknown>> {
         const department =
             await this.departmentInventoryRepository.findDepartmentType(
                 departmentId,
@@ -33,7 +39,24 @@ export class DepartmentInventoryService {
             );
         }
 
-        return this.departmentInventoryRepository.findLiveStock(departmentId);
+        const total =
+            await this.departmentInventoryRepository.countDistinctVariants(
+                departmentId,
+            );
+        const items =
+            await this.departmentInventoryRepository.findLiveStockPage(
+                departmentId,
+                (page - 1) * limit,
+                limit,
+            );
+
+        return {
+            items,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     }
 
     private async resolveDepartmentScope(

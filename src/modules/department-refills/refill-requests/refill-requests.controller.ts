@@ -35,6 +35,20 @@ export class RefillRequestsController {
         return { message: 'Success', data };
     }
 
+    @Get(':id/items/:itemId')
+    @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
+    async findItem(
+        @Param('id') id: string,
+        @Param('itemId') itemId: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillRequestsService.getItem(
+            id,
+            itemId,
+            user.sub,
+        );
+        return { message: 'Success', data };
+    }
     @Get(':id')
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
     async findOne(

@@ -14,11 +14,20 @@ import { UpdateSupplierStatusDto } from './dto/update-supplier-status.dto';
 import { ListSuppliersDto } from './dto/list-suppliers.dto';
 import { RequirePermissions } from '../../core/decorators/require-permissions.decorator';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
+import { ListSupplierVariantsDto } from './dto/list-supplier-variants.dto';
 
 @Controller('suppliers')
 export class SuppliersController {
     constructor(private readonly suppliersService: SuppliersService) {}
 
+    @Get(':id/variants')
+    async findVariants(
+        @Param('id') id: string,
+        @Query() query: ListSupplierVariantsDto,
+    ) {
+        const data = await this.suppliersService.getLinkedVariants(id, query);
+        return { message: 'Success', data };
+    }
     @Get()
     async findAll(@Query() query: ListSuppliersDto) {
         const data = await this.suppliersService.list(query);

@@ -18,6 +18,11 @@ export class CategoriesRepository {
             include: { parentCategory: { select: { id: true, name: true } } },
         });
     }
+    findSiblingByName(name: string, parentCategoryId: string | null) {
+        return this.prisma.category.findFirst({
+            where: { name, parentCategoryId },
+        });
+    }
 
     create(data: { name: string; parentCategoryId?: string }) {
         return this.prisma.category.create({ data });

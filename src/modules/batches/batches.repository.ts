@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { variantInventorySelect } from '../../common/selects/variant.select';
 
 const batchSelect = {
     id: true,
@@ -12,7 +13,7 @@ const batchSelect = {
     manufacturingDate: true,
     expirationDate: true,
     receivingDate: true,
-    variant: { select: { id: true, variantName: true, sku: true } },
+    variant: { select: variantInventorySelect },
     supplier: { select: { id: true, name: true } },
     batchStocks: {
         select: {

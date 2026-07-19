@@ -139,7 +139,28 @@ export class VariantsRepository {
             select: variantDetailSelect,
         });
     }
+    async findBySupplier(params: {
+        supplierId: string;
+        skip: number;
+        take: number;
+    }) {
+        const where: Prisma.ProductVariantWhereInput = {
+            variantSuppliers: { some: { supplierId: params.supplierId } },
+        };
 
+        const [items, total] = await this.prisma.$transaction([
+            this.prisma.productVariant.findMany({
+                where,
+                select: variantListSelect,
+                skip: params.skip,
+                take: params.take,
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.productVariant.count({ where }),
+        ]);
+
+        return { items, total };
+    }
     setSuppliers(
         variantId: string,
         suppliers: {

@@ -51,8 +51,12 @@ export class SuppliersRepository {
         });
     }
 
-    findByName(name: string) {
-        return this.prisma.supplier.findFirst({ where: { name } });
+    findByNameAndPhone(name: string, phone: string) {
+        return this.prisma.supplier.findFirst({ where: { name, phone } });
+    }
+
+    findByNameAndEmail(name: string, email: string) {
+        return this.prisma.supplier.findFirst({ where: { name, email } });
     }
 
     create(data: {

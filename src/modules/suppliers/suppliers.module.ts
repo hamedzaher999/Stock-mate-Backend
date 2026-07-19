@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { SuppliersController } from './suppliers.controller';
 import { SuppliersService } from './suppliers.service';
 import { SuppliersRepository } from './suppliers.repository';
+import { CatalogModule } from '../catalog/catalog.module';
 
 @Module({
+    imports: [CatalogModule],
     controllers: [SuppliersController],
     providers: [SuppliersService, SuppliersRepository],
     exports: [SuppliersRepository],

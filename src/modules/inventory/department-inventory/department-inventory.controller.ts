@@ -21,6 +21,8 @@ export class DepartmentInventoryController {
         const data = await this.departmentInventoryService.getLiveStock(
             query.departmentId,
             user.sub,
+            query.page,
+            query.limit,
         );
         return { message: 'Success', data };
     }

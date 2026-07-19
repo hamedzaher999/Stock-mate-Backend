@@ -1,5 +1,6 @@
 import {
     BadRequestException,
+    ConflictException,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
@@ -23,8 +24,24 @@ export class CategoriesService {
 
     async create(dto: CreateCategoryDto) {
         if (dto.parentCategoryId) {
-            await this.findById(dto.parentCategoryId);
+            const parent = await this.findById(dto.parentCategoryId);
+            if (parent.name === dto.name) {
+                throw new BadRequestException(
+                    'A category cannot have the same name as its parent.',
+                );
+            }
         }
+
+        const sibling = await this.categoriesRepository.findSiblingByName(
+            dto.name,
+            dto.parentCategoryId ?? null,
+        );
+        if (sibling) {
+            throw new ConflictException(
+                'A category with this name already exists at this level.',
+            );
+        }
+
         return this.categoriesRepository.create(dto);
     }
 
@@ -37,7 +54,24 @@ export class CategoriesService {
                     'A category cannot be its own parent.',
                 );
             }
-            await this.findById(dto.parentCategoryId);
+            const parent = await this.findById(dto.parentCategoryId);
+            if (dto.name && parent.name === dto.name) {
+                throw new BadRequestException(
+                    'A category cannot have the same name as its parent.',
+                );
+            }
+        }
+
+        if (dto.name) {
+            const sibling = await this.categoriesRepository.findSiblingByName(
+                dto.name,
+                dto.parentCategoryId ?? null,
+            );
+            if (sibling && sibling.id !== id) {
+                throw new ConflictException(
+                    'A category with this name already exists at this level.',
+                );
+            }
         }
 
         return this.categoriesRepository.update(id, dto);

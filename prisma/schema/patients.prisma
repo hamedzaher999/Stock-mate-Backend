@@ -13,6 +13,8 @@ model Patient {
   visits       MedicalVisit[]
   prescriptions Prescription[]
   dispenseQueueEntries PharmacyDispenseQueue[]
-  
+    
+  @@unique([familyBookNumber, fullName])
+
   @@map("patients")
 }

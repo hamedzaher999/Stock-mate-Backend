@@ -4,6 +4,7 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { DispenseQueueRepository } from '../dispense-queue/dispense-queue.repository';
 import { allocateFefo } from '../../../common/utils/fefo.util';
+import { variantMinimalSelect } from '../../../common/selects/variant.select';
 
 const dispenseDetailSelect = {
     id: true,
@@ -19,7 +20,7 @@ const dispenseDetailSelect = {
             variantId: true,
             batchId: true,
             quantity: true,
-            variant: { select: { id: true, variantName: true, sku: true } },
+            variant: { select: variantMinimalSelect },
             batch: {
                 select: { id: true, batchNumber: true, expirationDate: true },
             },

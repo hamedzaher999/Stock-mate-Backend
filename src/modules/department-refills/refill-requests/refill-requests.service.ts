@@ -299,4 +299,18 @@ export class RefillRequestsService {
         if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
         return user.departmentId;
     }
+    async getItem(
+        refillRequestId: string,
+        itemId: string,
+        requestingUserId: string,
+    ) {
+        await this.findByIdForUser(refillRequestId, requestingUserId);
+
+        const item = await this.refillRequestsRepository.findItemById(itemId);
+        if (!item || item.refillRequestId !== refillRequestId) {
+            throw new NotFoundException('Refill item not found.');
+        }
+
+        return item;
+    }
 }

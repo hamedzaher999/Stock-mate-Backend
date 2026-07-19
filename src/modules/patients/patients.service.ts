@@ -86,6 +86,19 @@ export class PatientsService {
             }
         }
 
+        if (dto.familyBookNumber) {
+            const duplicateInFamily =
+                await this.patientsRepository.findByFamilyBookNumberAndName(
+                    dto.familyBookNumber,
+                    dto.fullName,
+                );
+            if (duplicateInFamily) {
+                throw new ConflictException(
+                    'A patient with this name already exists under this family book number.',
+                );
+            }
+        }
+
         const patientId =
             !dto.nationalId && !dto.familyBookNumber
                 ? generateRequestNumber('PT')
@@ -101,7 +114,7 @@ export class PatientsService {
     }
 
     async update(id: string, dto: UpdatePatientDto) {
-        await this.findById(id);
+        const current = await this.findById(id);
 
         if (dto.nationalId) {
             const existing = await this.patientsRepository.findByNationalId(
@@ -110,6 +123,23 @@ export class PatientsService {
             if (existing && existing.id !== id) {
                 throw new ConflictException(
                     'A patient with this National ID is already registered.',
+                );
+            }
+        }
+
+        const effectiveFamilyBookNumber =
+            dto.familyBookNumber ?? current.familyBookNumber;
+        const effectiveFullName = dto.fullName ?? current.fullName;
+
+        if (effectiveFamilyBookNumber) {
+            const duplicateInFamily =
+                await this.patientsRepository.findByFamilyBookNumberAndName(
+                    effectiveFamilyBookNumber,
+                    effectiveFullName,
+                );
+            if (duplicateInFamily && duplicateInFamily.id !== id) {
+                throw new ConflictException(
+                    'A patient with this name already exists under this family book number.',
                 );
             }
         }

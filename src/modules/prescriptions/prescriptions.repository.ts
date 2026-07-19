@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, PrescriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { DispenseQueueRepository } from '../pharmacy/dispense-queue/dispense-queue.repository';
+import { variantMinimalSelect } from '../../common/selects/variant.select';
 
 const prescriptionDetailSelect = {
     id: true,
@@ -34,7 +35,7 @@ const prescriptionDetailSelect = {
             frequency: true,
             durationDays: true,
             dispensedQuantity: true,
-            variant: { select: { id: true, variantName: true, sku: true } },
+            variant: { select: variantMinimalSelect },
         },
     },
 } satisfies Prisma.PrescriptionSelect;

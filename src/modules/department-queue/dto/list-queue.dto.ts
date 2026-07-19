@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { QueueStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -10,4 +10,8 @@ export class ListQueueDto extends PaginationDto {
     @IsOptional()
     @IsEnum(QueueStatus)
     status?: QueueStatus;
+
+    @IsOptional()
+    @IsString()
+    search?: string;
 }

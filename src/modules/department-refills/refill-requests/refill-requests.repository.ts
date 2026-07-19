@@ -9,6 +9,7 @@ import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
+import { variantInventorySelect } from '../../../common/selects/variant.select';
 const refillRequestDetailSelect = {
     id: true,
     requestNumber: true,
@@ -35,7 +36,24 @@ const refillRequestDetailSelect = {
             preparedQuantity: true,
             deliveredQuantity: true,
             quantityDiscrepancy: true,
-            variant: { select: { id: true, variantName: true, sku: true } },
+            variant: { select: variantInventorySelect },
+            deliveryItems: {
+                select: {
+                    id: true,
+                    deliveryId: true,
+                    batchId: true,
+                    shippedQuantity: true,
+                    receivedQuantity: true,
+                    quantityDiscrepancy: true,
+                    batch: {
+                        select: {
+                            id: true,
+                            batchNumber: true,
+                            expirationDate: true,
+                        },
+                    },
+                },
+            },
         },
     },
 } satisfies Prisma.DepartmentRefillRequestSelect;
@@ -55,7 +73,38 @@ const refillRequestListSelect = {
 @Injectable()
 export class RefillRequestsRepository {
     constructor(private readonly prisma: PrismaService) {}
-
+    findItemById(id: string) {
+        return this.prisma.departmentRefillItem.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                refillRequestId: true,
+                variantId: true,
+                requestedQuantity: true,
+                preparedQuantity: true,
+                deliveredQuantity: true,
+                quantityDiscrepancy: true,
+                variant: { select: { id: true, variantName: true, sku: true } },
+                deliveryItems: {
+                    select: {
+                        id: true,
+                        deliveryId: true,
+                        batchId: true,
+                        shippedQuantity: true,
+                        receivedQuantity: true,
+                        quantityDiscrepancy: true,
+                        batch: {
+                            select: {
+                                id: true,
+                                batchNumber: true,
+                                expirationDate: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
     async findMany(params: {
         skip: number;
         take: number;

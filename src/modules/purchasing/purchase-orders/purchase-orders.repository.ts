@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { Prisma, PurchaseOrderStatus } from '@prisma/client';
+import { variantInventorySelect } from '../../../common/selects/variant.select';
 
 const purchaseOrderDetailSelect = {
     id: true,
@@ -21,7 +22,7 @@ const purchaseOrderDetailSelect = {
             orderedQuantity: true,
             unitPrice: true,
             receivedQuantity: true,
-            variant: { select: { id: true, variantName: true, sku: true } },
+            variant: { select: variantInventorySelect },
         },
     },
 } satisfies Prisma.PurchaseOrderSelect;

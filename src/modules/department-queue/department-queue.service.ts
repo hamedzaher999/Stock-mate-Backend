@@ -48,6 +48,7 @@ export class DepartmentQueueService {
             take: limit,
             departmentId,
             status: dto.status,
+            search: dto.search,
         });
 
         return {

@@ -18,6 +18,12 @@ const patientSelect = {
 export class PatientsRepository {
     constructor(private readonly prisma: PrismaService) {}
 
+    findByFamilyBookNumberAndName(familyBookNumber: string, fullName: string) {
+        return this.prisma.patient.findFirst({
+            where: { familyBookNumber, fullName },
+            select: patientSelect,
+        });
+    }
     async findMany(params: { skip: number; take: number; search?: string }) {
         const where: Prisma.PatientWhereInput = params.search
             ? {

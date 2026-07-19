@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { Prisma } from '@prisma/client';
+import { variantInventorySelect } from '../../../common/selects/variant.select';
 const deliveryDetailSelect = {
     id: true,
     refillRequestId: true,
@@ -19,7 +20,12 @@ const deliveryDetailSelect = {
             receivedQuantity: true,
             quantityDiscrepancy: true,
             batch: {
-                select: { id: true, batchNumber: true, expirationDate: true },
+                select: {
+                    id: true,
+                    batchNumber: true,
+                    expirationDate: true,
+                    variant: { select: variantInventorySelect },
+                },
             },
         },
     },

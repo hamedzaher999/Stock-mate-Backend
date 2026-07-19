@@ -8,7 +8,13 @@ const queueEntrySelect = {
     department: { select: { id: true, name: true } },
     patientId: true,
     patient: {
-        select: { id: true, fullName: true, nationalId: true, patientId: true },
+        select: {
+            id: true,
+            fullName: true,
+            nationalId: true,
+            patientId: true,
+            familyBookNumber: true,
+        },
     },
     status: true,
     addedById: true,
@@ -33,10 +39,41 @@ export class DepartmentQueueRepository {
         take: number;
         departmentId: string;
         status?: QueueStatus;
+        search?: string;
     }) {
         const where: Prisma.DepartmentQueueWhereInput = {
             departmentId: params.departmentId,
             status: params.status ?? { in: LIVE_STATUSES },
+            ...(params.search && {
+                patient: {
+                    OR: [
+                        {
+                            fullName: {
+                                contains: params.search,
+                                mode: 'insensitive',
+                            },
+                        },
+                        {
+                            nationalId: {
+                                contains: params.search,
+                                mode: 'insensitive',
+                            },
+                        },
+                        {
+                            familyBookNumber: {
+                                contains: params.search,
+                                mode: 'insensitive',
+                            },
+                        },
+                        {
+                            patientId: {
+                                contains: params.search,
+                                mode: 'insensitive',
+                            },
+                        },
+                    ],
+                },
+            }),
         };
 
         const [items, total] = await this.prisma.$transaction([
