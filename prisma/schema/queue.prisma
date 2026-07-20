@@ -18,5 +18,6 @@ model DepartmentQueue {
   removedBy  User?      @relation("QueueRemovedBy", fields: [removedById], references: [id])
   medicalVisit  MedicalVisit?
   @@index([departmentId, status])
+  @@index([status, addedAt])
   @@map("department_queues")
 }

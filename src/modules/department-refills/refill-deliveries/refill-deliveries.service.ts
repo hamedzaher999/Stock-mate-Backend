@@ -11,6 +11,8 @@ import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 const SHIPPABLE_STATUSES = ['ready_for_delivery', 'partially_delivered'];
 
 @Injectable()
@@ -18,6 +20,7 @@ export class RefillDeliveriesService {
     constructor(
         private readonly refillDeliveriesRepository: RefillDeliveriesRepository,
         private readonly prisma: PrismaService,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     async list(dto: ListDeliveriesDto): Promise<PaginatedResult<unknown>> {
@@ -208,8 +211,7 @@ export class RefillDeliveriesService {
                 received: confirmedItem.receivedQuantity,
             });
         }
-
-        return this.refillDeliveriesRepository.confirmDelivery({
+        const result = await this.refillDeliveriesRepository.confirmDelivery({
             deliveryId,
             refillRequestId: request.id,
             departmentId: request.departmentId,
@@ -217,6 +219,30 @@ export class RefillDeliveriesService {
             notes: dto.notes,
             confirmations,
         });
+
+        const updatedRequest =
+            await this.prisma.departmentRefillRequest.findUniqueOrThrow({
+                where: { id: request.id },
+                select: {
+                    id: true,
+                    requestNumber: true,
+                    requestedById: true,
+                    status: true,
+                },
+            });
+        await this.notificationsService.create({
+            userId: updatedRequest.requestedById,
+            type: NOTIFICATION_TYPES.REFILL_REQUEST_STATUS_CHANGED,
+            category: 'inventory',
+            title: 'Refill request status updated',
+            body: `Refill request ${updatedRequest.requestNumber} is now "${updatedRequest.status}".`,
+            data: {
+                refillRequestId: updatedRequest.id,
+                status: updatedRequest.status,
+            },
+        });
+
+        return result;
     }
 
     private async assertDepartmentScope(

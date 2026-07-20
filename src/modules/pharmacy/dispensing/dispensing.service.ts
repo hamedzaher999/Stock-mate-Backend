@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { DispensePrescriptionDto } from './dto/dispense-prescription.dto';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
-import { computeCycleEnd } from '../../../common/utils/prescription-cycle.util';
 import { DispensingRepository, CycleResolution } from './dispensing.repository';
+import { computeCycleEnd } from '../../../common/utils/recurrence.util';
 const CLOSED_CYCLE_STATUSES = ['delivered', 'missed', 'cancelled'];
 
 @Injectable()

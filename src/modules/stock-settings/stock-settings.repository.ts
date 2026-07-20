@@ -125,4 +125,58 @@ export class StockSettingsRepository {
     delete(id: string) {
         return this.prisma.departmentStockSetting.delete({ where: { id } });
     }
+    findActiveThresholdSettings() {
+        return this.prisma.departmentStockSetting.findMany({
+            where: {
+                isActive: true,
+                OR: [
+                    { minimumStock: { not: null } },
+                    { maximumStock: { not: null } },
+                ],
+                department: { isActive: true, tracksInventory: true },
+                variant: { isActive: true, product: { isActive: true } },
+            },
+            select: {
+                id: true,
+                variantId: true,
+                departmentId: true,
+                minimumStock: true,
+                maximumStock: true,
+                variant: { select: { id: true, variantName: true, sku: true } },
+                department: {
+                    select: {
+                        id: true,
+                        name: true,
+                        type: true,
+                        managerId: true,
+                        manager: { select: { id: true, fullName: true } },
+                    },
+                },
+            },
+        });
+    }
+
+    async getLiveQuantities(
+        pairs: { variantId: string; departmentId: string }[],
+    ): Promise<Map<string, number>> {
+        if (pairs.length === 0) return new Map();
+
+        const departmentIds = [...new Set(pairs.map((p) => p.departmentId))];
+
+        const rows = await this.prisma.batchStock.findMany({
+            where: { departmentId: { in: departmentIds } },
+            select: {
+                departmentId: true,
+                quantity: true,
+                batch: { select: { variantId: true } },
+            },
+        });
+
+        const map = new Map<string, number>();
+        for (const row of rows) {
+            const key = `${row.batch.variantId}:${row.departmentId}`;
+            map.set(key, (map.get(key) ?? 0) + Number(row.quantity));
+        }
+        return map;
+    }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, PeriodicScheduleStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 
 const scheduleDetailSelect = {
     id: true,
@@ -108,6 +109,15 @@ export class PeriodicSchedulesRepository {
                     },
                 },
             },
+        });
+    }
+    findHospitalManagerId() {
+        return this.prisma.user.findFirst({
+            where: {
+                role: { name: HOSPITAL_MANAGER_ROLE_NAME },
+                status: 'active',
+            },
+            select: { id: true },
         });
     }
 }

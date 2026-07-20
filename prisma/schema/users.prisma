@@ -52,6 +52,8 @@ model User {
   periodicSchedulesApproved PeriodicRefillSchedule[] @relation("PeriodicScheduleApprovedBy")
   periodicSchedulesCancelled PeriodicRefillSchedule[] @relation("PeriodicScheduleCancelledBy")
   prescriptionDispenses PrescriptionDispense[]
+  notifications  Notification[]
+  deviceTokens   DeviceToken[]
   
   @@map("users")
 }

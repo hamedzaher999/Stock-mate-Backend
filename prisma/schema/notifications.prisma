@@ -1,0 +1,31 @@
+model Notification {
+    id        String               @id @default(uuid()) @db.Uuid
+    userId    String               @map("user_id") @db.Uuid
+    type      String
+    category  NotificationCategory
+    title     String
+    body      String
+    data      Json?
+    isRead    Boolean              @default(false) @map("is_read")
+    readAt    DateTime?            @map("read_at")
+    createdAt DateTime             @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id])
+
+    @@index([userId, isRead, createdAt])
+    @@map("notifications")
+}
+
+model DeviceToken {
+    id         String          @id @default(uuid()) @db.Uuid
+    userId     String          @map("user_id") @db.Uuid
+    platform   SessionPlatform
+    fcmToken   String          @unique @map("fcm_token")
+    createdAt  DateTime        @default(now()) @map("created_at")
+    lastSeenAt DateTime?       @map("last_seen_at")
+
+    user User @relation(fields: [userId], references: [id])
+
+    @@index([userId])
+    @@map("device_tokens")
+}

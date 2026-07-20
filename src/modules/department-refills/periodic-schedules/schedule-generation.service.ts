@@ -7,6 +7,8 @@ import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 @Injectable()
 export class ScheduleGenerationService {
     private readonly logger = new Logger(ScheduleGenerationService.name);
@@ -14,6 +16,7 @@ export class ScheduleGenerationService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly periodicSchedulesRepository: PeriodicSchedulesRepository,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     @Cron('0 6 * * *')
@@ -83,6 +86,42 @@ export class ScheduleGenerationService {
             this.logger.log(
                 `Generated refill request ${requestId} from schedule ${schedule.id}`,
             );
+
+            if (schedule.approvalPolicy === 'auto_approved') {
+                await this.notificationsService.create({
+                    userId: schedule.createdById,
+                    type: NOTIFICATION_TYPES.PERIODIC_REFILL_GENERATED,
+                    category: 'inventory',
+                    title: 'Recurring refill generated',
+                    body: `A new refill request was automatically generated and approved from your recurring schedule for ${schedule.department.type === 'central_warehouse' ? 'the Central Warehouse' : 'your department'}.`,
+                    data: {
+                        refillRequestId: requestId,
+                        periodicScheduleId: schedule.id,
+                        departmentId: schedule.departmentId,
+                    },
+                });
+            } else {
+                const hospitalManager =
+                    await this.periodicSchedulesRepository.findHospitalManagerId();
+                if (hospitalManager) {
+                    await this.notificationsService.create({
+                        userId: hospitalManager.id,
+                        type: NOTIFICATION_TYPES.PERIODIC_REFILL_PENDING_APPROVAL,
+                        category: 'inventory',
+                        title: 'Recurring refill needs approval',
+                        body: `A recurring refill request has been generated from schedule ${schedule.id} and is awaiting your approval.`,
+                        data: {
+                            refillRequestId: requestId,
+                            periodicScheduleId: schedule.id,
+                            departmentId: schedule.departmentId,
+                        },
+                    });
+                } else {
+                    this.logger.warn(
+                        `No active Hospital Manager found -- could not notify about pending-approval refill request ${requestId}.`,
+                    );
+                }
+            }
         }
 
         return generated;

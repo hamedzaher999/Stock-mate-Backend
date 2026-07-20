@@ -34,6 +34,7 @@ model Prescription {
   dispenseQueueEntry  PharmacyDispenseQueue?
   dispenses PrescriptionDispense[]
 
+  @@index([status, currentCycleStatus, currentCycleEnd])
   @@map("prescriptions")
 }
 

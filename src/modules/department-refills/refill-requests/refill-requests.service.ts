@@ -15,6 +15,8 @@ import { PaginatedResult } from '../../../core/interfaces/paginated-result.inter
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { HospitalApproveRefillRequestDto } from './dto/hospital-approve-refill-request.dto';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'warehouse_manager'];
 const CANCELLABLE_STATUSES = [
     'draft',
@@ -27,6 +29,7 @@ const CANCELLABLE_STATUSES = [
 export class RefillRequestsService {
     constructor(
         private readonly refillRequestsRepository: RefillRequestsRepository,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     async list(
@@ -172,9 +175,11 @@ export class RefillRequestsService {
                 'Cannot submit a refill request with no items.',
             );
 
-        return this.refillRequestsRepository.updateStatus(id, {
+        const updated = await this.refillRequestsRepository.updateStatus(id, {
             status: 'pending_hospital_approval',
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async hospitalApprove(
@@ -204,11 +209,14 @@ export class RefillRequestsService {
             );
         }
 
-        return this.refillRequestsRepository.hospitalApproveAndMaybeCreateSchedule(
-            id,
-            approverId,
-            isNewRecurringProposal ? dto.approvalPolicy : undefined,
-        );
+        const updated =
+            await this.refillRequestsRepository.hospitalApproveAndMaybeCreateSchedule(
+                id,
+                approverId,
+                isNewRecurringProposal ? dto.approvalPolicy : undefined,
+            );
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async hospitalReject(id: string, dto: HospitalRejectDto) {
@@ -219,11 +227,14 @@ export class RefillRequestsService {
             );
         }
 
-        return this.refillRequestsRepository.updateStatus(id, {
+        const updated = await this.refillRequestsRepository.updateStatus(id, {
             status: 'cancelled',
             hospitalRejectionReason: dto.reason,
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
+
     async startPreparing(id: string) {
         const request = await this.findById(id);
         if (request.status !== 'approved') {
@@ -231,10 +242,13 @@ export class RefillRequestsService {
                 'Only approved refill requests can be moved to preparing.',
             );
         }
-        return this.refillRequestsRepository.updateStatus(id, {
+        const updated = await this.refillRequestsRepository.updateStatus(id, {
             status: 'preparing',
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
+
     async prepare(id: string, dto: PrepareRefillRequestDto) {
         const request = await this.findById(id);
         if (request.status !== 'preparing') {
@@ -268,10 +282,13 @@ export class RefillRequestsService {
             }
         }
 
-        return this.refillRequestsRepository.setPreparedQuantities(
-            id,
-            dto.items,
-        );
+        const updated =
+            await this.refillRequestsRepository.setPreparedQuantities(
+                id,
+                dto.items,
+            );
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async cancel(id: string) {
@@ -282,11 +299,12 @@ export class RefillRequestsService {
             );
         }
 
-        return this.refillRequestsRepository.updateStatus(id, {
+        const updated = await this.refillRequestsRepository.updateStatus(id, {
             status: 'cancelled',
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
-
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
@@ -312,5 +330,21 @@ export class RefillRequestsService {
         }
 
         return item;
+    }
+
+    private notifyStatusChange(request: {
+        id: string;
+        requestNumber: string;
+        requestedById: string;
+        status: string;
+    }) {
+        return this.notificationsService.create({
+            userId: request.requestedById,
+            type: NOTIFICATION_TYPES.REFILL_REQUEST_STATUS_CHANGED,
+            category: 'inventory',
+            title: 'Refill request status updated',
+            body: `Refill request ${request.requestNumber} is now "${request.status}".`,
+            data: { refillRequestId: request.id, status: request.status },
+        });
     }
 }

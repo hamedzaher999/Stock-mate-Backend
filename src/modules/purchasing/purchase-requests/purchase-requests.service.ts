@@ -15,6 +15,8 @@ import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 
 const CANCELLABLE_STATUSES = [
     'draft',
@@ -32,6 +34,7 @@ const UNRESTRICTED_ROLES = [
 export class PurchaseRequestsService {
     constructor(
         private readonly purchaseRequestsRepository: PurchaseRequestsRepository,
+        private readonly notificationsService: NotificationsService,
     ) {}
 
     async list(
@@ -110,7 +113,6 @@ export class PurchaseRequestsService {
             dto.items,
         );
     }
-
     async submit(id: string) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
@@ -122,9 +124,11 @@ export class PurchaseRequestsService {
                 'Cannot submit a purchase request with no items.',
             );
 
-        return this.purchaseRequestsRepository.updateStatus(id, {
+        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
             status: 'pending_hospital_approval',
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async hospitalApprove(id: string, approverId: string) {
@@ -134,11 +138,13 @@ export class PurchaseRequestsService {
                 'This request is not awaiting hospital approval.',
             );
 
-        return this.purchaseRequestsRepository.updateStatus(id, {
+        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
             status: 'pending_purchasing_committee',
             hospitalApprovedById: approverId,
             hospitalApprovedAt: new Date(),
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async hospitalReject(id: string, dto: HospitalRejectDto) {
@@ -148,10 +154,12 @@ export class PurchaseRequestsService {
                 'This request is not awaiting hospital approval.',
             );
 
-        return this.purchaseRequestsRepository.updateStatus(id, {
+        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
             status: 'rejected',
             hospitalRejectionReason: dto.reason,
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async committeeApprove(
@@ -193,11 +201,14 @@ export class PurchaseRequestsService {
             }
         }
 
-        return this.purchaseRequestsRepository.setCommitteeApprovedQuantities(
-            id,
-            dto.items,
-            approverId,
-        );
+        const updated =
+            await this.purchaseRequestsRepository.setCommitteeApprovedQuantities(
+                id,
+                dto.items,
+                approverId,
+            );
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async committeeReject(id: string, dto: CommitteeRejectDto) {
@@ -207,10 +218,12 @@ export class PurchaseRequestsService {
                 'This request is not awaiting committee approval.',
             );
 
-        return this.purchaseRequestsRepository.updateStatus(id, {
+        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
             status: 'rejected',
             committeeRejectionReason: dto.reason,
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async markReadyForReceiving(id: string, userId: string) {
@@ -229,11 +242,13 @@ export class PurchaseRequestsService {
                 'Every item must have a committee-approved quantity first.',
             );
 
-        return this.purchaseRequestsRepository.updateStatus(id, {
+        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
             status: 'ready_for_receiving',
             committeeMarkedReadyById: userId,
             committeeMarkedReadyAt: new Date(),
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     async cancel(id: string) {
@@ -244,9 +259,11 @@ export class PurchaseRequestsService {
             );
         }
 
-        return this.purchaseRequestsRepository.updateStatus(id, {
+        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
             status: 'cancelled',
         });
+        await this.notifyStatusChange(updated);
+        return updated;
     }
 
     private async resolveOwnerScope(
@@ -277,5 +294,21 @@ export class PurchaseRequestsService {
                 'One or more selected variants (or their parent product) are inactive.',
             );
         }
+    }
+
+    private notifyStatusChange(pr: {
+        id: string;
+        requestNumber: string;
+        requestedById: string;
+        status: string;
+    }) {
+        return this.notificationsService.create({
+            userId: pr.requestedById,
+            type: NOTIFICATION_TYPES.PURCHASE_REQUEST_STATUS_CHANGED,
+            category: 'purchasing',
+            title: 'Purchase request status updated',
+            body: `Purchase request ${pr.requestNumber} is now "${pr.status}".`,
+            data: { purchaseRequestId: pr.id, status: pr.status },
+        });
     }
 }

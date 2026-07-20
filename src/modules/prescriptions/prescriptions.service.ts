@@ -12,7 +12,7 @@ import { ListPrescriptionsDto } from './dto/list-prescriptions.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { PermissionsResolverService } from '../rbac/permissions-resolver.service';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
-import { computeCycleEnd } from '../../common/utils/prescription-cycle.util';
+import { computeCycleEnd } from '../../common/utils/recurrence.util';
 
 @Injectable()
 export class PrescriptionsService {

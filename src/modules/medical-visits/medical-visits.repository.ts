@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, VisitStatus } from '@prisma/client';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { DispenseQueueRepository } from '../pharmacy/dispense-queue/dispense-queue.repository';
-import { computeCycleEnd } from '../../common/utils/prescription-cycle.util';
+import { computeCycleEnd } from '../../common/utils/recurrence.util';
 
 const visitDetailSelect = {
     id: true,

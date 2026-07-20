@@ -197,4 +197,102 @@ export class PrescriptionsRepository {
             });
         });
     }
+    findDueCycleChecks(asOf: Date) {
+        return this.prisma.prescription.findMany({
+            where: {
+                status: 'active',
+                currentCycleStatus: 'ready',
+                currentCycleEnd: { lt: asOf },
+            },
+            select: {
+                id: true,
+                patientId: true,
+                frequencyUnit: true,
+                frequencyInterval: true,
+                totalCycles: true,
+                currentCycleNumber: true,
+                currentCycleStart: true,
+                currentCycleEnd: true,
+                patient: {
+                    select: {
+                        fullName: true,
+                        nationalId: true,
+                        familyBookNumber: true,
+                    },
+                },
+                items: {
+                    select: { variantId: true, prescribedQuantity: true },
+                },
+            },
+        });
+    }
+
+    resolveMissedCycle(params: {
+        prescriptionId: string;
+        patientId: string;
+        cycleNumber: number;
+        periodStart: Date;
+        periodEnd: Date;
+        isFinalCycle: boolean;
+        nextCycleStart?: Date;
+        nextCycleEnd?: Date;
+        patientSnapshot: {
+            fullName: string;
+            nationalId: string | null;
+            familyBookNumber: string | null;
+        };
+        items: { variantId: string; prescribedQuantity: number }[];
+    }) {
+        return this.prisma.$transaction(async (tx) => {
+            const resolvedAt = new Date();
+
+            await tx.prescriptionCycleLog.create({
+                data: {
+                    prescriptionId: params.prescriptionId,
+                    cycleNumber: params.cycleNumber,
+                    periodStart: params.periodStart,
+                    periodEnd: params.periodEnd,
+                    resolvedStatus: 'missed',
+                    resolvedAt,
+                },
+            });
+
+            if (params.isFinalCycle) {
+                await tx.prescription.update({
+                    where: { id: params.prescriptionId },
+                    data: { status: 'completed', currentCycleStatus: 'missed' },
+                });
+
+                await this.dispenseQueueRepository.removeForPrescription(
+                    tx,
+                    params.prescriptionId,
+                );
+
+                return;
+            }
+
+            const nextCycleNumber = params.cycleNumber + 1;
+
+            await tx.prescription.update({
+                where: { id: params.prescriptionId },
+                data: {
+                    currentCycleNumber: nextCycleNumber,
+                    currentCycleStart: params.nextCycleStart,
+                    currentCycleEnd: params.nextCycleEnd,
+                    currentCycleStatus: 'ready',
+                },
+            });
+
+            await this.dispenseQueueRepository.upsertReady(tx, {
+                prescriptionId: params.prescriptionId,
+                patientId: params.patientId,
+                nationalId: params.patientSnapshot.nationalId,
+                familyBookNumber: params.patientSnapshot.familyBookNumber,
+                patientName: params.patientSnapshot.fullName,
+                cycleNumber: nextCycleNumber,
+                readySince: resolvedAt,
+                items: params.items,
+            });
+        });
+    }
 }

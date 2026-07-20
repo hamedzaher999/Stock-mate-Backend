@@ -26,6 +26,7 @@ import { DepartmentQueueModule } from './modules/department-queue/department-que
 import { MedicalVisitsModule } from './modules/medical-visits/medical-visits.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { PrescriptionsModule } from './modules/prescriptions/prescriptions.modul
                 limit: 30,
             },
         ]),
+        NotificationsModule,
         CacheModule,
         PrismaModule,
         AuthModule,

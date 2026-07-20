@@ -193,3 +193,15 @@ enum ScheduleApprovalPolicy {
 
   @@map("schedule_approval_policy")
 }
+
+
+
+enum NotificationCategory {
+    inventory
+    queue
+    pharmacy
+    purchasing
+    ai_insight
+
+    @@map("notification_category")
+}

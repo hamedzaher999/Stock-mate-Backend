@@ -174,4 +174,18 @@ export class DepartmentQueueRepository {
             select: queueEntrySelect,
         });
     }
+
+    findWaitingEntriesOlderThan(cutoff: Date) {
+        return this.prisma.departmentQueue.findMany({
+            where: { status: 'waiting', addedAt: { lt: cutoff } },
+            select: {
+                id: true,
+                departmentId: true,
+                addedById: true,
+                addedAt: true,
+                patient: { select: { id: true, fullName: true } },
+                department: { select: { id: true, name: true } },
+            },
+        });
+    }
 }

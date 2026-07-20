@@ -16,4 +16,11 @@ export const validationSchema = Joi.object({
     EMAIL_PASS: Joi.string().required(),
     EMAIL_FROM: Joi.string().required(),
     RESEND_API_KEY: Joi.string().optional(),
+    STOCK_THRESHOLD_CRON: Joi.string().default('0 7 * * *'),
+    QUEUE_WAIT_CHECK_CRON: Joi.string().default('*/30 * * * *'),
+    QUEUE_WAIT_THRESHOLD_HOURS: Joi.number().default(5),
+    PRESCRIPTION_CYCLE_CHECK_CRON: Joi.string().default('0 0 * * *'),
+    FIREBASE_PROJECT_ID: Joi.string().required(),
+    FIREBASE_CLIENT_EMAIL: Joi.string().required(),
+    FIREBASE_PRIVATE_KEY: Joi.string().required(),
 });
