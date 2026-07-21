@@ -27,7 +27,7 @@ import { MedicalVisitsModule } from './modules/medical-visits/medical-visits.mod
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { StorageModule } from './core/storage/torage.module';
+import { StorageModule } from './core/storage/storage.module';
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true, validationSchema }),
