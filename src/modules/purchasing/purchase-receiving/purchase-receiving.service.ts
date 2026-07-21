@@ -12,7 +12,17 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
+import { Inject } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
+import {
+    STORAGE_SERVICE,
+    type IStorageService,
+} from '../../../core/storage/storage.interface';
+
 const RECEIVABLE_ORDER_STATUSES = ['sent', 'partially_received'];
+const IMAGE_URL_TTL_SECONDS = 300;
 
 @Injectable()
 export class PurchaseReceivingService {
@@ -20,6 +30,8 @@ export class PurchaseReceivingService {
         private readonly purchaseReceivingRepository: PurchaseReceivingRepository,
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
+        @Inject(STORAGE_SERVICE)
+        private readonly storageService: IStorageService,
     ) {}
 
     async list(
@@ -52,7 +64,66 @@ export class PurchaseReceivingService {
         return receipt;
     }
 
-    async create(dto: CreatePurchaseReceiptDto, receivedById: string) {
+    /**
+     * Returns a short-lived, signed URL for viewing this receipt's image.
+     * Nothing about the underlying Cloudinary asset is ever exposed directly --
+     * every request re-checks permissions (via the controller's guard) and
+     * mints a fresh, time-boxed link.
+     */
+    async getImageUrl(id: string) {
+        const receipt =
+            await this.purchaseReceivingRepository.findImagePublicId(id);
+        if (!receipt)
+            throw new NotFoundException('Purchase receipt not found.');
+
+        return this.storageService.getSignedUrl(receipt.receiptImagePublicId, {
+            expiresInSeconds: IMAGE_URL_TTL_SECONDS,
+        });
+    }
+
+    async parseCreateDto(
+        raw: CreatePurchaseReceiptFormDto,
+    ): Promise<CreatePurchaseReceiptDto> {
+        let parsedItems: unknown;
+        try {
+            parsedItems = JSON.parse(raw.items);
+        } catch {
+            throw new BadRequestException(
+                '"items" must be a valid JSON-encoded array.',
+            );
+        }
+
+        if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+            throw new BadRequestException('"items" must be a non-empty array.');
+        }
+
+        const dto = plainToInstance(CreatePurchaseReceiptDto, {
+            purchaseOrderId: raw.purchaseOrderId,
+            receivingDate: raw.receivingDate,
+            notes: raw.notes,
+            items: parsedItems,
+        });
+
+        const errors = await validate(dto);
+        if (errors.length > 0) {
+            const messages = errors.flatMap((error) =>
+                Object.values(error.constraints ?? {}),
+            );
+            throw new BadRequestException(
+                messages.length > 0
+                    ? messages
+                    : 'Invalid purchase receipt payload.',
+            );
+        }
+
+        return dto;
+    }
+
+    async create(
+        dto: CreatePurchaseReceiptDto,
+        receivedById: string,
+        receiptImage: Express.Multer.File,
+    ) {
         const order =
             await this.purchaseReceivingRepository.findOrderForReceiving(
                 dto.purchaseOrderId,
@@ -99,15 +170,26 @@ export class PurchaseReceivingService {
             };
         });
 
-        return this.purchaseReceivingRepository.recordReceipt({
-            purchaseOrderId: order.id,
-            purchaseRequestId: order.purchaseRequestId,
-            supplierId: order.supplierId,
-            receivedById,
-            receivingDate: new Date(dto.receivingDate),
-            notes: dto.notes,
-            lines,
-        });
+        const uploaded = await this.storageService.uploadImage(
+            receiptImage.buffer,
+            { folder: `purchase-receipts/${order.purchaseRequestId}` },
+        );
+
+        try {
+            return await this.purchaseReceivingRepository.recordReceipt({
+                purchaseOrderId: order.id,
+                purchaseRequestId: order.purchaseRequestId,
+                supplierId: order.supplierId,
+                receivedById,
+                receivingDate: new Date(dto.receivingDate),
+                notes: dto.notes,
+                lines,
+                receiptImagePublicId: uploaded.publicId,
+            });
+        } catch (error) {
+            await this.storageService.deleteImage(uploaded.publicId);
+            throw error;
+        }
     }
 
     async confirm(

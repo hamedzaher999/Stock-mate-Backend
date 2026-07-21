@@ -3,6 +3,7 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { Prisma } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
+
 const purchaseReceiptDetailSelect = {
     id: true,
     purchaseOrderId: true,
@@ -86,6 +87,17 @@ export class PurchaseReceivingRepository {
         });
     }
 
+    /**
+     * Internal-only lookup used to generate a signed image URL.
+     * Never expose receiptImagePublicId through a public select.
+     */
+    findImagePublicId(id: string) {
+        return this.prisma.purchaseReceipt.findUnique({
+            where: { id },
+            select: { id: true, receiptImagePublicId: true },
+        });
+    }
+
     findOrderForReceiving(purchaseOrderId: string) {
         return this.prisma.purchaseOrder.findUnique({
             where: { id: purchaseOrderId },
@@ -121,6 +133,7 @@ export class PurchaseReceivingRepository {
         receivedById: string;
         receivingDate: Date;
         notes?: string;
+        receiptImagePublicId: string;
         lines: {
             purchaseOrderItemId: string;
             variantId: string;
@@ -140,6 +153,7 @@ export class PurchaseReceivingRepository {
                 receivingDate: params.receivingDate,
                 notes: params.notes,
                 status: 'pending_confirmation',
+                receiptImagePublicId: params.receiptImagePublicId,
                 items: {
                     create: params.lines.map((line) => ({
                         purchaseOrderItemId: line.purchaseOrderItemId,

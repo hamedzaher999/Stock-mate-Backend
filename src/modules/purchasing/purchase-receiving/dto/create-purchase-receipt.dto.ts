@@ -1,42 +1,13 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
-    IsArray,
     IsDateString,
-    IsNumber,
     IsOptional,
     IsString,
     IsUUID,
-    Min,
     ValidateNested,
 } from 'class-validator';
-
-class PurchaseReceiptItemInputDto {
-    @IsUUID()
-    purchaseOrderItemId!: string;
-
-    @Type(() => Number)
-    @IsNumber()
-    @Min(0.01)
-    quantity!: number;
-
-    @IsString()
-    batchNumber!: string;
-
-    @IsOptional()
-    @IsDateString()
-    manufacturingDate?: string;
-
-    @IsOptional()
-    @IsDateString()
-    expirationDate?: string;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsNumber()
-    @Min(0)
-    purchasePrice?: number;
-}
+import { CreatePurchaseReceiptItemDto } from './create-purchase-receipt-item.dto';
 
 export class CreatePurchaseReceiptDto {
     @IsUUID()
@@ -49,9 +20,8 @@ export class CreatePurchaseReceiptDto {
     @IsString()
     notes?: string;
 
-    @IsArray()
-    @ArrayMinSize(1)
     @ValidateNested({ each: true })
-    @Type(() => PurchaseReceiptItemInputDto)
-    items!: PurchaseReceiptItemInputDto[];
+    @Type(() => CreatePurchaseReceiptItemDto)
+    @ArrayMinSize(1)
+    items!: CreatePurchaseReceiptItemDto[];
 }

@@ -1,14 +1,15 @@
 model PurchaseReceipt {
-  id                String                @id @default(uuid()) @db.Uuid
-  purchaseOrderId   String                @map("purchase_order_id") @db.Uuid
-  purchaseRequestId String                @map("purchase_request_id") @db.Uuid
-  receivedById      String                @map("received_by") @db.Uuid
-  receivingDate     DateTime              @map("receiving_date") @db.Date
-  status            PurchaseReceiptStatus @default(pending_confirmation)
-  confirmedById     String?               @map("confirmed_by") @db.Uuid
-  confirmedAt       DateTime?             @map("confirmed_at")
-  notes             String?
-  createdAt         DateTime              @default(now()) @map("created_at")
+  id                   String                @id @default(uuid()) @db.Uuid
+  purchaseOrderId      String                @map("purchase_order_id") @db.Uuid
+  purchaseRequestId    String                @map("purchase_request_id") @db.Uuid
+  receivedById         String                @map("received_by") @db.Uuid
+  receivingDate        DateTime              @map("receiving_date") @db.Date
+  status               PurchaseReceiptStatus @default(pending_confirmation)
+  confirmedById        String?               @map("confirmed_by") @db.Uuid
+  confirmedAt          DateTime?             @map("confirmed_at")
+  receiptImagePublicId String                @map("receipt_image_public_id")
+  notes                String?
+  createdAt            DateTime              @default(now()) @map("created_at")
 
   purchaseOrder   PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
   purchaseRequest PurchaseRequest       @relation(fields: [purchaseRequestId], references: [id])

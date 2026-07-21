@@ -1,5 +1,4 @@
 import * as Joi from 'joi';
-
 export const validationSchema = Joi.object({
     DATABASE_URL: Joi.string().required(),
     JWT_ACCESS_SECRET: Joi.string().min(16).required(),
@@ -23,4 +22,8 @@ export const validationSchema = Joi.object({
     FIREBASE_PROJECT_ID: Joi.string().required(),
     FIREBASE_CLIENT_EMAIL: Joi.string().required(),
     FIREBASE_PRIVATE_KEY: Joi.string().required(),
+    CLOUDINARY_CLOUD_NAME: Joi.string().required(),
+    CLOUDINARY_API_KEY: Joi.string().required(),
+    CLOUDINARY_API_SECRET: Joi.string().required(),
+    CLOUDINARY_AUTH_TOKEN_KEY: Joi.string().required(),
 });
