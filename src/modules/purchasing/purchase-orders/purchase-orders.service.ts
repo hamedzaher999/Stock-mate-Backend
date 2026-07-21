@@ -9,7 +9,6 @@ import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ListPurchaseOrdersDto } from './dto/list-purchase-orders.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
-
 const ORDERABLE_PR_STATUSES = ['approved', 'ready_for_receiving'];
 
 @Injectable()
@@ -67,6 +66,14 @@ export class PurchaseOrdersService {
                 'Cannot place an order with an inactive supplier.',
             );
 
+        const warehouse =
+            await this.purchaseOrdersRepository.findWarehouseDepartment();
+        if (!warehouse) {
+            throw new BadRequestException(
+                'No Central Warehouse department is configured -- cannot create a purchase order.',
+            );
+        }
+
         const items: {
             purchaseRequestItemId: string;
             variantId: string;
@@ -120,6 +127,7 @@ export class PurchaseOrdersService {
             orderNumber: generateRequestNumber('PO'),
             purchaseRequestId: dto.purchaseRequestId,
             supplierId: dto.supplierId,
+            destinationDepartmentId: warehouse.id,
             createdById,
             expectedDeliveryDate: dto.expectedDeliveryDate
                 ? new Date(dto.expectedDeliveryDate)

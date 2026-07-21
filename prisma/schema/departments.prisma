@@ -20,6 +20,7 @@ model Department {
   queueEntries DepartmentQueue[]
   medicalVisits MedicalVisit[]
   periodicRefillSchedules PeriodicRefillSchedule[]
+  purchaseOrdersAsDestination PurchaseOrder[]
 
   @@map("departments")
 }

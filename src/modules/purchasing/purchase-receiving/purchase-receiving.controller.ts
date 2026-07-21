@@ -6,7 +6,7 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
-
+import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
 @Controller('purchasing/receipts')
 export class PurchaseReceivingController {
     constructor(
@@ -35,7 +35,26 @@ export class PurchaseReceivingController {
     ) {
         const data = await this.purchaseReceivingService.create(dto, user.sub);
         return {
-            message: 'Purchase receipt recorded and batches created.',
+            message:
+                'Purchase receipt recorded. Awaiting warehouse confirmation.',
+            data,
+        };
+    }
+
+    @Post(':id/confirm')
+    @RequirePermissions(PERMISSIONS.CONFIRM_PURCHASE_RECEIPT)
+    async confirm(
+        @Param('id') id: string,
+        @Body() dto: ConfirmPurchaseReceiptDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.purchaseReceivingService.confirm(
+            id,
+            dto,
+            user.sub,
+        );
+        return {
+            message: 'Purchase receipt confirmed and warehouse stock updated.',
             data,
         };
     }

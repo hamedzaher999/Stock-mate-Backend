@@ -3,15 +3,18 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { Prisma } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
-
 const purchaseReceiptDetailSelect = {
     id: true,
     purchaseOrderId: true,
     purchaseRequestId: true,
     receivingDate: true,
+    status: true,
+    confirmedById: true,
+    confirmedAt: true,
     notes: true,
     createdAt: true,
     receivedBy: { select: { id: true, fullName: true } },
+    confirmedBy: { select: { id: true, fullName: true } },
     items: {
         select: {
             id: true,
@@ -21,12 +24,15 @@ const purchaseReceiptDetailSelect = {
             expectedQuantity: true,
             quantity: true,
             quantityDiscrepancy: true,
+            confirmedQuantity: true,
+            confirmedQuantityDiscrepancy: true,
             purchasePrice: true,
             batchNumber: true,
             manufacturingDate: true,
             expirationDate: true,
             variant: { select: variantInventorySelect },
             batch: { select: { id: true } },
+            purchaseOrderItem: { select: { purchaseRequestItemId: true } },
         },
     },
 } satisfies Prisma.PurchaseReceiptSelect;
@@ -36,6 +42,7 @@ const purchaseReceiptListSelect = {
     purchaseOrderId: true,
     purchaseRequestId: true,
     receivingDate: true,
+    status: true,
     receivedBy: { select: { id: true, fullName: true } },
     createdAt: true,
 } satisfies Prisma.PurchaseReceiptSelect;
@@ -100,24 +107,22 @@ export class PurchaseReceivingRepository {
         });
     }
 
-    findWarehouseDepartment() {
-        return this.prisma.department.findFirst({
-            where: { type: 'central_warehouse' },
-            select: { id: true },
+    findOrderDestination(purchaseOrderId: string) {
+        return this.prisma.purchaseOrder.findUnique({
+            where: { id: purchaseOrderId },
+            select: { id: true, destinationDepartmentId: true },
         });
     }
 
-    receive(params: {
+    recordReceipt(params: {
         purchaseOrderId: string;
         purchaseRequestId: string;
         supplierId: string;
-        warehouseDepartmentId: string;
         receivedById: string;
         receivingDate: Date;
         notes?: string;
         lines: {
             purchaseOrderItemId: string;
-            purchaseRequestItemId: string;
             variantId: string;
             expectedQuantity: number;
             quantity: number;
@@ -127,21 +132,16 @@ export class PurchaseReceivingRepository {
             purchasePrice?: number;
         }[];
     }) {
-        return this.prisma.$transaction(async (tx) => {
-            const receipt = await tx.purchaseReceipt.create({
-                data: {
-                    purchaseOrderId: params.purchaseOrderId,
-                    purchaseRequestId: params.purchaseRequestId,
-                    receivedById: params.receivedById,
-                    receivingDate: params.receivingDate,
-                    notes: params.notes,
-                },
-            });
-
-            for (const line of params.lines) {
-                const receiptItem = await tx.purchaseReceiptItem.create({
-                    data: {
-                        purchaseReceiptId: receipt.id,
+        return this.prisma.purchaseReceipt.create({
+            data: {
+                purchaseOrderId: params.purchaseOrderId,
+                purchaseRequestId: params.purchaseRequestId,
+                receivedById: params.receivedById,
+                receivingDate: params.receivingDate,
+                notes: params.notes,
+                status: 'pending_confirmation',
+                items: {
+                    create: params.lines.map((line) => ({
                         purchaseOrderItemId: line.purchaseOrderItemId,
                         variantId: line.variantId,
                         supplierId: params.supplierId,
@@ -149,58 +149,111 @@ export class PurchaseReceivingRepository {
                         quantity: line.quantity,
                         quantityDiscrepancy:
                             line.expectedQuantity - line.quantity,
-                        purchasePrice: line.purchasePrice,
                         batchNumber: line.batchNumber,
                         manufacturingDate: line.manufacturingDate,
                         expirationDate: line.expirationDate,
-                    },
-                });
-
-                const batch = await tx.batch.create({
-                    data: {
-                        purchaseReceiptItemId: receiptItem.id,
-                        variantId: line.variantId,
-                        supplierId: params.supplierId,
-                        batchNumber: line.batchNumber,
-                        quantityReceived: line.quantity,
                         purchasePrice: line.purchasePrice,
-                        manufacturingDate: line.manufacturingDate,
-                        expirationDate: line.expirationDate,
-                        receivingDate: params.receivingDate,
-                        createdById: params.receivedById,
+                    })),
+                },
+            },
+            select: purchaseReceiptDetailSelect,
+        });
+    }
+
+    confirmReceipt(params: {
+        receiptId: string;
+        purchaseOrderId: string;
+        purchaseRequestId: string;
+        warehouseDepartmentId: string;
+        receivingDate: Date;
+        confirmedById: string;
+        notes?: string;
+        confirmations: {
+            receiptItemId: string;
+            purchaseOrderItemId: string;
+            purchaseRequestItemId: string;
+            variantId: string;
+            supplierId: string;
+            declaredQuantity: number;
+            confirmedQuantity: number;
+            batchNumber: string;
+            manufacturingDate: Date | null;
+            expirationDate: Date | null;
+            purchasePrice: number | null;
+        }[];
+    }) {
+        return this.prisma.$transaction(async (tx) => {
+            for (const c of params.confirmations) {
+                await tx.purchaseReceiptItem.update({
+                    where: { id: c.receiptItemId },
+                    data: {
+                        confirmedQuantity: c.confirmedQuantity,
+                        confirmedQuantityDiscrepancy:
+                            c.declaredQuantity - c.confirmedQuantity,
                     },
                 });
 
-                await tx.batchStock.create({
-                    data: {
+                if (c.confirmedQuantity > 0) {
+                    const batch = await tx.batch.create({
+                        data: {
+                            purchaseReceiptItemId: c.receiptItemId,
+                            variantId: c.variantId,
+                            supplierId: c.supplierId,
+                            batchNumber: c.batchNumber,
+                            quantityReceived: c.confirmedQuantity,
+                            purchasePrice: c.purchasePrice,
+                            manufacturingDate: c.manufacturingDate,
+                            expirationDate: c.expirationDate,
+                            receivingDate: params.receivingDate,
+                            createdById: params.confirmedById,
+                        },
+                    });
+
+                    await tx.batchStock.create({
+                        data: {
+                            batchId: batch.id,
+                            departmentId: params.warehouseDepartmentId,
+                            quantity: c.confirmedQuantity,
+                        },
+                    });
+
+                    await this.inventoryLedger.record(tx, {
+                        transactionType: 'purchase_receipt',
+                        variantId: c.variantId,
                         batchId: batch.id,
                         departmentId: params.warehouseDepartmentId,
-                        quantity: line.quantity,
-                    },
-                });
-
-                await this.inventoryLedger.record(tx, {
-                    transactionType: 'purchase_receipt',
-                    variantId: line.variantId,
-                    batchId: batch.id,
-                    departmentId: params.warehouseDepartmentId,
-                    quantity: line.quantity,
-                    balanceAfter: line.quantity,
-                    referenceType: 'purchase_receipt',
-                    referenceId: receipt.id,
-                    performedById: params.receivedById,
-                });
+                        quantity: c.confirmedQuantity,
+                        balanceAfter: c.confirmedQuantity,
+                        referenceType: 'purchase_receipt',
+                        referenceId: params.receiptId,
+                        performedById: params.confirmedById,
+                    });
+                }
 
                 await tx.purchaseOrderItem.update({
-                    where: { id: line.purchaseOrderItemId },
-                    data: { receivedQuantity: { increment: line.quantity } },
+                    where: { id: c.purchaseOrderItemId },
+                    data: {
+                        receivedQuantity: { increment: c.confirmedQuantity },
+                    },
                 });
 
                 await tx.purchaseRequestItem.update({
-                    where: { id: line.purchaseRequestItemId },
-                    data: { receivedQuantity: { increment: line.quantity } },
+                    where: { id: c.purchaseRequestItemId },
+                    data: {
+                        receivedQuantity: { increment: c.confirmedQuantity },
+                    },
                 });
             }
+
+            await tx.purchaseReceipt.update({
+                where: { id: params.receiptId },
+                data: {
+                    status: 'confirmed',
+                    confirmedById: params.confirmedById,
+                    confirmedAt: new Date(),
+                    notes: params.notes,
+                },
+            });
 
             const updatedOrderItems = await tx.purchaseOrderItem.findMany({
                 where: { purchaseOrderId: params.purchaseOrderId },
@@ -253,7 +306,7 @@ export class PurchaseReceivingRepository {
             });
 
             return tx.purchaseReceipt.findUniqueOrThrow({
-                where: { id: receipt.id },
+                where: { id: params.receiptId },
                 select: purchaseReceiptDetailSelect,
             });
         });

@@ -17,6 +17,7 @@ export const PERMISSIONS = {
     APPROVE_PURCHASE_REQUEST_COMMITTEE: 'approve_purchase_request_committee',
     MANAGE_PURCHASE_ORDERS: 'manage_purchase_orders',
     RECEIVE_PURCHASE: 'receive_purchase',
+    CONFIRM_PURCHASE_RECEIPT: 'confirm_purchase_receipt',
     VIEW_PURCHASING_HISTORY: 'view_purchasing_history',
     VIEW_PURCHASING_REPORTS: 'view_purchasing_reports',
 

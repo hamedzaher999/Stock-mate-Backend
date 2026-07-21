@@ -1,33 +1,39 @@
 model PurchaseReceipt {
-  id                String   @id @default(uuid()) @db.Uuid
-  purchaseOrderId   String   @map("purchase_order_id") @db.Uuid
-  purchaseRequestId String   @map("purchase_request_id") @db.Uuid
-  receivedById      String   @map("received_by") @db.Uuid
-  receivingDate     DateTime @map("receiving_date") @db.Date
+  id                String                @id @default(uuid()) @db.Uuid
+  purchaseOrderId   String                @map("purchase_order_id") @db.Uuid
+  purchaseRequestId String                @map("purchase_request_id") @db.Uuid
+  receivedById      String                @map("received_by") @db.Uuid
+  receivingDate     DateTime              @map("receiving_date") @db.Date
+  status            PurchaseReceiptStatus @default(pending_confirmation)
+  confirmedById     String?               @map("confirmed_by") @db.Uuid
+  confirmedAt       DateTime?             @map("confirmed_at")
   notes             String?
-  createdAt         DateTime @default(now()) @map("created_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
 
   purchaseOrder   PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
   purchaseRequest PurchaseRequest       @relation(fields: [purchaseRequestId], references: [id])
-  receivedBy      User                  @relation(fields: [receivedById], references: [id])
+  receivedBy      User                  @relation("PurchaseReceiptReceivedBy", fields: [receivedById], references: [id])
+  confirmedBy     User?                 @relation("PurchaseReceiptConfirmedBy", fields: [confirmedById], references: [id])
   items           PurchaseReceiptItem[]
 
   @@map("purchase_receipts")
 }
 
 model PurchaseReceiptItem {
-  id                  String    @id @default(uuid()) @db.Uuid
-  purchaseReceiptId   String    @map("purchase_receipt_id") @db.Uuid
-  purchaseOrderItemId String    @map("purchase_order_item_id") @db.Uuid
-  variantId           String    @map("variant_id") @db.Uuid
-  supplierId          String    @map("supplier_id") @db.Uuid
-  expectedQuantity    Decimal?  @map("expected_quantity")
-  quantity            Decimal
-  quantityDiscrepancy Decimal   @default(0) @map("quantity_discrepancy")
-  purchasePrice       Decimal?  @map("purchase_price")
-  batchNumber         String    @map("batch_number")
-  manufacturingDate   DateTime? @map("manufacturing_date") @db.Date
-  expirationDate      DateTime? @map("expiration_date") @db.Date
+  id                           String    @id @default(uuid()) @db.Uuid
+  purchaseReceiptId            String    @map("purchase_receipt_id") @db.Uuid
+  purchaseOrderItemId          String    @map("purchase_order_item_id") @db.Uuid
+  variantId                    String    @map("variant_id") @db.Uuid
+  supplierId                   String    @map("supplier_id") @db.Uuid
+  expectedQuantity             Decimal?  @map("expected_quantity")
+  quantity                     Decimal
+  quantityDiscrepancy          Decimal   @default(0) @map("quantity_discrepancy")
+  confirmedQuantity            Decimal?  @map("confirmed_quantity")
+  confirmedQuantityDiscrepancy Decimal   @default(0) @map("confirmed_quantity_discrepancy")
+  purchasePrice                Decimal?  @map("purchase_price")
+  batchNumber                  String    @map("batch_number")
+  manufacturingDate             DateTime? @map("manufacturing_date") @db.Date
+  expirationDate                DateTime? @map("expiration_date") @db.Date
 
   purchaseReceipt   PurchaseReceipt   @relation(fields: [purchaseReceiptId], references: [id])
   purchaseOrderItem PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])

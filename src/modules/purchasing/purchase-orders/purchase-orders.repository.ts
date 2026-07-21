@@ -2,18 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { Prisma, PurchaseOrderStatus } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
-
 const purchaseOrderDetailSelect = {
     id: true,
     orderNumber: true,
     purchaseRequestId: true,
     supplierId: true,
+    destinationDepartmentId: true,
     status: true,
     orderedAt: true,
     expectedDeliveryDate: true,
     notes: true,
     createdAt: true,
     supplier: { select: { id: true, name: true } },
+    destinationDepartment: { select: { id: true, name: true } },
     items: {
         select: {
             id: true,
@@ -31,6 +32,7 @@ const purchaseOrderListSelect = {
     id: true,
     orderNumber: true,
     purchaseRequestId: true,
+    destinationDepartmentId: true,
     status: true,
     supplier: { select: { id: true, name: true } },
     createdAt: true,
@@ -103,6 +105,13 @@ export class PurchaseOrdersRepository {
         });
     }
 
+    findWarehouseDepartment() {
+        return this.prisma.department.findFirst({
+            where: { type: 'central_warehouse' },
+            select: { id: true },
+        });
+    }
+
     sumOrderedQuantityForRequestItem(purchaseRequestItemId: string) {
         return this.prisma.purchaseOrderItem.aggregate({
             where: { purchaseRequestItemId },
@@ -114,6 +123,7 @@ export class PurchaseOrdersRepository {
         orderNumber: string;
         purchaseRequestId: string;
         supplierId: string;
+        destinationDepartmentId: string;
         createdById: string;
         expectedDeliveryDate?: Date;
         items: {
@@ -128,6 +138,7 @@ export class PurchaseOrdersRepository {
                 orderNumber: data.orderNumber,
                 purchaseRequestId: data.purchaseRequestId,
                 supplierId: data.supplierId,
+                destinationDepartmentId: data.destinationDepartmentId,
                 createdById: data.createdById,
                 expectedDeliveryDate: data.expectedDeliveryDate,
                 items: { create: data.items },

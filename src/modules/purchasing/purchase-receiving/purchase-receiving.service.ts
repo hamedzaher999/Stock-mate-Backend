@@ -11,7 +11,7 @@ import { PaginatedResult } from '../../../core/interfaces/paginated-result.inter
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-
+import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
 const RECEIVABLE_ORDER_STATUSES = ['sent', 'partially_received'];
 
 @Injectable()
@@ -65,13 +65,6 @@ export class PurchaseReceivingService {
             );
         }
 
-        const warehouse =
-            await this.purchaseReceivingRepository.findWarehouseDepartment();
-        if (!warehouse)
-            throw new BadRequestException(
-                'No Central Warehouse department is configured -- cannot receive stock.',
-            );
-
         const lines = dto.items.map((inputItem) => {
             const orderItem = order.items.find(
                 (i) => i.id === inputItem.purchaseOrderItemId,
@@ -92,7 +85,6 @@ export class PurchaseReceivingService {
 
             return {
                 purchaseOrderItemId: orderItem.id,
-                purchaseRequestItemId: orderItem.purchaseRequestItemId,
                 variantId: orderItem.variantId,
                 expectedQuantity: remaining,
                 quantity: inputItem.quantity,
@@ -107,19 +99,97 @@ export class PurchaseReceivingService {
             };
         });
 
-        const receipt = await this.purchaseReceivingRepository.receive({
+        return this.purchaseReceivingRepository.recordReceipt({
             purchaseOrderId: order.id,
             purchaseRequestId: order.purchaseRequestId,
             supplierId: order.supplierId,
-            warehouseDepartmentId: warehouse.id,
             receivedById,
             receivingDate: new Date(dto.receivingDate),
             notes: dto.notes,
             lines,
         });
+    }
+
+    async confirm(
+        id: string,
+        dto: ConfirmPurchaseReceiptDto,
+        confirmedById: string,
+    ) {
+        const receipt = await this.findById(id);
+        if (receipt.status !== 'pending_confirmation') {
+            throw new ConflictException(
+                'This receipt has already been confirmed.',
+            );
+        }
+
+        const itemIds = new Set(receipt.items.map((i) => i.id));
+        const dtoItemIds = new Set(
+            dto.items.map((i) => i.purchaseReceiptItemId),
+        );
+        if (
+            itemIds.size !== dtoItemIds.size ||
+            ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
+        ) {
+            throw new BadRequestException(
+                'Confirmed quantities must be provided for exactly every item on this receipt.',
+            );
+        }
+
+        const order =
+            await this.purchaseReceivingRepository.findOrderDestination(
+                receipt.purchaseOrderId,
+            );
+        if (!order) {
+            throw new NotFoundException('Associated purchase order not found.');
+        }
+
+        const confirmations = dto.items.map((confirmedItem) => {
+            const receiptItem = receipt.items.find(
+                (i) => i.id === confirmedItem.purchaseReceiptItemId,
+            );
+            if (!receiptItem)
+                throw new BadRequestException(
+                    'One or more items do not belong to this receipt.',
+                );
+            if (
+                confirmedItem.confirmedQuantity > Number(receiptItem.quantity)
+            ) {
+                throw new BadRequestException(
+                    'Confirmed quantity cannot exceed the declared received quantity.',
+                );
+            }
+
+            return {
+                receiptItemId: receiptItem.id,
+                purchaseOrderItemId: receiptItem.purchaseOrderItemId,
+                purchaseRequestItemId:
+                    receiptItem.purchaseOrderItem.purchaseRequestItemId,
+                variantId: receiptItem.variantId,
+                supplierId: receiptItem.supplierId,
+                declaredQuantity: Number(receiptItem.quantity),
+                confirmedQuantity: confirmedItem.confirmedQuantity,
+                batchNumber: receiptItem.batchNumber,
+                manufacturingDate: receiptItem.manufacturingDate,
+                expirationDate: receiptItem.expirationDate,
+                purchasePrice: receiptItem.purchasePrice
+                    ? Number(receiptItem.purchasePrice)
+                    : null,
+            };
+        });
+
+        const result = await this.purchaseReceivingRepository.confirmReceipt({
+            receiptId: id,
+            purchaseOrderId: receipt.purchaseOrderId,
+            purchaseRequestId: receipt.purchaseRequestId,
+            warehouseDepartmentId: order.destinationDepartmentId,
+            receivingDate: receipt.receivingDate,
+            confirmedById,
+            notes: dto.notes,
+            confirmations,
+        });
 
         const updatedPr = await this.prisma.purchaseRequest.findUniqueOrThrow({
-            where: { id: order.purchaseRequestId },
+            where: { id: receipt.purchaseRequestId },
             select: {
                 id: true,
                 requestNumber: true,
@@ -136,6 +206,6 @@ export class PurchaseReceivingService {
             data: { purchaseRequestId: updatedPr.id, status: updatedPr.status },
         });
 
-        return receipt;
+        return result;
     }
 }

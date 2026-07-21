@@ -194,7 +194,12 @@ enum ScheduleApprovalPolicy {
   @@map("schedule_approval_policy")
 }
 
+enum PurchaseReceiptStatus {
+  pending_confirmation
+  confirmed
 
+  @@map("purchase_receipt_status")
+}
 
 enum NotificationCategory {
     inventory
