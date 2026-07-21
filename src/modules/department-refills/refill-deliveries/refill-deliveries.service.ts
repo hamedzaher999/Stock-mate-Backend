@@ -13,6 +13,7 @@ import { PaginatedResult } from '../../../core/interfaces/paginated-result.inter
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
 const SHIPPABLE_STATUSES = ['ready_for_delivery', 'partially_delivered'];
 
 @Injectable()
@@ -130,13 +131,22 @@ export class RefillDeliveriesService {
             });
         }
 
-        return this.refillDeliveriesRepository.createDelivery({
-            refillRequestId: dto.refillRequestId,
-            deliveredById,
-            warehouseDepartmentId: warehouse.id,
-            notes: dto.notes,
-            lines,
-        });
+        try {
+            return await this.refillDeliveriesRepository.createDelivery({
+                refillRequestId: dto.refillRequestId,
+                deliveredById,
+                warehouseDepartmentId: warehouse.id,
+                notes: dto.notes,
+                lines,
+            });
+        } catch (error) {
+            if (error instanceof InsufficientStockError) {
+                throw new BadRequestException(
+                    'Insufficient warehouse stock in one or more selected batches.',
+                );
+            }
+            throw error;
+        }
     }
 
     async confirm(

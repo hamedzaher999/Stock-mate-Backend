@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { Prisma } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
 const deliveryDetailSelect = {
     id: true,
     refillRequestId: true,
@@ -145,6 +146,15 @@ export class RefillDeliveriesRepository {
                 },
             });
 
+            const batchIds = [...new Set(params.lines.map((l) => l.batchId))];
+            const batches = await tx.batch.findMany({
+                where: { id: { in: batchIds } },
+                select: { id: true, variantId: true },
+            });
+            const variantIdByBatch = new Map(
+                batches.map((b) => [b.id, b.variantId]),
+            );
+
             for (const line of params.lines) {
                 await tx.departmentRefillDeliveryItem.create({
                     data: {
@@ -155,28 +165,32 @@ export class RefillDeliveriesRepository {
                     },
                 });
 
-                const updatedStock = await tx.batchStock.update({
-                    where: {
-                        batchId_departmentId: {
-                            batchId: line.batchId,
-                            departmentId: params.warehouseDepartmentId,
-                        },
-                    },
-                    data: { quantity: { decrement: line.shippedQuantity } },
-                });
+                const updated = await tx.$queryRaw<{ quantity: number }[]>`
+                UPDATE batch_stock
+                SET quantity = quantity - ${line.shippedQuantity}
+                WHERE batch_id = ${line.batchId}::uuid
+                  AND department_id = ${params.warehouseDepartmentId}::uuid
+                  AND quantity >= ${line.shippedQuantity}
+                RETURNING quantity::float AS "quantity"
+            `;
+                if (updated.length === 0) {
+                    throw new InsufficientStockError(line.shippedQuantity);
+                }
 
-                const batch = await tx.batch.findUniqueOrThrow({
-                    where: { id: line.batchId },
-                    select: { variantId: true },
-                });
+                const variantId = variantIdByBatch.get(line.batchId);
+                if (!variantId) {
+                    throw new BadRequestException(
+                        'Selected batch does not exist.',
+                    );
+                }
 
                 await this.inventoryLedger.record(tx, {
                     transactionType: 'department_transfer_out',
-                    variantId: batch.variantId,
+                    variantId,
                     batchId: line.batchId,
                     departmentId: params.warehouseDepartmentId,
                     quantity: -line.shippedQuantity,
-                    balanceAfter: Number(updatedStock.quantity),
+                    balanceAfter: updated[0].quantity,
                     referenceType: 'refill_request',
                     referenceId: params.refillRequestId,
                     performedById: params.deliveredById,
@@ -189,7 +203,6 @@ export class RefillDeliveriesRepository {
             });
         });
     }
-
     findDeliveryItemsForConfirm(deliveryId: string) {
         return this.prisma.departmentRefillDeliveryItem.findMany({
             where: { deliveryId },

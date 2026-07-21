@@ -3,9 +3,17 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { DispenseQueueRepository } from '../dispense-queue/dispense-queue.repository';
-import { allocateFefo } from '../../../common/utils/fefo.util';
 import { variantMinimalSelect } from '../../../common/selects/variant.select';
-
+import {
+    allocateFefo,
+    InsufficientStockError,
+} from '../../../common/utils/fefo.util';
+interface FefoCandidateRow {
+    batchId: string;
+    variantId: string;
+    quantity: number;
+    expirationDate: Date | null;
+}
 const dispenseDetailSelect = {
     id: true,
     prescriptionId: true,
@@ -131,24 +139,38 @@ export class DispensingRepository {
                 },
             });
 
-            for (const line of params.lines) {
-                const batchStocks = await tx.batchStock.findMany({
-                    where: {
-                        departmentId: params.departmentId,
-                        quantity: { gt: 0 },
-                        batch: { variantId: line.variantId },
-                    },
-                    select: {
-                        quantity: true,
-                        batch: { select: { id: true, expirationDate: true } },
-                    },
-                });
+            const variantIds = [
+                ...new Set(params.lines.map((l) => l.variantId)),
+            ];
 
+            const candidates = await tx.$queryRaw<FefoCandidateRow[]>`
+            SELECT
+                b.id AS "batchId",
+                b.variant_id AS "variantId",
+                bs.quantity::float AS "quantity",
+                b.expiration_date AS "expirationDate"
+            FROM batch_stock bs
+            JOIN batches b ON b.id = bs.batch_id
+            WHERE bs.department_id = ${params.departmentId}::uuid
+              AND b.variant_id = ANY(${variantIds}::uuid[])
+              AND bs.quantity > 0
+            FOR UPDATE OF bs
+        `;
+
+            const byVariant = new Map<string, FefoCandidateRow[]>();
+            for (const row of candidates) {
+                const list = byVariant.get(row.variantId) ?? [];
+                list.push(row);
+                byVariant.set(row.variantId, list);
+            }
+
+            for (const line of params.lines) {
+                const rows = byVariant.get(line.variantId) ?? [];
                 const allocations = allocateFefo(
-                    batchStocks.map((bs) => ({
-                        batchId: bs.batch.id,
-                        expirationDate: bs.batch.expirationDate,
-                        quantity: Number(bs.quantity),
+                    rows.map((r) => ({
+                        batchId: r.batchId,
+                        expirationDate: r.expirationDate,
+                        quantity: r.quantity,
                     })),
                     line.quantity,
                 );
@@ -164,15 +186,17 @@ export class DispensingRepository {
                         },
                     });
 
-                    const updatedStock = await tx.batchStock.update({
-                        where: {
-                            batchId_departmentId: {
-                                batchId: alloc.batchId,
-                                departmentId: params.departmentId,
-                            },
-                        },
-                        data: { quantity: { decrement: alloc.quantity } },
-                    });
+                    const updated = await tx.$queryRaw<{ quantity: number }[]>`
+                    UPDATE batch_stock
+                    SET quantity = quantity - ${alloc.quantity}
+                    WHERE batch_id = ${alloc.batchId}::uuid
+                      AND department_id = ${params.departmentId}::uuid
+                      AND quantity >= ${alloc.quantity}
+                    RETURNING quantity::float AS "quantity"
+                `;
+                    if (updated.length === 0) {
+                        throw new InsufficientStockError(alloc.quantity);
+                    }
 
                     await this.inventoryLedger.record(tx, {
                         transactionType: 'prescription_dispense',
@@ -180,7 +204,7 @@ export class DispensingRepository {
                         batchId: alloc.batchId,
                         departmentId: params.departmentId,
                         quantity: -alloc.quantity,
-                        balanceAfter: Number(updatedStock.quantity),
+                        balanceAfter: updated[0].quantity,
                         referenceType: 'prescription_dispense',
                         referenceId: dispense.id,
                         performedById: params.dispensedById,

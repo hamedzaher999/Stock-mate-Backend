@@ -3,6 +3,7 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../transactions/inventory-ledger.service';
 import { Prisma, AdjustmentType, TransactionType } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
 const adjustmentSelect = {
     id: true,
     variantId: true,
@@ -142,20 +143,33 @@ export class AdjustmentsRepository {
                 params.adjustmentType,
             );
 
-            const updatedStock = await tx.batchStock.update({
-                where: {
-                    batchId_departmentId: {
-                        batchId: params.batchId,
-                        departmentId: params.departmentId,
+            let balanceAfter: number;
+
+            if (isIncreasing) {
+                const updatedStock = await tx.batchStock.update({
+                    where: {
+                        batchId_departmentId: {
+                            batchId: params.batchId,
+                            departmentId: params.departmentId,
+                        },
                     },
-                },
-                data: {
-                    quantity: isIncreasing
-                        ? { increment: params.quantity }
-                        : { decrement: params.quantity },
-                },
-            });
-            const balanceAfter = Number(updatedStock.quantity);
+                    data: { quantity: { increment: params.quantity } },
+                });
+                balanceAfter = Number(updatedStock.quantity);
+            } else {
+                const updated = await tx.$queryRaw<{ quantity: number }[]>`
+                UPDATE batch_stock
+                SET quantity = quantity - ${params.quantity}
+                WHERE batch_id = ${params.batchId}::uuid
+                  AND department_id = ${params.departmentId}::uuid
+                  AND quantity >= ${params.quantity}
+                RETURNING quantity::float AS "quantity"
+            `;
+                if (updated.length === 0) {
+                    throw new InsufficientStockError(params.quantity);
+                }
+                balanceAfter = updated[0].quantity;
+            }
 
             await this.inventoryLedger.record(tx, {
                 transactionType:

@@ -8,6 +8,7 @@ import { CreateAdjustmentDto } from './dto/create-adjustment.dto';
 import { ListAdjustmentsDto } from './dto/list-adjustments.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 const INCREASING_ADJUSTMENT_TYPES = ['found'];
 const FIXED_ASSET_ALLOWED_TYPES = ['damaged', 'shrinkage'];
@@ -112,11 +113,19 @@ export class AdjustmentsService {
                 );
             }
         }
-
-        return this.adjustmentsRepository.createAdjustment({
-            ...dto,
-            reportedById,
-        });
+        try {
+            return await this.adjustmentsRepository.createAdjustment({
+                ...dto,
+                reportedById,
+            });
+        } catch (error) {
+            if (error instanceof InsufficientStockError) {
+                throw new BadRequestException(
+                    'Insufficient stock in this batch at this department for the requested adjustment.',
+                );
+            }
+            throw error;
+        }
     }
 
     private async resolveDepartmentScope(

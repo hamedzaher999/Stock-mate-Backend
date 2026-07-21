@@ -39,11 +39,7 @@ export class DepartmentInventoryService {
             );
         }
 
-        const total =
-            await this.departmentInventoryRepository.countDistinctVariants(
-                departmentId,
-            );
-        const items =
+        const { items, total } =
             await this.departmentInventoryRepository.findLiveStockPage(
                 departmentId,
                 (page - 1) * limit,
