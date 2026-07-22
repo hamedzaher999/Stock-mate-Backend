@@ -28,6 +28,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { StorageModule } from './core/storage/storage.module';
+import { FirebaseAdminModule } from './core/firebase/firebase-admin.module';
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true, validationSchema }),
@@ -39,6 +40,7 @@ import { StorageModule } from './core/storage/storage.module';
                 limit: 30,
             },
         ]),
+        FirebaseAdminModule,
         NotificationsModule,
         CacheModule,
         PrismaModule,

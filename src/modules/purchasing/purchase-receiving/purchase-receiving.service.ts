@@ -20,9 +20,7 @@ import {
     STORAGE_SERVICE,
     type IStorageService,
 } from '../../../core/storage/storage.interface';
-
 const RECEIVABLE_ORDER_STATUSES = ['sent', 'partially_received'];
-const IMAGE_URL_TTL_SECONDS = 300;
 
 @Injectable()
 export class PurchaseReceivingService {
@@ -64,21 +62,12 @@ export class PurchaseReceivingService {
         return receipt;
     }
 
-    /**
-     * Returns a short-lived, signed URL for viewing this receipt's image.
-     * Nothing about the underlying Cloudinary asset is ever exposed directly --
-     * every request re-checks permissions (via the controller's guard) and
-     * mints a fresh, time-boxed link.
-     */
     async getImageUrl(id: string) {
-        const receipt =
-            await this.purchaseReceivingRepository.findImagePublicId(id);
+        const receipt = await this.purchaseReceivingRepository.findImageKey(id);
         if (!receipt)
             throw new NotFoundException('Purchase receipt not found.');
 
-        return this.storageService.getSignedUrl(receipt.receiptImagePublicId, {
-            expiresInSeconds: IMAGE_URL_TTL_SECONDS,
-        });
+        return this.storageService.getSignedUrl(receipt.receiptImageKey);
     }
 
     async parseCreateDto(
@@ -172,7 +161,10 @@ export class PurchaseReceivingService {
 
         const uploaded = await this.storageService.uploadImage(
             receiptImage.buffer,
-            { folder: `purchase-receipts/${order.purchaseRequestId}` },
+            {
+                folder: `purchase-receipts/${order.purchaseRequestId}`,
+                contentType: receiptImage.mimetype,
+            },
         );
 
         try {
@@ -184,10 +176,10 @@ export class PurchaseReceivingService {
                 receivingDate: new Date(dto.receivingDate),
                 notes: dto.notes,
                 lines,
-                receiptImagePublicId: uploaded.publicId,
+                receiptImageKey: uploaded.key,
             });
         } catch (error) {
-            await this.storageService.deleteImage(uploaded.publicId);
+            await this.storageService.deleteImage(uploaded.key);
             throw error;
         }
     }

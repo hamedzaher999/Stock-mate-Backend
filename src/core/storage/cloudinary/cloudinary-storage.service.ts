@@ -9,18 +9,18 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import {
     IStorageService,
-    SignedUrlOptions,
     SignedUrlResult,
     UploadedImage,
     UploadImageOptions,
 } from '../storage.interface';
 
-const DEFAULT_EXPIRY_SECONDS = 300;
+const TOKEN_AUTH_DURATION_SECONDS = 300;
+const PLAIN_SIGNED_RECOMMENDED_REFETCH_SECONDS = 300;
 
 @Injectable()
 export class CloudinaryStorageService implements IStorageService, OnModuleInit {
     private readonly logger = new Logger(CloudinaryStorageService.name);
-    private authTokenKey!: string;
+    private authTokenKey: string | undefined;
 
     constructor(private readonly configService: ConfigService) {}
 
@@ -32,9 +32,16 @@ export class CloudinaryStorageService implements IStorageService, OnModuleInit {
             secure: true,
         });
 
-        this.authTokenKey = this.configService.get<string>(
+        const configuredKey = this.configService.get<string>(
             'CLOUDINARY_AUTH_TOKEN_KEY',
-        ) as string;
+        );
+        this.authTokenKey = configuredKey?.trim() ? configuredKey : undefined;
+
+        this.logger.log(
+            this.authTokenKey
+                ? 'Cloudinary token-based authentication is ENABLED -- image URLs will have real, enforced expiry.'
+                : 'Cloudinary token-based authentication is not configured -- falling back to plain signed URLs (advisory expiry only). Set CLOUDINARY_AUTH_TOKEN_KEY once subscribed to enable real expiry.',
+        );
     }
 
     uploadImage(
@@ -45,7 +52,6 @@ export class CloudinaryStorageService implements IStorageService, OnModuleInit {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
                     folder: options?.folder ?? 'red-crescent',
-                    public_id: options?.publicId,
                     resource_type: 'image',
                     type: 'authenticated',
                     overwrite: false,
@@ -63,7 +69,7 @@ export class CloudinaryStorageService implements IStorageService, OnModuleInit {
                         );
                         return;
                     }
-                    resolve({ publicId: result.public_id });
+                    resolve({ key: result.public_id });
                 },
             );
 
@@ -71,41 +77,60 @@ export class CloudinaryStorageService implements IStorageService, OnModuleInit {
         });
     }
 
-    async deleteImage(publicId: string): Promise<void> {
+    async deleteImage(key: string): Promise<void> {
         try {
-            await cloudinary.uploader.destroy(publicId, {
+            await cloudinary.uploader.destroy(key, {
                 resource_type: 'image',
                 type: 'authenticated',
             });
         } catch (error) {
             this.logger.warn(
-                `Failed to delete Cloudinary image "${publicId}".`,
+                `Failed to delete Cloudinary image "${key}".`,
                 error as Error,
             );
         }
     }
 
-    getSignedUrl(
-        publicId: string,
-        options?: SignedUrlOptions,
-    ): SignedUrlResult {
-        const expiresInSeconds =
-            options?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS;
+    getSignedUrl(key: string): SignedUrlResult {
+        if (this.authTokenKey) {
+            return this.getTokenAuthenticatedUrl(key);
+        }
+        return this.getPlainSignedUrl(key);
+    }
 
-        const url = cloudinary.url(publicId, {
+    private getTokenAuthenticatedUrl(key: string): SignedUrlResult {
+        const url = cloudinary.url(key, {
             resource_type: 'image',
             type: 'authenticated',
             secure: true,
             sign_url: true,
             auth_token: {
                 key: this.authTokenKey,
-                duration: expiresInSeconds,
+                duration: TOKEN_AUTH_DURATION_SECONDS,
             },
         });
 
         return {
             url,
-            expiresAt: new Date(Date.now() + expiresInSeconds * 1000),
+            expiresAt: new Date(
+                Date.now() + TOKEN_AUTH_DURATION_SECONDS * 1000,
+            ),
+        };
+    }
+
+    private getPlainSignedUrl(key: string): SignedUrlResult {
+        const url = cloudinary.url(key, {
+            resource_type: 'image',
+            type: 'authenticated',
+            secure: true,
+            sign_url: true,
+        });
+
+        return {
+            url,
+            expiresAt: new Date(
+                Date.now() + PLAIN_SIGNED_RECOMMENDED_REFETCH_SECONDS * 1000,
+            ),
         };
     }
 }

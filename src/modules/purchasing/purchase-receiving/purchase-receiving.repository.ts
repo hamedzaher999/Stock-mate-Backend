@@ -87,14 +87,10 @@ export class PurchaseReceivingRepository {
         });
     }
 
-    /**
-     * Internal-only lookup used to generate a signed image URL.
-     * Never expose receiptImagePublicId through a public select.
-     */
-    findImagePublicId(id: string) {
+    findImageKey(id: string) {
         return this.prisma.purchaseReceipt.findUnique({
             where: { id },
-            select: { id: true, receiptImagePublicId: true },
+            select: { id: true, receiptImageKey: true },
         });
     }
 
@@ -133,7 +129,7 @@ export class PurchaseReceivingRepository {
         receivedById: string;
         receivingDate: Date;
         notes?: string;
-        receiptImagePublicId: string;
+        receiptImageKey: string;
         lines: {
             purchaseOrderItemId: string;
             variantId: string;
@@ -153,7 +149,7 @@ export class PurchaseReceivingRepository {
                 receivingDate: params.receivingDate,
                 notes: params.notes,
                 status: 'pending_confirmation',
-                receiptImagePublicId: params.receiptImagePublicId,
+                receiptImageKey: params.receiptImageKey,
                 items: {
                     create: params.lines.map((line) => ({
                         purchaseOrderItemId: line.purchaseOrderItemId,

@@ -1,15 +1,10 @@
 export interface UploadedImage {
-    publicId: string;
+    key: string;
 }
 
 export interface UploadImageOptions {
     folder?: string;
-    publicId?: string;
-}
-
-export interface SignedUrlOptions {
-    /** How long the generated URL should remain valid for. Default: 300 (5 minutes). */
-    expiresInSeconds?: number;
+    contentType?: string;
 }
 
 export interface SignedUrlResult {
@@ -22,8 +17,8 @@ export interface IStorageService {
         file: Buffer,
         options?: UploadImageOptions,
     ): Promise<UploadedImage>;
-    deleteImage(publicId: string): Promise<void>;
-    getSignedUrl(publicId: string, options?: SignedUrlOptions): SignedUrlResult;
+    deleteImage(key: string): Promise<void>;
+    getSignedUrl(key: string): Promise<SignedUrlResult> | SignedUrlResult;
 }
 
 export const STORAGE_SERVICE = Symbol('STORAGE_SERVICE');
