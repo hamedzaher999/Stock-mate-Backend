@@ -9,12 +9,14 @@ import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ListPurchaseOrdersDto } from './dto/list-purchase-orders.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 const ORDERABLE_PR_STATUSES = ['approved', 'ready_for_receiving'];
 
 @Injectable()
 export class PurchaseOrdersService {
     constructor(
         private readonly purchaseOrdersRepository: PurchaseOrdersRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
     ) {}
 
     async list(dto: ListPurchaseOrdersDto): Promise<PaginatedResult<unknown>> {
@@ -67,7 +69,7 @@ export class PurchaseOrdersService {
             );
 
         const warehouse =
-            await this.purchaseOrdersRepository.findWarehouseDepartment();
+            await this.departmentsCacheService.getByType('central_warehouse');
         if (!warehouse) {
             throw new BadRequestException(
                 'No Central Warehouse department is configured -- cannot create a purchase order.',

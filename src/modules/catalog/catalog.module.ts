@@ -11,7 +11,7 @@ import { ProductsRepository } from './products/products.repository';
 import { VariantsController } from './variants/variants.controller';
 import { VariantsService } from './variants/variants.service';
 import { VariantsRepository } from './variants/variants.repository';
-
+import { CatalogCacheService } from './catalog-cache.service';
 @Module({
     controllers: [
         UnitsController,
@@ -28,6 +28,7 @@ import { VariantsRepository } from './variants/variants.repository';
         ProductsRepository,
         VariantsService,
         VariantsRepository,
+        CatalogCacheService,
     ],
     exports: [VariantsRepository, ProductsRepository],
 })

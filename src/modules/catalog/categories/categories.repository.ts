@@ -5,19 +5,6 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 export class CategoriesRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    findAll() {
-        return this.prisma.category.findMany({
-            include: { parentCategory: { select: { id: true, name: true } } },
-            orderBy: { name: 'asc' },
-        });
-    }
-
-    findById(id: string) {
-        return this.prisma.category.findUnique({
-            where: { id },
-            include: { parentCategory: { select: { id: true, name: true } } },
-        });
-    }
     findSiblingByName(name: string, parentCategoryId: string | null) {
         return this.prisma.category.findFirst({
             where: { name, parentCategoryId },

@@ -5,14 +5,6 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 export class UnitsRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    findAll() {
-        return this.prisma.unit.findMany({ orderBy: { name: 'asc' } });
-    }
-
-    findById(id: string) {
-        return this.prisma.unit.findUnique({ where: { id } });
-    }
-
     findByName(name: string) {
         return this.prisma.unit.findFirst({ where: { name } });
     }

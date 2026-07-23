@@ -8,11 +8,15 @@ import { DispensePrescriptionDto } from './dto/dispense-prescription.dto';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DispensingRepository, CycleResolution } from './dispensing.repository';
 import { computeCycleEnd } from '../../../common/utils/recurrence.util';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 const CLOSED_CYCLE_STATUSES = ['delivered', 'missed', 'cancelled'];
 
 @Injectable()
 export class DispensingService {
-    constructor(private readonly dispensingRepository: DispensingRepository) {}
+    constructor(
+        private readonly dispensingRepository: DispensingRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
+    ) {}
 
     async dispense(dto: DispensePrescriptionDto, dispensedById: string) {
         const prescription =
@@ -33,7 +37,7 @@ export class DispensingService {
         }
 
         const pharmacy =
-            await this.dispensingRepository.findPharmacyDepartment();
+            await this.departmentsCacheService.getByType('pharmacy');
         if (!pharmacy) {
             throw new BadRequestException(
                 'No Pharmacy department is configured -- cannot dispense.',

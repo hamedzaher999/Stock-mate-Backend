@@ -4,9 +4,10 @@ import { DepartmentQueueService } from './department-queue.service';
 import { DepartmentQueueRepository } from './department-queue.repository';
 import { RbacModule } from '../rbac/rbac.module';
 import { QueueWaitSchedulerService } from './queue-wait-scheduler.service';
+import { DepartmentsModule } from '../departments/departments.module';
 
 @Module({
-    imports: [RbacModule],
+    imports: [RbacModule, DepartmentsModule],
     controllers: [DepartmentQueueController],
     providers: [
         DepartmentQueueService,

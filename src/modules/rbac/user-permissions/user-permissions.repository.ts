@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { PermissionEffect } from '@prisma/client';
-
 @Injectable()
 export class UserPermissionsRepository {
     constructor(private readonly prisma: PrismaService) {}
@@ -45,14 +44,49 @@ export class UserPermissionsRepository {
             where: { userId_permissionId: { userId, permissionId } },
         });
     }
+
+    // Same as delete(), but safe to call when no row exists -- used by the
+    // group/override logic where "no override needed" is a valid outcome.
+    removeIfExists(userId: string, permissionId: string) {
+        return this.prisma.userPermission.deleteMany({
+            where: { userId, permissionId },
+        });
+    }
+
     deleteAllForUser(userId: string) {
         return this.prisma.userPermission.deleteMany({ where: { userId } });
+    }
+
+    createManyRevoked(
+        userId: string,
+        permissionIds: string[],
+        grantedById: string,
+        reason?: string,
+    ) {
+        return this.prisma.userPermission.createMany({
+            data: permissionIds.map((permissionId) => ({
+                userId,
+                permissionId,
+                effect: 'revoke',
+                grantedById,
+                reason,
+            })),
+        });
     }
 
     findUserRole(userId: string) {
         return this.prisma.user.findUnique({
             where: { id: userId },
-            select: { role: { select: { name: true } } },
+            select: { role: { select: { id: true, name: true } } },
         });
+    }
+
+    findRolePermissionCodes(roleId: string): Promise<string[]> {
+        return this.prisma.rolePermission
+            .findMany({
+                where: { roleId },
+                select: { permission: { select: { code: true } } },
+            })
+            .then((rows) => rows.map((r) => r.permission.code));
     }
 }

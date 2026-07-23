@@ -17,6 +17,8 @@ import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.cons
 import { HospitalApproveRefillRequestDto } from './dto/hospital-approve-refill-request.dto';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { UserScopeService } from '../../rbac/user-scope.service';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'warehouse_manager'];
 const CANCELLABLE_STATUSES = [
     'draft',
@@ -30,6 +32,8 @@ export class RefillRequestsService {
     constructor(
         private readonly refillRequestsRepository: RefillRequestsRepository,
         private readonly notificationsService: NotificationsService,
+        private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(
@@ -94,21 +98,28 @@ export class RefillRequestsService {
             );
         }
 
-        const requesterContext =
-            await this.refillRequestsRepository.findRequestingUserContext(
-                requestedById,
-            );
-        if (!requesterContext?.departmentId || !requesterContext.department) {
+        const requesterScope =
+            await this.userScopeService.getUserScope(requestedById);
+        if (!requesterScope?.departmentId) {
             throw new BadRequestException(
                 'You must be assigned to a department to create a refill request.',
             );
         }
-        if (requesterContext.department.type === 'central_warehouse') {
+
+        const department = await this.departmentsCacheService.getById(
+            requesterScope.departmentId,
+        );
+        if (!department) {
+            throw new BadRequestException(
+                'You must be assigned to a department to create a refill request.',
+            );
+        }
+        if (department.type === 'central_warehouse') {
             throw new BadRequestException(
                 'The Central Warehouse does not submit refill requests -- it fulfills them.',
             );
         }
-        if (!requesterContext.department.isActive) {
+        if (!department.isActive) {
             throw new BadRequestException(
                 'Your department is currently inactive.',
             );
@@ -116,7 +127,7 @@ export class RefillRequestsService {
 
         return this.refillRequestsRepository.create({
             requestNumber: generateRequestNumber('DRF'),
-            departmentId: requesterContext.departmentId,
+            departmentId: requesterScope.departmentId,
             requestedById,
             priority: dto.priority ?? 'normal',
             requestType,
@@ -305,18 +316,18 @@ export class RefillRequestsService {
         await this.notifyStatusChange(updated);
         return updated;
     }
+
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
-        const user =
-            await this.refillRequestsRepository.findRequestingUserContext(
-                requestingUserId,
-            );
-        if (!user) throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
-        return user.departmentId;
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
     }
+
     async getItem(
         refillRequestId: string,
         itemId: string,

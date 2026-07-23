@@ -14,6 +14,8 @@ import { PrismaService } from '../../../core/prisma/prisma.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { UserScopeService } from '../../rbac/user-scope.service';
 const SHIPPABLE_STATUSES = ['ready_for_delivery', 'partially_delivered'];
 
 @Injectable()
@@ -22,6 +24,8 @@ export class RefillDeliveriesService {
         private readonly refillDeliveriesRepository: RefillDeliveriesRepository,
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
+        private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(dto: ListDeliveriesDto): Promise<PaginatedResult<unknown>> {
@@ -65,7 +69,7 @@ export class RefillDeliveriesService {
         }
 
         const warehouse =
-            await this.refillDeliveriesRepository.findWarehouseDepartment();
+            await this.departmentsCacheService.getByType('central_warehouse');
         if (!warehouse)
             throw new BadRequestException(
                 'No Central Warehouse department is configured.',
@@ -259,16 +263,14 @@ export class RefillDeliveriesService {
         requestingUserId: string,
         targetDepartmentId: string,
     ) {
-        const user = await this.prisma.user.findUnique({
-            where: { id: requestingUserId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-        if (!user) throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
         const unrestrictedRoles = ['hospital_manager', 'warehouse_manager'];
-        if (unrestrictedRoles.includes(user.role.name)) return;
+        if (unrestrictedRoles.includes(scope.roleName)) return;
 
-        if (user.departmentId !== targetDepartmentId) {
+        if (scope.departmentId !== targetDepartmentId) {
             throw new ForbiddenException(
                 'You can only confirm deliveries for your own department.',
             );

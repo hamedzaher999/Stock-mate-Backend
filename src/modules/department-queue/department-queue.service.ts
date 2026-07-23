@@ -14,7 +14,8 @@ import { ListQueueDto } from './dto/list-queue.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
-
+import { UserScopeService } from '../rbac/user-scope.service';
+import { DepartmentsCacheService } from '../departments/departments-cache.service';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'reception_staff'];
 const QUEUEABLE_DEPARTMENT_TYPE = 'standard';
 
@@ -23,6 +24,8 @@ export class DepartmentQueueService {
     constructor(
         private readonly departmentQueueRepository: DepartmentQueueRepository,
         private readonly permissionsResolver: PermissionsResolverService,
+        private readonly userScopeService: UserScopeService,
+        private readonly departmentsCacheService: DepartmentsCacheService,
     ) {}
 
     async list(
@@ -82,10 +85,9 @@ export class DepartmentQueueService {
             );
         }
 
-        const department =
-            await this.departmentQueueRepository.findDepartmentType(
-                dto.departmentId,
-            );
+        const department = await this.departmentsCacheService.getById(
+            dto.departmentId,
+        );
         if (!department)
             throw new BadRequestException('Department does not exist.');
         if (!department.isActive)
@@ -132,13 +134,10 @@ export class DepartmentQueueService {
             );
         }
 
-        const requesterContext =
-            await this.departmentQueueRepository.findRequestingUserContext(
-                doctorId,
-            );
+        const scope = await this.userScopeService.getUserScope(doctorId);
         if (
-            requesterContext?.role.name !== HOSPITAL_MANAGER_ROLE_NAME &&
-            requesterContext?.departmentId !== entry.departmentId
+            scope?.roleName !== HOSPITAL_MANAGER_ROLE_NAME &&
+            scope?.departmentId !== entry.departmentId
         ) {
             throw new ForbiddenException(
                 'You can only lock patients in your own department.',
@@ -204,14 +203,12 @@ export class DepartmentQueueService {
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
-        const user =
-            await this.departmentQueueRepository.findRequestingUserContext(
-                requestingUserId,
-            );
-        if (!user) throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
-        return user.departmentId;
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
     }
 
     private async assertDepartmentScope(

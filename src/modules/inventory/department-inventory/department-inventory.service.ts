@@ -6,12 +6,16 @@ import {
 import { DepartmentInventoryRepository } from './department-inventory.repository';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { UserScopeService } from '../../rbac/user-scope.service';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class DepartmentInventoryService {
     constructor(
         private readonly departmentInventoryRepository: DepartmentInventoryRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async getLiveStock(
@@ -21,9 +25,7 @@ export class DepartmentInventoryService {
         limit = 20,
     ): Promise<PaginatedResult<unknown>> {
         const department =
-            await this.departmentInventoryRepository.findDepartmentType(
-                departmentId,
-            );
+            await this.departmentsCacheService.getById(departmentId);
         if (!department)
             throw new BadRequestException('Department does not exist.');
         if (!department.tracksInventory) {
@@ -54,17 +56,14 @@ export class DepartmentInventoryService {
             totalPages: Math.ceil(total / limit),
         };
     }
-
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
-        const user =
-            await this.departmentInventoryRepository.findRequestingUserContext(
-                requestingUserId,
-            );
-        if (!user) throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
-        return user.departmentId;
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
     }
 }

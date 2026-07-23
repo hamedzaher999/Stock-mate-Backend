@@ -7,17 +7,21 @@ import {
 import { CategoriesRepository } from './categories.repository';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CatalogCacheService } from '../catalog-cache.service';
 
 @Injectable()
 export class CategoriesService {
-    constructor(private readonly categoriesRepository: CategoriesRepository) {}
-
+    constructor(
+        private readonly categoriesRepository: CategoriesRepository,
+        private readonly catalogCacheService: CatalogCacheService,
+    ) {}
     findAll() {
-        return this.categoriesRepository.findAll();
+        return this.catalogCacheService.getCategories();
     }
 
     async findById(id: string) {
-        const category = await this.categoriesRepository.findById(id);
+        const categories = await this.catalogCacheService.getCategories();
+        const category = categories.find((c) => c.id === id);
         if (!category) throw new NotFoundException('Category not found.');
         return category;
     }
@@ -42,7 +46,9 @@ export class CategoriesService {
             );
         }
 
-        return this.categoriesRepository.create(dto);
+        const created = await this.categoriesRepository.create(dto);
+        await this.catalogCacheService.invalidateCategories();
+        return created;
     }
 
     async update(id: string, dto: UpdateCategoryDto) {
@@ -74,7 +80,9 @@ export class CategoriesService {
             }
         }
 
-        return this.categoriesRepository.update(id, dto);
+        const updated = await this.categoriesRepository.update(id, dto);
+        await this.catalogCacheService.invalidateCategories();
+        return updated;
     }
 
     async delete(id: string) {
@@ -94,6 +102,7 @@ export class CategoriesService {
                 'Cannot delete a category that has subcategories.',
             );
 
-        return this.categoriesRepository.delete(id);
+        await this.categoriesRepository.delete(id);
+        await this.catalogCacheService.invalidateCategories();
     }
 }

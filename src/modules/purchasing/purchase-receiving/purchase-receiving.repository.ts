@@ -321,4 +321,70 @@ export class PurchaseReceivingRepository {
             });
         });
     }
+    findOrderItemsByIds(ids: string[]) {
+        return this.prisma.purchaseOrderItem.findMany({
+            where: { id: { in: ids } },
+            select: { id: true, orderedQuantity: true, receivedQuantity: true },
+        });
+    }
+
+    async replaceItems(
+        id: string,
+        data: {
+            supplierId: string;
+            receivingDate?: Date;
+            notes?: string;
+            items?: {
+                purchaseOrderItemId: string;
+                variantId: string;
+                expectedQuantity: number;
+                quantity: number;
+                batchNumber: string;
+                manufacturingDate?: Date;
+                expirationDate?: Date;
+                purchasePrice?: number;
+            }[];
+        },
+    ) {
+        return this.prisma.$transaction(async (tx) => {
+            if (data.items) {
+                await tx.purchaseReceiptItem.deleteMany({
+                    where: { purchaseReceiptId: id },
+                });
+                await tx.purchaseReceiptItem.createMany({
+                    data: data.items.map((item) => ({
+                        purchaseReceiptId: id,
+                        purchaseOrderItemId: item.purchaseOrderItemId,
+                        variantId: item.variantId,
+                        supplierId: data.supplierId,
+                        expectedQuantity: item.expectedQuantity,
+                        quantity: item.quantity,
+                        quantityDiscrepancy:
+                            item.expectedQuantity - item.quantity,
+                        batchNumber: item.batchNumber,
+                        manufacturingDate: item.manufacturingDate,
+                        expirationDate: item.expirationDate,
+                        purchasePrice: item.purchasePrice,
+                    })),
+                });
+            }
+
+            return tx.purchaseReceipt.update({
+                where: { id },
+                data: {
+                    receivingDate: data.receivingDate,
+                    notes: data.notes,
+                },
+                select: purchaseReceiptDetailSelect,
+            });
+        });
+    }
+
+    cancel(id: string) {
+        return this.prisma.purchaseReceipt.update({
+            where: { id },
+            data: { status: 'cancelled' },
+            select: purchaseReceiptDetailSelect,
+        });
+    }
 }

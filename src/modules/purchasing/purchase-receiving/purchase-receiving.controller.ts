@@ -6,6 +6,7 @@ import {
     HttpStatus,
     Param,
     ParseFilePipeBuilder,
+    Patch,
     Post,
     Query,
     UploadedFile,
@@ -21,6 +22,7 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
+import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
 @Controller('purchasing/receipts')
 export class PurchaseReceivingController {
     constructor(
@@ -104,5 +106,21 @@ export class PurchaseReceivingController {
             message: 'Purchase receipt confirmed and warehouse stock updated.',
             data,
         };
+    }
+    @Patch(':id')
+    @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
+    async update(
+        @Param('id') id: string,
+        @Body() dto: UpdatePurchaseReceiptDto,
+    ) {
+        const data = await this.purchaseReceivingService.update(id, dto);
+        return { message: 'Purchase receipt updated.', data };
+    }
+
+    @Post(':id/cancel')
+    @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
+    async cancel(@Param('id') id: string) {
+        const data = await this.purchaseReceivingService.cancel(id);
+        return { message: 'Purchase receipt cancelled.', data };
     }
 }

@@ -10,12 +10,13 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
-
+import { PermissionsResolverService } from '../permissions-resolver.service';
 @Injectable()
 export class RolesService {
     constructor(
         private readonly rolesRepository: RolesRepository,
         private readonly permissionsRepository: PermissionsRepository,
+        private readonly permissionsResolver: PermissionsResolverService,
     ) {}
 
     findAll() {
@@ -43,7 +44,9 @@ export class RolesService {
 
     async update(id: string, dto: UpdateRoleDto) {
         await this.findById(id);
-        return this.rolesRepository.update(id, dto);
+        const updated = await this.rolesRepository.update(id, dto);
+        await this.invalidatePermissionsForRole(id);
+        return updated;
     }
 
     async delete(id: string) {
@@ -84,6 +87,14 @@ export class RolesService {
             roleId,
             permissions.map((p) => p.id),
         );
+        await this.invalidatePermissionsForRole(roleId);
         return this.findById(roleId);
+    }
+
+    private async invalidatePermissionsForRole(roleId: string) {
+        const users = await this.rolesRepository.findUserIdsByRole(roleId);
+        await Promise.all(
+            users.map((u) => this.permissionsResolver.invalidate(u.id)),
+        );
     }
 }

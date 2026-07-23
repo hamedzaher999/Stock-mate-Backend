@@ -71,20 +71,6 @@ export class StockSettingsRepository {
         });
     }
 
-    departmentExists(id: string) {
-        return this.prisma.department.findUnique({
-            where: { id },
-            select: { id: true, type: true, isActive: true },
-        });
-    }
-
-    findRequestingUser(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
     create(data: {
         variantId: string;
         departmentId: string;

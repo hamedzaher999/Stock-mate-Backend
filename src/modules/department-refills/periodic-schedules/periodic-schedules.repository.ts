@@ -64,13 +64,6 @@ export class PeriodicSchedulesRepository {
         });
     }
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
     cancel(params: { id: string; reason: string; cancelledById: string }) {
         return this.prisma.periodicRefillSchedule.update({
             where: { id: params.id },

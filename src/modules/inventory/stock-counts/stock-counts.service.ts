@@ -12,12 +12,16 @@ import { UpdateStockCountItemDto } from './dto/update-item.dto';
 import { ListStockCountSessionsDto } from './dto/list-sessions.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { UserScopeService } from '../../rbac/user-scope.service';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class StockCountsService {
     constructor(
         private readonly stockCountsRepository: StockCountsRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(
@@ -66,7 +70,7 @@ export class StockCountsService {
     }
 
     async create(dto: CreateStockCountSessionDto, initiatedById: string) {
-        const department = await this.stockCountsRepository.findDepartmentType(
+        const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
         if (!department)
@@ -178,14 +182,12 @@ export class StockCountsService {
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
-        const user =
-            await this.stockCountsRepository.findRequestingUserContext(
-                requestingUserId,
-            );
-        if (!user) throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
-        return user.departmentId;
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
     }
 
     private async assertDepartmentScope(

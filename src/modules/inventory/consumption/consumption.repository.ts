@@ -20,18 +20,6 @@ export class ConsumptionRepository {
         private readonly inventoryLedger: InventoryLedgerService,
     ) {}
 
-    findDepartmentType(id: string) {
-        return this.prisma.department.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                type: true,
-                isActive: true,
-                tracksInventory: true,
-            },
-        });
-    }
-
     findVariantMaterialType(id: string) {
         return this.prisma.productVariant.findUnique({
             where: { id },

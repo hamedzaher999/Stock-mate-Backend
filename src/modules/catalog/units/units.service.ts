@@ -7,17 +7,21 @@ import {
 import { UnitsRepository } from './units.repository';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
+import { CatalogCacheService } from '../catalog-cache.service';
 
 @Injectable()
 export class UnitsService {
-    constructor(private readonly unitsRepository: UnitsRepository) {}
-
+    constructor(
+        private readonly unitsRepository: UnitsRepository,
+        private readonly catalogCacheService: CatalogCacheService,
+    ) {}
     findAll() {
-        return this.unitsRepository.findAll();
+        return this.catalogCacheService.getUnits();
     }
 
     async findById(id: string) {
-        const unit = await this.unitsRepository.findById(id);
+        const units = await this.catalogCacheService.getUnits();
+        const unit = units.find((u) => u.id === id);
         if (!unit) throw new NotFoundException('Unit not found.');
         return unit;
     }
@@ -28,7 +32,9 @@ export class UnitsService {
             throw new ConflictException(
                 'A unit with this name already exists.',
             );
-        return this.unitsRepository.create(dto);
+        const created = await this.unitsRepository.create(dto);
+        await this.catalogCacheService.invalidateUnits();
+        return created;
     }
 
     async update(id: string, dto: UpdateUnitDto) {
@@ -43,7 +49,9 @@ export class UnitsService {
             }
         }
 
-        return this.unitsRepository.update(id, dto);
+        const updated = await this.unitsRepository.update(id, dto);
+        await this.catalogCacheService.invalidateUnits();
+        return updated;
     }
 
     async delete(id: string) {
@@ -53,6 +61,7 @@ export class UnitsService {
             throw new BadRequestException(
                 'Cannot delete a unit that is in use by product variants.',
             );
-        return this.unitsRepository.delete(id);
+        await this.unitsRepository.delete(id);
+        await this.catalogCacheService.invalidateUnits();
     }
 }

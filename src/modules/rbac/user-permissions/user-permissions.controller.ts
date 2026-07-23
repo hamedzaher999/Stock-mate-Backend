@@ -5,7 +5,9 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
-
+import { OverrideRoleDto } from './dto/override-role.dto';
+import { RevokeAllPermissionsDto } from './dto/revoke-all-permissions.dto';
+import { PermissionGroupDto } from './dto/permission-group.dto';
 @Controller('rbac/users/:userId/permissions')
 @RequirePermissions(PERMISSIONS.MANAGE_USER_PERMISSIONS)
 export class UserPermissionsController {
@@ -31,6 +33,58 @@ export class UserPermissionsController {
             user.sub,
         );
         return { message: 'Permission override saved.', data };
+    }
+
+    @Post('group')
+    async applyGroup(
+        @Param('userId') userId: string,
+        @Body() dto: PermissionGroupDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.userPermissionsService.applyPermissionGroup(
+            userId,
+            dto,
+            user.sub,
+        );
+        return {
+            message:
+                dto.effect === 'grant'
+                    ? 'Permissions granted.'
+                    : 'Permissions revoked.',
+            data,
+        };
+    }
+
+    @Post('revoke-all')
+    async revokeAll(
+        @Param('userId') userId: string,
+        @Body() dto: RevokeAllPermissionsDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.userPermissionsService.revokeAllRolePermissions(
+            userId,
+            user.sub,
+            dto.reason,
+        );
+        return { message: 'All role permissions revoked for this user.', data };
+    }
+
+    @Post('override-role')
+    async overrideRole(
+        @Param('userId') userId: string,
+        @Body() dto: OverrideRoleDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.userPermissionsService.overrideWithRole(
+            userId,
+            dto.sourceRoleId,
+            user.sub,
+            dto.reason,
+        );
+        return {
+            message: 'Role permissions copied to user as overrides.',
+            data,
+        };
     }
 
     @Delete(':permissionCode')

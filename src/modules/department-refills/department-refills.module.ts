@@ -10,9 +10,10 @@ import { PeriodicSchedulesController } from './periodic-schedules/periodic-sched
 import { PeriodicSchedulesService } from './periodic-schedules/periodic-schedules.service';
 import { PeriodicSchedulesRepository } from './periodic-schedules/periodic-schedules.repository';
 import { ScheduleGenerationService } from './periodic-schedules/schedule-generation.service';
-
+import { RbacModule } from '../rbac/rbac.module';
+import { DepartmentsModule } from '../departments/departments.module';
 @Module({
-    imports: [InventoryModule],
+    imports: [InventoryModule, RbacModule, DepartmentsModule],
     controllers: [
         RefillRequestsController,
         RefillDeliveriesController,

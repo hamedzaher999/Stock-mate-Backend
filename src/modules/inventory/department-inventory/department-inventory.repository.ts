@@ -27,20 +27,6 @@ interface LiveStockRow {
 export class DepartmentInventoryRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
-    findDepartmentType(id: string) {
-        return this.prisma.department.findUnique({
-            where: { id },
-            select: { id: true, type: true, tracksInventory: true },
-        });
-    }
-
     async findLiveStockPage(
         departmentId: string,
         skip: number,

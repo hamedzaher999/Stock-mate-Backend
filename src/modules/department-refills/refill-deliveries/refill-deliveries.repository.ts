@@ -98,13 +98,6 @@ export class RefillDeliveriesRepository {
         });
     }
 
-    findWarehouseDepartment() {
-        return this.prisma.department.findFirst({
-            where: { type: 'central_warehouse' },
-            select: { id: true },
-        });
-    }
-
     sumShippedForRefillItem(refillItemId: string) {
         return this.prisma.departmentRefillDeliveryItem.aggregate({
             where: { refillItemId },

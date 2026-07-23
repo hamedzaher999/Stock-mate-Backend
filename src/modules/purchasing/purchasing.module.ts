@@ -9,10 +9,10 @@ import { PurchaseReceivingController } from './purchase-receiving/purchase-recei
 import { PurchaseReceivingService } from './purchase-receiving/purchase-receiving.service';
 import { PurchaseReceivingRepository } from './purchase-receiving/purchase-receiving.repository';
 import { InventoryModule } from '../inventory/inventory.module';
-
+import { DepartmentsModule } from '../departments/departments.module';
+import { RbacModule } from '../rbac/rbac.module';
 @Module({
-    imports: [InventoryModule],
-
+    imports: [InventoryModule, DepartmentsModule, RbacModule],
     controllers: [
         PurchaseRequestsController,
         PurchaseOrdersController,

@@ -10,6 +10,7 @@ import { ListPeriodicSchedulesDto } from './dto/list-periodic-schedules.dto';
 import { CancelPeriodicScheduleDto } from './dto/cancel-periodic-schedule.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { UserScopeService } from '../../rbac/user-scope.service';
 
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
@@ -17,6 +18,7 @@ const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 export class PeriodicSchedulesService {
     constructor(
         private readonly periodicSchedulesRepository: PeriodicSchedulesRepository,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(
@@ -87,12 +89,10 @@ export class PeriodicSchedulesService {
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
-        const user =
-            await this.periodicSchedulesRepository.findRequestingUserContext(
-                requestingUserId,
-            );
-        if (!user) throw new BadRequestException('Requesting user not found.');
-        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
-        return user.departmentId;
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
     }
 }

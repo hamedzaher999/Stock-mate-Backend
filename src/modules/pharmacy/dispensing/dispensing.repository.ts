@@ -75,13 +75,6 @@ export class DispensingRepository {
         private readonly dispenseQueueRepository: DispenseQueueRepository,
     ) {}
 
-    findPharmacyDepartment() {
-        return this.prisma.department.findFirst({
-            where: { type: 'pharmacy' },
-            select: { id: true },
-        });
-    }
-
     findPrescriptionForDispense(prescriptionId: string) {
         return this.prisma.prescription.findUnique({
             where: { id: prescriptionId },

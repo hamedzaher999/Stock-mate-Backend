@@ -53,11 +53,4 @@ export class TransactionsRepository {
 
         return { items, total };
     }
-
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
 }

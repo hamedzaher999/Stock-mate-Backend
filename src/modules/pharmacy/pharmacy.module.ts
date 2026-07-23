@@ -6,9 +6,10 @@ import { DispensingController } from './dispensing/dispensing.controller';
 import { DispensingService } from './dispensing/dispensing.service';
 import { DispensingRepository } from './dispensing/dispensing.repository';
 import { InventoryModule } from '../inventory/inventory.module';
+import { DepartmentsModule } from '../departments/departments.module';
 
 @Module({
-    imports: [InventoryModule],
+    imports: [InventoryModule, DepartmentsModule],
     controllers: [DispenseQueueController, DispensingController],
     providers: [
         DispenseQueueService,

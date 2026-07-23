@@ -67,6 +67,7 @@ enum PurchaseOrderStatus {
 
   @@map("purchase_order_status")
 }
+
 enum RefillRequestStatus {
   draft
   pending_hospital_approval
@@ -195,10 +196,11 @@ enum ScheduleApprovalPolicy {
 }
 
 enum PurchaseReceiptStatus {
-  pending_confirmation
-  confirmed
+    pending_confirmation
+    confirmed
+    cancelled
 
-  @@map("purchase_receipt_status")
+    @@map("purchase_receipt_status")
 }
 
 enum NotificationCategory {

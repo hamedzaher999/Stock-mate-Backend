@@ -24,6 +24,7 @@ export class PermissionsResolverService {
                 role: {
                     select: {
                         name: true,
+                        isActive: true,
                         rolePermissions: {
                             select: { permission: { select: { code: true } } },
                         },
@@ -42,7 +43,14 @@ export class PermissionsResolverService {
 
         let effective: Set<string>;
 
-        if (user.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+        if (!user.role.isActive) {
+            effective = new Set();
+            for (const override of user.userPermissions) {
+                if (override.effect === 'grant') {
+                    effective.add(override.permission.code);
+                }
+            }
+        } else if (user.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
             const allPermissions = await this.prisma.permission.findMany({
                 select: { code: true },
             });

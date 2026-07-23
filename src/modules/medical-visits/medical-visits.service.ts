@@ -16,6 +16,7 @@ import { PaginatedResult } from '../../core/interfaces/paginated-result.interfac
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 import { PermissionsResolverService } from '../rbac/permissions-resolver.service';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
+import { UserScopeService } from '../rbac/user-scope.service';
 
 @Injectable()
 export class MedicalVisitsService {
@@ -24,6 +25,7 @@ export class MedicalVisitsService {
         private readonly patientsRepository: PatientsRepository,
         private readonly departmentQueueRepository: DepartmentQueueRepository,
         private readonly permissionsResolver: PermissionsResolverService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(
@@ -136,13 +138,10 @@ export class MedicalVisitsService {
             );
         }
 
-        const doctor =
-            await this.medicalVisitsRepository.findRequestingUserContext(
-                doctorId,
-            );
+        const scope = await this.userScopeService.getUserScope(doctorId);
         if (
-            doctor?.role.name !== HOSPITAL_MANAGER_ROLE_NAME &&
-            doctor?.departmentId !== entry.departmentId
+            scope?.roleName !== HOSPITAL_MANAGER_ROLE_NAME &&
+            scope?.departmentId !== entry.departmentId
         ) {
             throw new ForbiddenException(
                 'You can only select patients in your own department.',
@@ -164,13 +163,10 @@ export class MedicalVisitsService {
             );
         }
 
-        const doctor =
-            await this.medicalVisitsRepository.findRequestingUserContext(
-                doctorId,
-            );
+        const scope = await this.userScopeService.getUserScope(doctorId);
         if (
             entry.lockedById !== doctorId &&
-            doctor?.role.name !== HOSPITAL_MANAGER_ROLE_NAME
+            scope?.roleName !== HOSPITAL_MANAGER_ROLE_NAME
         ) {
             throw new ForbiddenException(
                 'Only the doctor who selected this patient can complete the consultation.',

@@ -95,12 +95,6 @@ export class PurchaseRequestsRepository {
             },
         });
     }
-    findRequestingUserRole(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { role: { select: { name: true } } },
-        });
-    }
 
     create(data: {
         requestNumber: string;

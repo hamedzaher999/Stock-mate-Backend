@@ -74,25 +74,6 @@ export class StockCountsRepository {
         });
     }
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
-    findDepartmentType(id: string) {
-        return this.prisma.department.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                type: true,
-                isActive: true,
-                tracksInventory: true,
-            },
-        });
-    }
-
     findVariant(id: string) {
         return this.prisma.productVariant.findUnique({
             where: { id },

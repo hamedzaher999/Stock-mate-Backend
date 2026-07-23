@@ -2,15 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConsumptionRepository } from './consumption.repository';
 import { CreateConsumptionDto } from './dto/create-consumption.dto';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 
 @Injectable()
 export class ConsumptionService {
     constructor(
         private readonly consumptionRepository: ConsumptionRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
     ) {}
 
     async create(dto: CreateConsumptionDto, performedById: string) {
-        const department = await this.consumptionRepository.findDepartmentType(
+        const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
         if (!department)

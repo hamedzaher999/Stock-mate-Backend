@@ -12,11 +12,15 @@ import { UpdateStockSettingStatusDto } from './dto/update-stock-setting-status.d
 import { ListStockSettingsDto } from './dto/list-stock-settings.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
+import { DepartmentsCacheService } from '../departments/departments-cache.service';
+import { UserScopeService } from '../rbac/user-scope.service';
 
 @Injectable()
 export class StockSettingsService {
     constructor(
         private readonly stockSettingsRepository: StockSettingsRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(dto: ListStockSettingsDto): Promise<PaginatedResult<unknown>> {
@@ -63,7 +67,7 @@ export class StockSettingsService {
             );
         }
 
-        const department = await this.stockSettingsRepository.departmentExists(
+        const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
         if (!department)
@@ -149,16 +153,13 @@ export class StockSettingsService {
         requestingUserId: string,
         targetDepartmentId: string,
     ) {
-        const requestingUser =
-            await this.stockSettingsRepository.findRequestingUser(
-                requestingUserId,
-            );
-        if (!requestingUser)
-            throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (requestingUser.role.name === HOSPITAL_MANAGER_ROLE_NAME) return;
+        if (scope.roleName === HOSPITAL_MANAGER_ROLE_NAME) return;
 
-        if (requestingUser.departmentId !== targetDepartmentId) {
+        if (scope.departmentId !== targetDepartmentId) {
             throw new ForbiddenException(
                 'You can only manage stock settings for your own department.',
             );

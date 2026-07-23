@@ -12,13 +12,14 @@ import { UpdateDepartmentStatusDto } from './dto/update-department-status.dto';
 import { ListDepartmentsDto } from './dto/list-departments.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { DepartmentType } from '@prisma/client';
-
+import { DepartmentsCacheService } from './departments-cache.service';
 const SINGLETON_TYPES: DepartmentType[] = ['central_warehouse', 'pharmacy'];
 
 @Injectable()
 export class DepartmentsService {
     constructor(
         private readonly departmentsRepository: DepartmentsRepository,
+        private readonly departmentsCacheService: DepartmentsCacheService,
     ) {}
 
     async list(dto: ListDepartmentsDto): Promise<PaginatedResult<unknown>> {
@@ -87,24 +88,29 @@ export class DepartmentsService {
             );
         }
 
+        await this.departmentsCacheService.invalidate(
+            department.id,
+            department.type,
+        );
+
         return department;
     }
 
     async update(id: string, dto: UpdateDepartmentDto) {
-        await this.findById(id);
+        const existing = await this.findById(id);
 
         if (dto.name) {
-            const existing = await this.departmentsRepository.findByName(
-                dto.name,
-            );
-            if (existing && existing.id !== id) {
+            const found = await this.departmentsRepository.findByName(dto.name);
+            if (found && found.id !== id) {
                 throw new ConflictException(
                     'A department with this name already exists.',
                 );
             }
         }
 
-        return this.departmentsRepository.update(id, dto);
+        const updated = await this.departmentsRepository.update(id, dto);
+        await this.departmentsCacheService.invalidate(id, existing.type);
+        return updated;
     }
 
     async updateStatus(id: string, dto: UpdateDepartmentStatusDto) {
@@ -116,7 +122,12 @@ export class DepartmentsService {
             );
         }
 
-        return this.departmentsRepository.updateStatus(id, dto.isActive);
+        const updated = await this.departmentsRepository.updateStatus(
+            id,
+            dto.isActive,
+        );
+        await this.departmentsCacheService.invalidate(id, department.type);
+        return updated;
     }
 
     async assignManager(id: string, dto: AssignManagerDto) {

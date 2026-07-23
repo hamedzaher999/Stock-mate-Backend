@@ -15,7 +15,10 @@ import { InventoryLedgerService } from './transactions/inventory-ledger.service'
 import { ConsumptionController } from './consumption/consumption.controller';
 import { ConsumptionService } from './consumption/consumption.service';
 import { ConsumptionRepository } from './consumption/consumption.repository';
+import { RbacModule } from '../rbac/rbac.module';
+import { DepartmentsModule } from '../departments/departments.module';
 @Module({
+    imports: [RbacModule, DepartmentsModule],
     controllers: [
         DepartmentInventoryController,
         AdjustmentsController,

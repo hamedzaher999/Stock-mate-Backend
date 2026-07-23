@@ -20,6 +20,7 @@ import {
     STORAGE_SERVICE,
     type IStorageService,
 } from '../../../core/storage/storage.interface';
+import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
 const RECEIVABLE_ORDER_STATUSES = ['sent', 'partially_received'];
 
 @Injectable()
@@ -122,6 +123,17 @@ export class PurchaseReceivingService {
         if (!RECEIVABLE_ORDER_STATUSES.includes(order.status)) {
             throw new ConflictException(
                 'This purchase order is not open for receiving.',
+            );
+        }
+
+        const purchaseOrderItemIds = dto.items.map(
+            (i) => i.purchaseOrderItemId,
+        );
+        if (
+            new Set(purchaseOrderItemIds).size !== purchaseOrderItemIds.length
+        ) {
+            throw new BadRequestException(
+                'Each purchase order item can only appear once on a receipt.',
             );
         }
 
@@ -281,5 +293,112 @@ export class PurchaseReceivingService {
         });
 
         return result;
+    }
+
+    async update(id: string, dto: UpdatePurchaseReceiptDto) {
+        const receipt = await this.findById(id);
+        if (receipt.status !== 'pending_confirmation') {
+            throw new ConflictException(
+                'Only a receipt awaiting confirmation can be edited.',
+            );
+        }
+
+        const order =
+            await this.purchaseReceivingRepository.findOrderForReceiving(
+                receipt.purchaseOrderId,
+            );
+        if (!order) {
+            throw new BadRequestException(
+                'Associated purchase order not found.',
+            );
+        }
+
+        let lines:
+            | {
+                  purchaseOrderItemId: string;
+                  variantId: string;
+                  expectedQuantity: number;
+                  quantity: number;
+                  batchNumber: string;
+                  manufacturingDate?: Date;
+                  expirationDate?: Date;
+                  purchasePrice?: number;
+              }[]
+            | undefined;
+
+        if (dto.items) {
+            const purchaseOrderItemIds = dto.items.map(
+                (i) => i.purchaseOrderItemId,
+            );
+            if (
+                new Set(purchaseOrderItemIds).size !==
+                purchaseOrderItemIds.length
+            ) {
+                throw new BadRequestException(
+                    'Each purchase order item can only appear once on a receipt.',
+                );
+            }
+
+            lines = dto.items.map((inputItem) => {
+                const orderItem = order.items.find(
+                    (i) => i.id === inputItem.purchaseOrderItemId,
+                );
+                if (!orderItem) {
+                    throw new BadRequestException(
+                        'One or more items do not belong to this purchase order.',
+                    );
+                }
+
+                const remaining =
+                    Number(orderItem.orderedQuantity) -
+                    Number(orderItem.receivedQuantity);
+                if (inputItem.quantity > remaining) {
+                    throw new BadRequestException(
+                        `Received quantity exceeds what remains on the order (remaining: ${remaining}).`,
+                    );
+                }
+
+                return {
+                    purchaseOrderItemId: orderItem.id,
+                    variantId: orderItem.variantId,
+                    expectedQuantity: remaining,
+                    quantity: inputItem.quantity,
+                    batchNumber: inputItem.batchNumber,
+                    manufacturingDate: inputItem.manufacturingDate
+                        ? new Date(inputItem.manufacturingDate)
+                        : undefined,
+                    expirationDate: inputItem.expirationDate
+                        ? new Date(inputItem.expirationDate)
+                        : undefined,
+                    purchasePrice: inputItem.purchasePrice,
+                };
+            });
+        }
+
+        return this.purchaseReceivingRepository.replaceItems(id, {
+            supplierId: order.supplierId,
+            receivingDate: dto.receivingDate
+                ? new Date(dto.receivingDate)
+                : undefined,
+            notes: dto.notes,
+            items: lines,
+        });
+    }
+
+    async cancel(id: string) {
+        const receipt = await this.findById(id);
+        if (receipt.status !== 'pending_confirmation') {
+            throw new ConflictException(
+                'Only a receipt awaiting confirmation can be cancelled.',
+            );
+        }
+
+        const imageRecord =
+            await this.purchaseReceivingRepository.findImageKey(id);
+        if (imageRecord) {
+            await this.storageService.deleteImage(imageRecord.receiptImageKey);
+        }
+
+        return this.purchaseReceivingRepository.cancel(id);
     }
 }

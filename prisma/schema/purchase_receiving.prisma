@@ -42,5 +42,6 @@ model PurchaseReceiptItem {
   supplier          Supplier          @relation(fields: [supplierId], references: [id])
   batch             Batch?
 
+  @@unique([purchaseReceiptId, purchaseOrderItemId])
   @@map("purchase_receipt_items")
 }

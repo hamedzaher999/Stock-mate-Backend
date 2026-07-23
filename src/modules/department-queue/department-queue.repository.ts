@@ -97,24 +97,10 @@ export class DepartmentQueueRepository {
         });
     }
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
     patientExists(id: string) {
         return this.prisma.patient.findUnique({
             where: { id },
             select: { id: true },
-        });
-    }
-
-    findDepartmentType(id: string) {
-        return this.prisma.department.findUnique({
-            where: { id },
-            select: { id: true, type: true, isActive: true, hasQueue: true },
         });
     }
 

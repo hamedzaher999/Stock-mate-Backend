@@ -105,13 +105,6 @@ export class PurchaseOrdersRepository {
         });
     }
 
-    findWarehouseDepartment() {
-        return this.prisma.department.findFirst({
-            where: { type: 'central_warehouse' },
-            select: { id: true },
-        });
-    }
-
     sumOrderedQuantityForRequestItem(purchaseRequestItemId: string) {
         return this.prisma.purchaseOrderItem.aggregate({
             where: { purchaseRequestItemId },

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-
 @Injectable()
 export class RolesRepository {
     constructor(private readonly prisma: PrismaService) {}
@@ -49,5 +48,12 @@ export class RolesRepository {
 
     countUsersWithRole(roleId: string) {
         return this.prisma.user.count({ where: { roleId } });
+    }
+
+    findUserIdsByRole(roleId: string) {
+        return this.prisma.user.findMany({
+            where: { roleId },
+            select: { id: true },
+        });
     }
 }

@@ -17,6 +17,7 @@ import { generateRequestNumber } from '../../../common/utils/request-number-gene
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
+import { UserScopeService } from '../../rbac/user-scope.service';
 
 const CANCELLABLE_STATUSES = [
     'draft',
@@ -35,6 +36,7 @@ export class PurchaseRequestsService {
     constructor(
         private readonly purchaseRequestsRepository: PurchaseRequestsRepository,
         private readonly notificationsService: NotificationsService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(
@@ -269,13 +271,11 @@ export class PurchaseRequestsService {
     private async resolveOwnerScope(
         requestingUserId: string,
     ): Promise<string | null> {
-        const user =
-            await this.purchaseRequestsRepository.findRequestingUserRole(
-                requestingUserId,
-            );
-        if (!user) throw new BadRequestException('Requesting user not found.');
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(user.role.name)) return null;
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
         return requestingUserId;
     }
     private async assertVariantsActive(variantIds: string[]) {

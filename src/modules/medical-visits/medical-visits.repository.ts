@@ -89,13 +89,6 @@ export class MedicalVisitsRepository {
         });
     }
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
     createCompletedVisit(params: {
         patientId: string;
         doctorId: string;

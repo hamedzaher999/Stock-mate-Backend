@@ -155,19 +155,6 @@ export class RefillRequestsRepository {
         });
     }
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                departmentId: true,
-                department: {
-                    select: { id: true, type: true, isActive: true },
-                },
-                role: { select: { name: true } },
-            },
-        });
-    }
-
     create(data: {
         requestNumber: string;
         departmentId: string;

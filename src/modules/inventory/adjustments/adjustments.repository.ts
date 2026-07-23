@@ -63,29 +63,10 @@ export class AdjustmentsRepository {
         return { items, total };
     }
 
-    findRequestingUserContext(userId: string) {
-        return this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
-        });
-    }
-
     findBatch(batchId: string) {
         return this.prisma.batch.findUnique({
             where: { id: batchId },
             select: { id: true, variantId: true },
-        });
-    }
-
-    findDepartmentType(id: string) {
-        return this.prisma.department.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                type: true,
-                isActive: true,
-                tracksInventory: true,
-            },
         });
     }
 
