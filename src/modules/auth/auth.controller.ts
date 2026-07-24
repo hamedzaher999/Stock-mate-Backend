@@ -151,7 +151,7 @@ export class AuthController {
         res.cookie(ACCESS_COOKIE, tokens.accessToken, {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: 'none',
             expires: tokens.accessExpiresAt,
             path: '/',
         });
@@ -159,7 +159,7 @@ export class AuthController {
         res.cookie(REFRESH_COOKIE, tokens.refreshToken, {
             httpOnly: true,
             secure: isProd,
-            sameSite: 'lax',
+            sameSite: 'none',
             expires: tokens.refreshExpiresAt,
             path: '/api/auth/refresh',
         });
