@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
-import { Prisma } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
+import {
+    BatchType,
+    resolveRequestCompletion,
+} from '../../../common/utils/request-completion.util';
 
 const purchaseReceiptDetailSelect = {
     id: true,
-    purchaseOrderId: true,
     purchaseRequestId: true,
+    supplierId: true,
     receivingDate: true,
+    type: true,
     status: true,
     confirmedById: true,
     confirmedAt: true,
@@ -16,12 +21,12 @@ const purchaseReceiptDetailSelect = {
     createdAt: true,
     receivedBy: { select: { id: true, fullName: true } },
     confirmedBy: { select: { id: true, fullName: true } },
+    supplier: { select: { id: true, name: true } },
     items: {
         select: {
             id: true,
-            purchaseOrderItemId: true,
+            purchaseRequestItemId: true,
             variantId: true,
-            supplierId: true,
             expectedQuantity: true,
             quantity: true,
             quantityDiscrepancy: true,
@@ -33,16 +38,16 @@ const purchaseReceiptDetailSelect = {
             expirationDate: true,
             variant: { select: variantInventorySelect },
             batch: { select: { id: true } },
-            purchaseOrderItem: { select: { purchaseRequestItemId: true } },
         },
     },
 } satisfies Prisma.PurchaseReceiptSelect;
 
 const purchaseReceiptListSelect = {
     id: true,
-    purchaseOrderId: true,
     purchaseRequestId: true,
+    supplierId: true,
     receivingDate: true,
+    type: true,
     status: true,
     receivedBy: { select: { id: true, fullName: true } },
     createdAt: true,
@@ -58,11 +63,9 @@ export class PurchaseReceivingRepository {
     async findMany(params: {
         skip: number;
         take: number;
-        purchaseOrderId?: string;
         purchaseRequestId?: string;
     }) {
         const where: Prisma.PurchaseReceiptWhereInput = {
-            purchaseOrderId: params.purchaseOrderId,
             purchaseRequestId: params.purchaseRequestId,
         };
 
@@ -94,46 +97,50 @@ export class PurchaseReceivingRepository {
         });
     }
 
-    findOrderForReceiving(purchaseOrderId: string) {
-        return this.prisma.purchaseOrder.findUnique({
-            where: { id: purchaseOrderId },
+    findRequestForReceiving(purchaseRequestId: string) {
+        return this.prisma.purchaseRequest.findUnique({
+            where: { id: purchaseRequestId },
             select: {
                 id: true,
                 status: true,
-                purchaseRequestId: true,
-                supplierId: true,
+                requestedById: true,
                 items: {
                     select: {
                         id: true,
-                        purchaseRequestItemId: true,
                         variantId: true,
-                        orderedQuantity: true,
+                        approvedQuantity: true,
                         receivedQuantity: true,
+                        variant: {
+                            select: {
+                                isActive: true,
+                                product: { select: { isActive: true } },
+                            },
+                        },
                     },
                 },
             },
         });
     }
 
-    findOrderDestination(purchaseOrderId: string) {
-        return this.prisma.purchaseOrder.findUnique({
-            where: { id: purchaseOrderId },
-            select: { id: true, destinationDepartmentId: true },
+    supplierExists(id: string) {
+        return this.prisma.supplier.findUnique({
+            where: { id },
+            select: { id: true, isActive: true },
         });
     }
 
     recordReceipt(params: {
-        purchaseOrderId: string;
         purchaseRequestId: string;
         supplierId: string;
         receivedById: string;
         receivingDate: Date;
+        type: BatchType;
         notes?: string;
         receiptImageKey: string;
         lines: {
-            purchaseOrderItemId: string;
+            purchaseRequestItemId: string;
             variantId: string;
-            expectedQuantity: number;
+            expectedQuantity: number | null;
             quantity: number;
             batchNumber: string;
             manufacturingDate?: Date;
@@ -143,22 +150,24 @@ export class PurchaseReceivingRepository {
     }) {
         return this.prisma.purchaseReceipt.create({
             data: {
-                purchaseOrderId: params.purchaseOrderId,
                 purchaseRequestId: params.purchaseRequestId,
+                supplierId: params.supplierId,
                 receivedById: params.receivedById,
                 receivingDate: params.receivingDate,
+                type: params.type,
                 notes: params.notes,
                 status: 'pending_confirmation',
                 receiptImageKey: params.receiptImageKey,
                 items: {
                     create: params.lines.map((line) => ({
-                        purchaseOrderItemId: line.purchaseOrderItemId,
+                        purchaseRequestItemId: line.purchaseRequestItemId,
                         variantId: line.variantId,
-                        supplierId: params.supplierId,
                         expectedQuantity: line.expectedQuantity,
                         quantity: line.quantity,
                         quantityDiscrepancy:
-                            line.expectedQuantity - line.quantity,
+                            line.expectedQuantity !== null
+                                ? line.expectedQuantity - line.quantity
+                                : 0,
                         batchNumber: line.batchNumber,
                         manufacturingDate: line.manufacturingDate,
                         expirationDate: line.expirationDate,
@@ -172,15 +181,14 @@ export class PurchaseReceivingRepository {
 
     confirmReceipt(params: {
         receiptId: string;
-        purchaseOrderId: string;
         purchaseRequestId: string;
         warehouseDepartmentId: string;
         receivingDate: Date;
         confirmedById: string;
         notes?: string;
+        batchType: BatchType;
         confirmations: {
             receiptItemId: string;
-            purchaseOrderItemId: string;
             purchaseRequestItemId: string;
             variantId: string;
             supplierId: string;
@@ -239,20 +247,6 @@ export class PurchaseReceivingRepository {
                         performedById: params.confirmedById,
                     });
                 }
-
-                await tx.purchaseOrderItem.update({
-                    where: { id: c.purchaseOrderItemId },
-                    data: {
-                        receivedQuantity: { increment: c.confirmedQuantity },
-                    },
-                });
-
-                await tx.purchaseRequestItem.update({
-                    where: { id: c.purchaseRequestItemId },
-                    data: {
-                        receivedQuantity: { increment: c.confirmedQuantity },
-                    },
-                });
             }
 
             await tx.purchaseReceipt.update({
@@ -265,54 +259,54 @@ export class PurchaseReceivingRepository {
                 },
             });
 
-            const updatedOrderItems = await tx.purchaseOrderItem.findMany({
-                where: { purchaseOrderId: params.purchaseOrderId },
-                select: { orderedQuantity: true, receivedQuantity: true },
-            });
-            const orderFullyReceived = updatedOrderItems.every(
-                (i) => Number(i.receivedQuantity) >= Number(i.orderedQuantity),
-            );
-            const orderPartiallyReceived = updatedOrderItems.some(
-                (i) => Number(i.receivedQuantity) > 0,
-            );
+            const affectedItemIds = [
+                ...new Set(
+                    params.confirmations.map((c) => c.purchaseRequestItemId),
+                ),
+            ];
 
-            await tx.purchaseOrder.update({
-                where: { id: params.purchaseOrderId },
-                data: {
-                    status: orderFullyReceived
-                        ? 'received'
-                        : orderPartiallyReceived
-                          ? 'partially_received'
-                          : 'sent',
-                },
-            });
+            for (const itemId of affectedItemIds) {
+                const totals = await tx.purchaseReceiptItem.aggregate({
+                    where: {
+                        purchaseRequestItemId: itemId,
+                        purchaseReceipt: { status: 'confirmed' },
+                    },
+                    _sum: { confirmedQuantity: true },
+                });
+                const cumulative = Number(totals._sum.confirmedQuantity ?? 0);
 
-            const requestItems = await tx.purchaseRequestItem.findMany({
+                const item = await tx.purchaseRequestItem.findUniqueOrThrow({
+                    where: { id: itemId },
+                });
+
+                await tx.purchaseRequestItem.update({
+                    where: { id: itemId },
+                    data: {
+                        receivedQuantity: cumulative,
+                        quantityDiscrepancy:
+                            Number(item.approvedQuantity ?? 0) - cumulative,
+                    },
+                });
+            }
+
+            const allItems = await tx.purchaseRequestItem.findMany({
                 where: { purchaseRequestId: params.purchaseRequestId },
-                select: {
-                    committeeApprovedQuantity: true,
-                    receivedQuantity: true,
-                },
             });
-            const requestFullyReceived = requestItems.every(
-                (i) =>
-                    i.committeeApprovedQuantity !== null &&
-                    Number(i.receivedQuantity) >=
-                        Number(i.committeeApprovedQuantity),
-            );
-            const requestPartiallyReceived = requestItems.some(
-                (i) => Number(i.receivedQuantity) > 0,
+
+            const outcome = resolveRequestCompletion(
+                allItems.map((i) => ({
+                    approvedQuantity:
+                        i.approvedQuantity !== null
+                            ? Number(i.approvedQuantity)
+                            : null,
+                    cumulativeConfirmed: Number(i.receivedQuantity),
+                })),
+                params.batchType,
             );
 
             await tx.purchaseRequest.update({
                 where: { id: params.purchaseRequestId },
-                data: {
-                    status: requestFullyReceived
-                        ? 'received'
-                        : requestPartiallyReceived
-                          ? 'partially_received'
-                          : undefined,
-                },
+                data: { status: outcome },
             });
 
             return tx.purchaseReceipt.findUniqueOrThrow({
@@ -321,23 +315,16 @@ export class PurchaseReceivingRepository {
             });
         });
     }
-    findOrderItemsByIds(ids: string[]) {
-        return this.prisma.purchaseOrderItem.findMany({
-            where: { id: { in: ids } },
-            select: { id: true, orderedQuantity: true, receivedQuantity: true },
-        });
-    }
 
     async replaceItems(
         id: string,
         data: {
-            supplierId: string;
             receivingDate?: Date;
             notes?: string;
             items?: {
-                purchaseOrderItemId: string;
+                purchaseRequestItemId: string;
                 variantId: string;
-                expectedQuantity: number;
+                expectedQuantity: number | null;
                 quantity: number;
                 batchNumber: string;
                 manufacturingDate?: Date;
@@ -354,13 +341,14 @@ export class PurchaseReceivingRepository {
                 await tx.purchaseReceiptItem.createMany({
                     data: data.items.map((item) => ({
                         purchaseReceiptId: id,
-                        purchaseOrderItemId: item.purchaseOrderItemId,
+                        purchaseRequestItemId: item.purchaseRequestItemId,
                         variantId: item.variantId,
-                        supplierId: data.supplierId,
                         expectedQuantity: item.expectedQuantity,
                         quantity: item.quantity,
                         quantityDiscrepancy:
-                            item.expectedQuantity - item.quantity,
+                            item.expectedQuantity !== null
+                                ? item.expectedQuantity - item.quantity
+                                : 0,
                         batchNumber: item.batchNumber,
                         manufacturingDate: item.manufacturingDate,
                         expirationDate: item.expirationDate,

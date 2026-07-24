@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { Prisma, PurchaseRequestStatus } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
 
 const purchaseRequestDetailSelect = {
@@ -11,23 +11,23 @@ const purchaseRequestDetailSelect = {
     hospitalApprovedById: true,
     hospitalApprovedAt: true,
     hospitalRejectionReason: true,
-    committeeApprovedById: true,
-    committeeApprovedAt: true,
-    committeeRejectionReason: true,
-    committeeMarkedReadyById: true,
-    committeeMarkedReadyAt: true,
+    approvedById: true,
+    approvedAt: true,
+    rejectionReason: true,
     notes: true,
     createdAt: true,
     updatedAt: true,
     requestedBy: { select: { id: true, fullName: true } },
+    approvedBy: { select: { id: true, fullName: true } },
     items: {
         select: {
             id: true,
             variantId: true,
             requestedQuantity: true,
             estimatedPrice: true,
-            committeeApprovedQuantity: true,
+            approvedQuantity: true,
             receivedQuantity: true,
+            quantityDiscrepancy: true,
             notes: true,
             variant: { select: variantInventorySelect },
         },
@@ -49,7 +49,7 @@ export class PurchaseRequestsRepository {
     async findMany(params: {
         skip: number;
         take: number;
-        status?: PurchaseRequestStatus;
+        status?: RequestStatus;
         requestedById?: string;
     }) {
         const where: Prisma.PurchaseRequestWhereInput = {
@@ -75,13 +75,6 @@ export class PurchaseRequestsRepository {
         return this.prisma.purchaseRequest.findUnique({
             where: { id },
             select: purchaseRequestDetailSelect,
-        });
-    }
-
-    variantsExist(ids: string[]) {
-        return this.prisma.productVariant.findMany({
-            where: { id: { in: ids } },
-            select: { id: true },
         });
     }
 
@@ -156,32 +149,50 @@ export class PurchaseRequestsRepository {
         });
     }
 
-    setCommitteeApprovedQuantities(
-        purchaseRequestId: string,
-        approvals: {
-            purchaseRequestItemId: string;
-            approvedQuantity: number;
-        }[],
+    approveWithQuantities(
+        id: string,
         approverId: string,
+        items: { purchaseRequestItemId: string; approvedQuantity: number }[],
     ) {
         return this.prisma.$transaction(async (tx) => {
-            for (const approval of approvals) {
+            for (const item of items) {
                 await tx.purchaseRequestItem.update({
-                    where: { id: approval.purchaseRequestItemId },
+                    where: { id: item.purchaseRequestItemId },
                     data: {
-                        committeeApprovedQuantity: approval.approvedQuantity,
+                        approvedQuantity: item.approvedQuantity,
+                        quantityDiscrepancy: item.approvedQuantity,
                     },
                 });
             }
             return tx.purchaseRequest.update({
-                where: { id: purchaseRequestId },
+                where: { id },
                 data: {
-                    status: 'approved',
-                    committeeApprovedById: approverId,
-                    committeeApprovedAt: new Date(),
+                    status: 'preparing',
+                    approvedById: approverId,
+                    approvedAt: new Date(),
                 },
                 select: purchaseRequestDetailSelect,
             });
+        });
+    }
+
+    manualComplete(id: string) {
+        return this.prisma.purchaseRequest.update({
+            where: { id },
+            data: { status: 'complete' },
+            select: purchaseRequestDetailSelect,
+        });
+    }
+
+    countReceiptsForRequest(id: string) {
+        return this.prisma.purchaseReceipt.count({
+            where: { purchaseRequestId: id },
+        });
+    }
+
+    countUnconfirmedReceiptsForRequest(id: string) {
+        return this.prisma.purchaseReceipt.count({
+            where: { purchaseRequestId: id, status: 'pending_confirmation' },
         });
     }
 }

@@ -1,14 +1,20 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
-import { Prisma } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
+import {
+    BatchType,
+    resolveRequestCompletion,
+} from '../../../common/utils/request-completion.util';
+
 const deliveryDetailSelect = {
     id: true,
     refillRequestId: true,
     deliveredById: true,
     deliveredAt: true,
+    type: true,
     receivedById: true,
     confirmedAt: true,
     notes: true,
@@ -36,6 +42,7 @@ const deliveryListSelect = {
     id: true,
     refillRequestId: true,
     deliveredAt: true,
+    type: true,
     confirmedAt: true,
 } satisfies Prisma.DepartmentRefillDeliverySelect;
 
@@ -83,6 +90,7 @@ export class RefillDeliveriesRepository {
                 id: true,
                 status: true,
                 departmentId: true,
+                requestedById: true,
                 department: {
                     select: { id: true, type: true, tracksInventory: true },
                 },
@@ -90,25 +98,11 @@ export class RefillDeliveriesRepository {
                     select: {
                         id: true,
                         variantId: true,
-                        preparedQuantity: true,
+                        approvedQuantity: true,
                         requestedQuantity: true,
                     },
                 },
             },
-        });
-    }
-
-    sumShippedForRefillItem(refillItemId: string) {
-        return this.prisma.departmentRefillDeliveryItem.aggregate({
-            where: { refillItemId },
-            _sum: { shippedQuantity: true },
-        });
-    }
-
-    sumReceivedForRefillItem(refillItemId: string) {
-        return this.prisma.departmentRefillDeliveryItem.aggregate({
-            where: { refillItemId, receivedQuantity: { not: null } },
-            _sum: { receivedQuantity: true },
         });
     }
 
@@ -123,6 +117,7 @@ export class RefillDeliveriesRepository {
         refillRequestId: string;
         deliveredById: string;
         warehouseDepartmentId: string;
+        type: BatchType;
         notes?: string;
         lines: {
             refillItemId: string;
@@ -135,6 +130,7 @@ export class RefillDeliveriesRepository {
                 data: {
                     refillRequestId: params.refillRequestId,
                     deliveredById: params.deliveredById,
+                    type: params.type,
                     notes: params.notes,
                 },
             });
@@ -172,9 +168,7 @@ export class RefillDeliveriesRepository {
 
                 const variantId = variantIdByBatch.get(line.batchId);
                 if (!variantId) {
-                    throw new BadRequestException(
-                        'Selected batch does not exist.',
-                    );
+                    throw new Error('Selected batch does not exist.');
                 }
 
                 await this.inventoryLedger.record(tx, {
@@ -196,6 +190,7 @@ export class RefillDeliveriesRepository {
             });
         });
     }
+
     findDeliveryItemsForConfirm(deliveryId: string) {
         return this.prisma.departmentRefillDeliveryItem.findMany({
             where: { deliveryId },
@@ -215,6 +210,7 @@ export class RefillDeliveriesRepository {
         departmentId: string;
         confirmedById: string;
         notes?: string;
+        batchType: BatchType;
         confirmations: {
             deliveryItemId: string;
             refillItemId: string;
@@ -279,28 +275,25 @@ export class RefillDeliveriesRepository {
                 ...new Set(params.confirmations.map((c) => c.refillItemId)),
             ];
             for (const refillItemId of affectedItemIds) {
+                const totals = await tx.departmentRefillDeliveryItem.aggregate({
+                    where: {
+                        refillItemId,
+                        delivery: { confirmedAt: { not: null } },
+                    },
+                    _sum: { receivedQuantity: true },
+                });
+                const cumulative = Number(totals._sum.receivedQuantity ?? 0);
+
                 const item = await tx.departmentRefillItem.findUniqueOrThrow({
                     where: { id: refillItemId },
                 });
-                const totalReceived =
-                    await tx.departmentRefillDeliveryItem.aggregate({
-                        where: {
-                            refillItemId,
-                            receivedQuantity: { not: null },
-                        },
-                        _sum: { receivedQuantity: true },
-                    });
-                const deliveredQuantity = Number(
-                    totalReceived._sum.receivedQuantity ?? 0,
-                );
 
                 await tx.departmentRefillItem.update({
                     where: { id: refillItemId },
                     data: {
-                        deliveredQuantity,
+                        deliveredQuantity: cumulative,
                         quantityDiscrepancy:
-                            Number(item.preparedQuantity ?? 0) -
-                            deliveredQuantity,
+                            Number(item.approvedQuantity ?? 0) - cumulative,
                     },
                 });
             }
@@ -308,25 +301,21 @@ export class RefillDeliveriesRepository {
             const allItems = await tx.departmentRefillItem.findMany({
                 where: { refillRequestId: params.refillRequestId },
             });
-            const fullyDelivered = allItems.every(
-                (i) =>
-                    i.preparedQuantity !== null &&
-                    Number(i.deliveredQuantity ?? 0) >=
-                        Number(i.preparedQuantity),
-            );
-            const partiallyDelivered = allItems.some(
-                (i) => Number(i.deliveredQuantity ?? 0) > 0,
+
+            const outcome = resolveRequestCompletion(
+                allItems.map((i) => ({
+                    approvedQuantity:
+                        i.approvedQuantity !== null
+                            ? Number(i.approvedQuantity)
+                            : null,
+                    cumulativeConfirmed: Number(i.deliveredQuantity ?? 0),
+                })),
+                params.batchType,
             );
 
             await tx.departmentRefillRequest.update({
                 where: { id: params.refillRequestId },
-                data: {
-                    status: fullyDelivered
-                        ? 'delivered'
-                        : partiallyDelivered
-                          ? 'partially_delivered'
-                          : undefined,
-                },
+                data: { status: outcome },
             });
 
             return tx.departmentRefillDelivery.findUniqueOrThrow({

@@ -2,13 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { PeriodicSchedulesRepository } from './periodic-schedules.repository';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
-import { NotificationsService } from '../../notifications/notifications.service';
-import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
+
 @Injectable()
 export class ScheduleGenerationService {
     private readonly logger = new Logger(ScheduleGenerationService.name);
@@ -35,10 +36,9 @@ export class ScheduleGenerationService {
         const generated: string[] = [];
 
         for (const schedule of due) {
-            const requestId = await this.prisma.$transaction(async (tx) => {
-                const isAutoApproved =
-                    schedule.approvalPolicy === 'auto_approved';
+            const isAutoApproved = schedule.approvalPolicy === 'auto_approved';
 
+            const requestId = await this.prisma.$transaction(async (tx) => {
                 const request = await tx.departmentRefillRequest.create({
                     data: {
                         requestNumber: generateRequestNumber('DRF'),
@@ -49,10 +49,10 @@ export class ScheduleGenerationService {
                         frequencyInterval: schedule.frequencyInterval,
                         periodicScheduleId: schedule.id,
                         status: isAutoApproved
-                            ? 'approved'
+                            ? 'pending_manager_approval'
                             : 'pending_hospital_approval',
                         hospitalApprovedById: isAutoApproved
-                            ? schedule.hospitalApprovedById
+                            ? schedule.approvedById
                             : undefined,
                         hospitalApprovedAt: isAutoApproved
                             ? new Date()
@@ -60,7 +60,7 @@ export class ScheduleGenerationService {
                         items: {
                             create: schedule.originRequest.items.map((i) => ({
                                 variantId: i.variantId,
-                                requestedQuantity: i.requestedQuantity,
+                                requestedQuantity: Number(i.approvedQuantity),
                             })),
                         },
                     },
@@ -87,19 +87,40 @@ export class ScheduleGenerationService {
                 `Generated refill request ${requestId} from schedule ${schedule.id}`,
             );
 
-            if (schedule.approvalPolicy === 'auto_approved') {
-                await this.notificationsService.create({
-                    userId: schedule.createdById,
-                    type: NOTIFICATION_TYPES.PERIODIC_REFILL_GENERATED,
-                    category: 'inventory',
-                    title: 'Recurring refill generated',
-                    body: `A new refill request was automatically generated and approved from your recurring schedule for ${schedule.department.type === 'central_warehouse' ? 'the Central Warehouse' : 'your department'}.`,
-                    data: {
-                        refillRequestId: requestId,
-                        periodicScheduleId: schedule.id,
-                        departmentId: schedule.departmentId,
-                    },
-                });
+            await this.notificationsService.create({
+                userId: schedule.createdById,
+                type: NOTIFICATION_TYPES.PERIODIC_REFILL_GENERATED,
+                category: 'inventory',
+                title: 'Recurring refill generated',
+                body: `A new refill request was automatically generated from your recurring schedule and is awaiting approval.`,
+                data: {
+                    refillRequestId: requestId,
+                    periodicScheduleId: schedule.id,
+                    departmentId: schedule.departmentId,
+                },
+            });
+
+            if (isAutoApproved) {
+                const warehouseManager =
+                    await this.periodicSchedulesRepository.findCentralWarehouseManagerId();
+                if (warehouseManager?.managerId) {
+                    await this.notificationsService.create({
+                        userId: warehouseManager.managerId,
+                        type: NOTIFICATION_TYPES.PERIODIC_REFILL_PENDING_APPROVAL,
+                        category: 'inventory',
+                        title: 'Recurring refill needs approval',
+                        body: `A recurring refill request has been generated from schedule ${schedule.id} and is awaiting your approval.`,
+                        data: {
+                            refillRequestId: requestId,
+                            periodicScheduleId: schedule.id,
+                            departmentId: schedule.departmentId,
+                        },
+                    });
+                } else {
+                    this.logger.warn(
+                        `No Central Warehouse manager assigned -- could not notify about pending-approval refill request ${requestId}.`,
+                    );
+                }
             } else {
                 const hospitalManager =
                     await this.periodicSchedulesRepository.findHospitalManagerId();

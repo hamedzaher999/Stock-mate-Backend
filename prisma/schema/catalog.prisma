@@ -65,7 +65,6 @@ model ProductVariant {
   variantSuppliers     VariantSupplier[]
   stockSettings        DepartmentStockSetting[]
   purchaseRequestItems PurchaseRequestItem[]
-  purchaseOrderItems   PurchaseOrderItem[]
   purchaseReceiptItems PurchaseReceiptItem[]
   batches              Batch[]
   refillItems           DepartmentRefillItem[]

@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import {
-    Prisma,
-    RefillRequestStatus,
-    ScheduleApprovalPolicy,
-} from '@prisma/client';
+import { Prisma, RequestStatus, ScheduleApprovalPolicy } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
+import { variantInventorySelect } from '../../../common/selects/variant.select';
 import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
-import { variantInventorySelect } from '../../../common/selects/variant.select';
+
 const refillRequestDetailSelect = {
     id: true,
     requestNumber: true,
@@ -25,6 +22,9 @@ const refillRequestDetailSelect = {
     hospitalApprovedById: true,
     hospitalApprovedAt: true,
     hospitalRejectionReason: true,
+    approvedById: true,
+    approvedAt: true,
+    rejectionReason: true,
     notes: true,
     createdAt: true,
     updatedAt: true,
@@ -33,7 +33,7 @@ const refillRequestDetailSelect = {
             id: true,
             variantId: true,
             requestedQuantity: true,
-            preparedQuantity: true,
+            approvedQuantity: true,
             deliveredQuantity: true,
             quantityDiscrepancy: true,
             variant: { select: variantInventorySelect },
@@ -73,6 +73,7 @@ const refillRequestListSelect = {
 @Injectable()
 export class RefillRequestsRepository {
     constructor(private readonly prisma: PrismaService) {}
+
     findItemById(id: string) {
         return this.prisma.departmentRefillItem.findUnique({
             where: { id },
@@ -81,7 +82,7 @@ export class RefillRequestsRepository {
                 refillRequestId: true,
                 variantId: true,
                 requestedQuantity: true,
-                preparedQuantity: true,
+                approvedQuantity: true,
                 deliveredQuantity: true,
                 quantityDiscrepancy: true,
                 variant: { select: { id: true, variantName: true, sku: true } },
@@ -105,10 +106,11 @@ export class RefillRequestsRepository {
             },
         });
     }
+
     async findMany(params: {
         skip: number;
         take: number;
-        status?: RefillRequestStatus;
+        status?: RequestStatus;
         departmentId?: string;
     }) {
         const where: Prisma.DepartmentRefillRequestWhereInput = {
@@ -145,13 +147,6 @@ export class RefillRequestsRepository {
                 isActive: true,
                 product: { select: { isActive: true } },
             },
-        });
-    }
-
-    variantsExist(ids: string[]) {
-        return this.prisma.productVariant.findMany({
-            where: { id: { in: ids } },
-            select: { id: true },
         });
     }
 
@@ -216,24 +211,35 @@ export class RefillRequestsRepository {
         });
     }
 
-    hospitalApproveAndMaybeCreateSchedule(
+    approveWithQuantities(
         id: string,
         approverId: string,
-        approvalPolicy?: ScheduleApprovalPolicy,
+        items: { refillItemId: string; approvedQuantity: number }[],
+        newScheduleApprovalPolicy?: ScheduleApprovalPolicy,
     ) {
         return this.prisma.$transaction(async (tx) => {
             const approvedAt = new Date();
 
+            for (const item of items) {
+                await tx.departmentRefillItem.update({
+                    where: { id: item.refillItemId },
+                    data: {
+                        approvedQuantity: item.approvedQuantity,
+                        quantityDiscrepancy: item.approvedQuantity,
+                    },
+                });
+            }
+
             await tx.departmentRefillRequest.update({
                 where: { id },
                 data: {
-                    status: 'approved',
-                    hospitalApprovedById: approverId,
-                    hospitalApprovedAt: approvedAt,
+                    status: 'preparing',
+                    approvedById: approverId,
+                    approvedAt,
                 },
             });
 
-            if (approvalPolicy) {
+            if (newScheduleApprovalPolicy) {
                 const request =
                     await tx.departmentRefillRequest.findUniqueOrThrow({
                         where: { id },
@@ -259,11 +265,11 @@ export class RefillRequestsRepository {
                         departmentId: request.departmentId,
                         createdById: request.requestedById,
                         originRequestId: id,
-                        approvalPolicy,
+                        approvalPolicy: newScheduleApprovalPolicy,
                         requestType: request.requestType,
                         frequencyInterval: request.frequencyInterval as number,
-                        hospitalApprovedById: approverId,
-                        hospitalApprovedAt: approvedAt,
+                        approvedById: approverId,
+                        approvedAt,
                         nextRunDate,
                     },
                 });
@@ -281,22 +287,23 @@ export class RefillRequestsRepository {
         });
     }
 
-    setPreparedQuantities(
-        id: string,
-        items: { refillItemId: string; preparedQuantity: number }[],
-    ) {
-        return this.prisma.$transaction(async (tx) => {
-            for (const item of items) {
-                await tx.departmentRefillItem.update({
-                    where: { id: item.refillItemId },
-                    data: { preparedQuantity: item.preparedQuantity },
-                });
-            }
-            return tx.departmentRefillRequest.update({
-                where: { id },
-                data: { status: 'ready_for_delivery' },
-                select: refillRequestDetailSelect,
-            });
+    manualComplete(id: string) {
+        return this.prisma.departmentRefillRequest.update({
+            where: { id },
+            data: { status: 'complete' },
+            select: refillRequestDetailSelect,
+        });
+    }
+
+    countDeliveriesForRequest(id: string) {
+        return this.prisma.departmentRefillDelivery.count({
+            where: { refillRequestId: id },
+        });
+    }
+
+    countUnconfirmedDeliveriesForRequest(id: string) {
+        return this.prisma.departmentRefillDelivery.count({
+            where: { refillRequestId: id, confirmedAt: null },
         });
     }
 }

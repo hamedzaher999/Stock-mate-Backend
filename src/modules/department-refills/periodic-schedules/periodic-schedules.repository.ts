@@ -12,8 +12,8 @@ const scheduleDetailSelect = {
     approvalPolicy: true,
     requestType: true,
     frequencyInterval: true,
-    hospitalApprovedById: true,
-    hospitalApprovedAt: true,
+    approvedById: true,
+    approvedAt: true,
     nextRunDate: true,
     lastGeneratedAt: true,
     cancelledById: true,
@@ -87,23 +87,28 @@ export class PeriodicSchedulesRepository {
                 approvalPolicy: true,
                 requestType: true,
                 frequencyInterval: true,
-                hospitalApprovedById: true,
+                approvedById: true,
                 nextRunDate: true,
                 department: { select: { type: true } },
                 originRequest: {
                     select: {
                         priority: true,
                         items: {
-                            select: {
-                                variantId: true,
-                                requestedQuantity: true,
-                            },
+                            select: { variantId: true, approvedQuantity: true },
                         },
                     },
                 },
             },
         });
     }
+
+    findCentralWarehouseManagerId() {
+        return this.prisma.department.findFirst({
+            where: { type: 'central_warehouse' },
+            select: { managerId: true },
+        });
+    }
+
     findHospitalManagerId() {
         return this.prisma.user.findFirst({
             where: {

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
     IsArray,
+    IsEnum,
     IsNumber,
     IsOptional,
     IsString,
@@ -9,6 +10,7 @@ import {
     Min,
     ValidateNested,
 } from 'class-validator';
+import { BatchType } from '@prisma/client';
 
 class DeliveryItemInputDto {
     @IsUUID()
@@ -26,6 +28,10 @@ class DeliveryItemInputDto {
 export class CreateDeliveryDto {
     @IsUUID()
     refillRequestId!: string;
+
+    @IsOptional()
+    @IsEnum(BatchType)
+    type?: BatchType;
 
     @IsArray()
     @ArrayMinSize(1)

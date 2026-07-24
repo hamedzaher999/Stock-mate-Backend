@@ -8,16 +8,15 @@ import {
     Query,
 } from '@nestjs/common';
 import { RefillRequestsService } from './refill-requests.service';
-import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
-import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
-import { HospitalRejectDto } from './dto/hospital-reject.dto';
-import { PrepareRefillRequestDto } from './dto/prepare-refill-request.dto';
-import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
-import { HospitalApproveRefillRequestDto } from './dto/hospital-approve-refill-request.dto';
+import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
+import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
+import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
+import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
+import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
+import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 
 @Controller('department-refills/requests')
 export class RefillRequestsController {
@@ -49,6 +48,7 @@ export class RefillRequestsController {
         );
         return { message: 'Success', data };
     }
+
     @Get(':id')
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
     async findOne(
@@ -90,13 +90,39 @@ export class RefillRequestsController {
     }
 
     @Post(':id/hospital-approve')
-    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST)
+    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL)
     async hospitalApprove(
         @Param('id') id: string,
-        @Body() dto: HospitalApproveRefillRequestDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillRequestsService.hospitalApprove(
+            id,
+            user.sub,
+        );
+        return {
+            message: 'Approved and forwarded to the warehouse manager.',
+            data,
+        };
+    }
+
+    @Post(':id/hospital-reject')
+    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL)
+    async hospitalReject(
+        @Param('id') id: string,
+        @Body() dto: RejectRequestDto,
+    ) {
+        const data = await this.refillRequestsService.hospitalReject(id, dto);
+        return { message: 'Refill request rejected.', data };
+    }
+
+    @Post(':id/approve')
+    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER)
+    async approve(
+        @Param('id') id: string,
+        @Body() dto: ApproveRefillRequestDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillRequestsService.approve(
             id,
             dto,
             user.sub,
@@ -104,38 +130,34 @@ export class RefillRequestsController {
         return { message: 'Refill request approved.', data };
     }
 
-    @Post(':id/hospital-reject')
-    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST)
-    async hospitalReject(
+    @Post(':id/reject')
+    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER)
+    async reject(
         @Param('id') id: string,
-        @Body() dto: HospitalRejectDto,
+        @Body() dto: RejectRequestDto,
+        @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.refillRequestsService.hospitalReject(id, dto);
+        const data = await this.refillRequestsService.reject(id, dto, user.sub);
         return { message: 'Refill request rejected.', data };
     }
-    @Post(':id/start-preparing')
-    @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
-    async startPreparing(@Param('id') id: string) {
-        const data = await this.refillRequestsService.startPreparing(id);
-        return { message: 'Refill request marked as preparing.', data };
-    }
-    @Post(':id/prepare')
-    @RequirePermissions(PERMISSIONS.PREPARE_DEPARTMENT_REFILL)
-    async prepare(
+
+    @Post(':id/complete')
+    @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER)
+    async complete(
         @Param('id') id: string,
-        @Body() dto: PrepareRefillRequestDto,
+        @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.refillRequestsService.prepare(id, dto);
-        return {
-            message: 'Refill request prepared and marked ready for delivery.',
-            data,
-        };
+        const data = await this.refillRequestsService.complete(id, user.sub);
+        return { message: 'Refill request marked as complete.', data };
     }
 
     @Post(':id/cancel')
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
-    async cancel(@Param('id') id: string) {
-        const data = await this.refillRequestsService.cancel(id);
+    async cancel(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillRequestsService.cancel(id, user.sub);
         return { message: 'Refill request cancelled.', data };
     }
 }

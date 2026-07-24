@@ -1,27 +1,32 @@
 import {
     BadRequestException,
     ConflictException,
+    ForbiddenException,
+    Inject,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
-import { PurchaseReceivingRepository } from './purchase-receiving.repository';
-import { CreatePurchaseReceiptDto } from './dto/create-purchase-receipt.dto';
-import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
-import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
-import { NotificationsService } from '../../notifications/notifications.service';
-import { PrismaService } from '../../../core/prisma/prisma.service';
-import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
-import { Inject } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
+import { PurchaseReceivingRepository } from './purchase-receiving.repository';
+import { PrismaService } from '../../../core/prisma/prisma.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import {
-    STORAGE_SERVICE,
     type IStorageService,
+    STORAGE_SERVICE,
 } from '../../../core/storage/storage.interface';
+import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
+import {
+    CreatePurchaseReceiptDto,
+    CreatePurchaseReceiptFormDto,
+} from './dto/create-purchase-receipt.dto';
 import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
-const RECEIVABLE_ORDER_STATUSES = ['sent', 'partially_received'];
+import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
+import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
+
+const RECEIVABLE_REQUEST_STATUSES = ['preparing', 'partially_complete'];
 
 @Injectable()
 export class PurchaseReceivingService {
@@ -29,6 +34,7 @@ export class PurchaseReceivingService {
         private readonly purchaseReceivingRepository: PurchaseReceivingRepository,
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
+        private readonly departmentsCacheService: DepartmentsCacheService,
         @Inject(STORAGE_SERVICE)
         private readonly storageService: IStorageService,
     ) {}
@@ -43,7 +49,6 @@ export class PurchaseReceivingService {
             await this.purchaseReceivingRepository.findMany({
                 skip: (page - 1) * limit,
                 take: limit,
-                purchaseOrderId: dto.purchaseOrderId,
                 purchaseRequestId: dto.purchaseRequestId,
             });
 
@@ -88,8 +93,10 @@ export class PurchaseReceivingService {
         }
 
         const dto = plainToInstance(CreatePurchaseReceiptDto, {
-            purchaseOrderId: raw.purchaseOrderId,
+            purchaseRequestId: raw.purchaseRequestId,
+            supplierId: raw.supplierId,
             receivingDate: raw.receivingDate,
+            type: raw.type,
             notes: raw.notes,
             items: parsedItems,
         });
@@ -114,51 +121,62 @@ export class PurchaseReceivingService {
         receivedById: string,
         receiptImage: Express.Multer.File,
     ) {
-        const order =
-            await this.purchaseReceivingRepository.findOrderForReceiving(
-                dto.purchaseOrderId,
+        const request =
+            await this.purchaseReceivingRepository.findRequestForReceiving(
+                dto.purchaseRequestId,
             );
-        if (!order)
-            throw new BadRequestException('Purchase order does not exist.');
-        if (!RECEIVABLE_ORDER_STATUSES.includes(order.status)) {
+        if (!request)
+            throw new BadRequestException('Purchase request does not exist.');
+        if (!RECEIVABLE_REQUEST_STATUSES.includes(request.status)) {
             throw new ConflictException(
-                'This purchase order is not open for receiving.',
+                'This purchase request is not open for receiving.',
             );
         }
 
-        const purchaseOrderItemIds = dto.items.map(
-            (i) => i.purchaseOrderItemId,
+        const supplier = await this.purchaseReceivingRepository.supplierExists(
+            dto.supplierId,
+        );
+        if (!supplier)
+            throw new BadRequestException('Supplier does not exist.');
+        if (!supplier.isActive)
+            throw new BadRequestException(
+                'Cannot record a receipt against an inactive supplier.',
+            );
+
+        const purchaseRequestItemIds = dto.items.map(
+            (i) => i.purchaseRequestItemId,
         );
         if (
-            new Set(purchaseOrderItemIds).size !== purchaseOrderItemIds.length
+            new Set(purchaseRequestItemIds).size !==
+            purchaseRequestItemIds.length
         ) {
             throw new BadRequestException(
-                'Each purchase order item can only appear once on a receipt.',
+                'Each purchase request item can only appear once on a receipt.',
             );
         }
 
         const lines = dto.items.map((inputItem) => {
-            const orderItem = order.items.find(
-                (i) => i.id === inputItem.purchaseOrderItemId,
+            const requestItem = request.items.find(
+                (i) => i.id === inputItem.purchaseRequestItemId,
             );
-            if (!orderItem)
+            if (!requestItem)
                 throw new BadRequestException(
-                    'One or more items do not belong to this purchase order.',
+                    'One or more items do not belong to this purchase request.',
                 );
-
-            const remaining =
-                Number(orderItem.orderedQuantity) -
-                Number(orderItem.receivedQuantity);
-            if (inputItem.quantity > remaining) {
+            if (requestItem.approvedQuantity === null) {
                 throw new BadRequestException(
-                    `Received quantity exceeds what remains on the order (remaining: ${remaining}).`,
+                    'This item has not been assigned an approved quantity yet.',
                 );
             }
 
+            const expectedQuantity =
+                Number(requestItem.approvedQuantity) -
+                Number(requestItem.receivedQuantity);
+
             return {
-                purchaseOrderItemId: orderItem.id,
-                variantId: orderItem.variantId,
-                expectedQuantity: remaining,
+                purchaseRequestItemId: requestItem.id,
+                variantId: requestItem.variantId,
+                expectedQuantity,
                 quantity: inputItem.quantity,
                 batchNumber: inputItem.batchNumber,
                 manufacturingDate: inputItem.manufacturingDate
@@ -174,18 +192,18 @@ export class PurchaseReceivingService {
         const uploaded = await this.storageService.uploadImage(
             receiptImage.buffer,
             {
-                folder: `purchase-receipts/${order.purchaseRequestId}`,
+                folder: `purchase-receipts/${dto.purchaseRequestId}`,
                 contentType: receiptImage.mimetype,
             },
         );
 
         try {
             return await this.purchaseReceivingRepository.recordReceipt({
-                purchaseOrderId: order.id,
-                purchaseRequestId: order.purchaseRequestId,
-                supplierId: order.supplierId,
+                purchaseRequestId: dto.purchaseRequestId,
+                supplierId: dto.supplierId,
                 receivedById,
                 receivingDate: new Date(dto.receivingDate),
+                type: dto.type ?? 'batch',
                 notes: dto.notes,
                 lines,
                 receiptImageKey: uploaded.key,
@@ -199,12 +217,27 @@ export class PurchaseReceivingService {
     async confirm(
         id: string,
         dto: ConfirmPurchaseReceiptDto,
-        confirmedById: string,
+        confirmingUserId: string,
     ) {
         const receipt = await this.findById(id);
         if (receipt.status !== 'pending_confirmation') {
             throw new ConflictException(
                 'This receipt has already been confirmed.',
+            );
+        }
+
+        const request = await this.prisma.purchaseRequest.findUnique({
+            where: { id: receipt.purchaseRequestId },
+            select: { id: true, requestedById: true },
+        });
+        if (!request)
+            throw new NotFoundException(
+                'Associated purchase request not found.',
+            );
+
+        if (request.requestedById !== confirmingUserId) {
+            throw new ForbiddenException(
+                'Only the user who created this purchase request can confirm receipts against it.',
             );
         }
 
@@ -221,12 +254,12 @@ export class PurchaseReceivingService {
             );
         }
 
-        const order =
-            await this.purchaseReceivingRepository.findOrderDestination(
-                receipt.purchaseOrderId,
+        const warehouse =
+            await this.departmentsCacheService.getByType('central_warehouse');
+        if (!warehouse) {
+            throw new BadRequestException(
+                'No Central Warehouse department is configured.',
             );
-        if (!order) {
-            throw new NotFoundException('Associated purchase order not found.');
         }
 
         const confirmations = dto.items.map((confirmedItem) => {
@@ -241,17 +274,15 @@ export class PurchaseReceivingService {
                 confirmedItem.confirmedQuantity > Number(receiptItem.quantity)
             ) {
                 throw new BadRequestException(
-                    'Confirmed quantity cannot exceed the declared received quantity.',
+                    'Confirmed quantity cannot exceed the declared received quantity for that batch.',
                 );
             }
 
             return {
                 receiptItemId: receiptItem.id,
-                purchaseOrderItemId: receiptItem.purchaseOrderItemId,
-                purchaseRequestItemId:
-                    receiptItem.purchaseOrderItem.purchaseRequestItemId,
+                purchaseRequestItemId: receiptItem.purchaseRequestItemId,
                 variantId: receiptItem.variantId,
-                supplierId: receiptItem.supplierId,
+                supplierId: receipt.supplierId,
                 declaredQuantity: Number(receiptItem.quantity),
                 confirmedQuantity: confirmedItem.confirmedQuantity,
                 batchNumber: receiptItem.batchNumber,
@@ -265,31 +296,35 @@ export class PurchaseReceivingService {
 
         const result = await this.purchaseReceivingRepository.confirmReceipt({
             receiptId: id,
-            purchaseOrderId: receipt.purchaseOrderId,
             purchaseRequestId: receipt.purchaseRequestId,
-            warehouseDepartmentId: order.destinationDepartmentId,
+            warehouseDepartmentId: warehouse.id,
             receivingDate: receipt.receivingDate,
-            confirmedById,
+            confirmedById: confirmingUserId,
             notes: dto.notes,
+            batchType: receipt.type,
             confirmations,
         });
 
-        const updatedPr = await this.prisma.purchaseRequest.findUniqueOrThrow({
-            where: { id: receipt.purchaseRequestId },
-            select: {
-                id: true,
-                requestNumber: true,
-                requestedById: true,
-                status: true,
-            },
-        });
+        const updatedRequest =
+            await this.prisma.purchaseRequest.findUniqueOrThrow({
+                where: { id: receipt.purchaseRequestId },
+                select: {
+                    id: true,
+                    requestNumber: true,
+                    requestedById: true,
+                    status: true,
+                },
+            });
         await this.notificationsService.create({
-            userId: updatedPr.requestedById,
+            userId: updatedRequest.requestedById,
             type: NOTIFICATION_TYPES.PURCHASE_REQUEST_STATUS_CHANGED,
             category: 'purchasing',
             title: 'Purchase request status updated',
-            body: `Purchase request ${updatedPr.requestNumber} is now "${updatedPr.status}".`,
-            data: { purchaseRequestId: updatedPr.id, status: updatedPr.status },
+            body: `Purchase request ${updatedRequest.requestNumber} is now "${updatedRequest.status}".`,
+            data: {
+                purchaseRequestId: updatedRequest.id,
+                status: updatedRequest.status,
+            },
         });
 
         return result;
@@ -303,21 +338,21 @@ export class PurchaseReceivingService {
             );
         }
 
-        const order =
-            await this.purchaseReceivingRepository.findOrderForReceiving(
-                receipt.purchaseOrderId,
+        const request =
+            await this.purchaseReceivingRepository.findRequestForReceiving(
+                receipt.purchaseRequestId,
             );
-        if (!order) {
+        if (!request) {
             throw new BadRequestException(
-                'Associated purchase order not found.',
+                'Associated purchase request not found.',
             );
         }
 
         let lines:
             | {
-                  purchaseOrderItemId: string;
+                  purchaseRequestItemId: string;
                   variantId: string;
-                  expectedQuantity: number;
+                  expectedQuantity: number | null;
                   quantity: number;
                   batchNumber: string;
                   manufacturingDate?: Date;
@@ -327,41 +362,38 @@ export class PurchaseReceivingService {
             | undefined;
 
         if (dto.items) {
-            const purchaseOrderItemIds = dto.items.map(
-                (i) => i.purchaseOrderItemId,
+            const purchaseRequestItemIds = dto.items.map(
+                (i) => i.purchaseRequestItemId,
             );
             if (
-                new Set(purchaseOrderItemIds).size !==
-                purchaseOrderItemIds.length
+                new Set(purchaseRequestItemIds).size !==
+                purchaseRequestItemIds.length
             ) {
                 throw new BadRequestException(
-                    'Each purchase order item can only appear once on a receipt.',
+                    'Each purchase request item can only appear once on a receipt.',
                 );
             }
 
             lines = dto.items.map((inputItem) => {
-                const orderItem = order.items.find(
-                    (i) => i.id === inputItem.purchaseOrderItemId,
+                const requestItem = request.items.find(
+                    (i) => i.id === inputItem.purchaseRequestItemId,
                 );
-                if (!orderItem) {
+                if (!requestItem) {
                     throw new BadRequestException(
-                        'One or more items do not belong to this purchase order.',
+                        'One or more items do not belong to this purchase request.',
                     );
                 }
 
-                const remaining =
-                    Number(orderItem.orderedQuantity) -
-                    Number(orderItem.receivedQuantity);
-                if (inputItem.quantity > remaining) {
-                    throw new BadRequestException(
-                        `Received quantity exceeds what remains on the order (remaining: ${remaining}).`,
-                    );
-                }
+                const expectedQuantity =
+                    requestItem.approvedQuantity !== null
+                        ? Number(requestItem.approvedQuantity) -
+                          Number(requestItem.receivedQuantity)
+                        : null;
 
                 return {
-                    purchaseOrderItemId: orderItem.id,
-                    variantId: orderItem.variantId,
-                    expectedQuantity: remaining,
+                    purchaseRequestItemId: requestItem.id,
+                    variantId: requestItem.variantId,
+                    expectedQuantity,
                     quantity: inputItem.quantity,
                     batchNumber: inputItem.batchNumber,
                     manufacturingDate: inputItem.manufacturingDate
@@ -376,7 +408,6 @@ export class PurchaseReceivingService {
         }
 
         return this.purchaseReceivingRepository.replaceItems(id, {
-            supplierId: order.supplierId,
             receivingDate: dto.receivingDate
                 ? new Date(dto.receivingDate)
                 : undefined,

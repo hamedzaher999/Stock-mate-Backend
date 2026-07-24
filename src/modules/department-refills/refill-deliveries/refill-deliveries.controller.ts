@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { RefillDeliveriesService } from './refill-deliveries.service';
+import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../../core/decorators/current-user.decorator';
+import { PERMISSIONS } from '../../../common/constants/permissions.constants';
+import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
-import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
-import { CurrentUser } from '../../../core/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
-import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 
 @Controller('department-refills/deliveries')
 export class RefillDeliveriesController {
@@ -48,7 +48,6 @@ export class RefillDeliveriesController {
         const data = await this.refillDeliveriesService.confirm(
             id,
             dto,
-            user.sub,
             user.sub,
         );
         return { message: 'Delivery confirmed.', data };

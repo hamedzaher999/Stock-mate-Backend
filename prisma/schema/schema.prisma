@@ -43,43 +43,29 @@ enum PermissionEffect {
   @@map("permission_effect")
 }
 
-enum PurchaseRequestStatus {
-  draft
-  submitted
-  pending_hospital_approval
-  rejected
-  pending_purchasing_committee
-  approved
-  ready_for_receiving
-  partially_received
-  received
-  cancelled
 
-  @@map("purchase_request_status")
-}
-
-enum PurchaseOrderStatus {
-  draft
-  sent
-  partially_received
-  received
-  cancelled
-
-  @@map("purchase_order_status")
-}
-
-enum RefillRequestStatus {
+enum RequestStatus {
   draft
   pending_hospital_approval
-  approved
+  pending_manager_approval
+  hospital_rejected
+  manager_rejected
   preparing
-  ready_for_delivery
-  delivered
-  partially_delivered
+  complete
+  partially_complete
   cancelled
 
-  @@map("refill_request_status")
+  @@map("request_status")
 }
+
+enum BatchType {
+  batch
+  final_batch
+
+  @@map("batch_type")
+}
+
+
 
 enum TransactionType {
   purchase_receipt

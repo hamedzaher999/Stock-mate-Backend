@@ -25,16 +25,15 @@ model User {
   createdProducts          Product[]
   createdProductVariants   ProductVariant[]
   createdStockSettings     DepartmentStockSetting[]
-  prRequested              PurchaseRequest[]        @relation("PRRequestedBy")
-  prHospitalApproved       PurchaseRequest[]        @relation("PRHospitalApprovedBy")
-  prCommitteeApproved      PurchaseRequest[]        @relation("PRCommitteeApprovedBy")
-  prCommitteeMarkedReady   PurchaseRequest[]        @relation("PRCommitteeMarkedReadyBy")
-  createdPurchaseOrders    PurchaseOrder[]
-  receivedPurchaseReceipts PurchaseReceipt[]        @relation("PurchaseReceiptReceivedBy")
-  confirmedPurchaseReceipts PurchaseReceipt[]       @relation("PurchaseReceiptConfirmedBy")
-  createdBatches           Batch[]
+  prRequested               PurchaseRequest[]        @relation("PRRequestedBy")
+  prHospitalApproved        PurchaseRequest[]        @relation("PRHospitalApprovedBy")
+  prApproved                PurchaseRequest[]        @relation("PRApprovedBy")
+  receivedPurchaseReceipts  PurchaseReceipt[]        @relation("PurchaseReceiptReceivedBy")
+  confirmedPurchaseReceipts PurchaseReceipt[]        @relation("PurchaseReceiptConfirmedBy")
+  createdBatches            Batch[]
   drRequested        DepartmentRefillRequest[]  @relation("DRRequestedBy")
   drHospitalApproved DepartmentRefillRequest[]  @relation("DRHospitalApprovedBy")
+  drApproved         DepartmentRefillRequest[]  @relation("DRApprovedBy")
   deliveriesShipped  DepartmentRefillDelivery[] @relation("DeliveryDeliveredBy")
   deliveriesReceived DepartmentRefillDelivery[] @relation("DeliveryReceivedBy")
   performedInventoryTransactions InventoryTransaction[]

@@ -8,16 +8,15 @@ import {
     Query,
 } from '@nestjs/common';
 import { PurchaseRequestsService } from './purchase-requests.service';
-import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
-import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
-import { HospitalRejectDto } from './dto/hospital-reject.dto';
-import { CommitteeApproveDto } from './dto/committee-approve.dto';
-import { CommitteeRejectDto } from './dto/committee-reject.dto';
-import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
 import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
+import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
+import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
+import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
+import { ApprovePurchaseRequestDto } from './dto/approve-purchase-request.dto';
+import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
+import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
 
 @Controller('purchasing/requests')
 export class PurchaseRequestsController {
@@ -89,7 +88,7 @@ export class PurchaseRequestsController {
             user.sub,
         );
         return {
-            message: 'Approved and forwarded to the purchasing committee.',
+            message: 'Approved and forwarded to the purchasing manager.',
             data,
         };
     }
@@ -98,57 +97,59 @@ export class PurchaseRequestsController {
     @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_HOSPITAL)
     async hospitalReject(
         @Param('id') id: string,
-        @Body() dto: HospitalRejectDto,
+        @Body() dto: RejectRequestDto,
     ) {
         const data = await this.purchaseRequestsService.hospitalReject(id, dto);
         return { message: 'Purchase request rejected.', data };
     }
 
-    @Post(':id/committee-approve')
-    @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_COMMITTEE)
-    async committeeApprove(
+    @Post(':id/approve')
+    @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_MANAGER)
+    async approve(
         @Param('id') id: string,
-        @Body() dto: CommitteeApproveDto,
+        @Body() dto: ApprovePurchaseRequestDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.purchaseRequestsService.committeeApprove(
+        const data = await this.purchaseRequestsService.approve(
             id,
             dto,
             user.sub,
         );
-        return { message: 'Approved by the committee.', data };
+        return { message: 'Purchase request approved.', data };
     }
 
-    @Post(':id/committee-reject')
-    @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_COMMITTEE)
-    async committeeReject(
+    @Post(':id/reject')
+    @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_MANAGER)
+    async reject(
         @Param('id') id: string,
-        @Body() dto: CommitteeRejectDto,
+        @Body() dto: RejectRequestDto,
+        @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.purchaseRequestsService.committeeReject(
+        const data = await this.purchaseRequestsService.reject(
             id,
             dto,
+            user.sub,
         );
-        return { message: 'Rejected by the committee.', data };
+        return { message: 'Purchase request rejected.', data };
     }
 
-    @Post(':id/mark-ready')
-    @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_COMMITTEE)
-    async markReady(
+    @Post(':id/complete')
+    @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_MANAGER)
+    async complete(
         @Param('id') id: string,
         @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.purchaseRequestsService.markReadyForReceiving(
-            id,
-            user.sub,
-        );
-        return { message: 'Marked ready for receiving.', data };
+        const data = await this.purchaseRequestsService.complete(id, user.sub);
+        return { message: 'Purchase request marked as complete.', data };
     }
 
     @Post(':id/cancel')
     @RequirePermissions(PERMISSIONS.CREATE_PURCHASE_REQUEST)
-    async cancel(@Param('id') id: string) {
-        const data = await this.purchaseRequestsService.cancel(id);
+    async cancel(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.purchaseRequestsService.cancel(id, user.sub);
         return { message: 'Purchase request cancelled.', data };
     }
 }

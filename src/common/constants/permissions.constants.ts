@@ -14,15 +14,17 @@ export const PERMISSIONS = {
 
     CREATE_PURCHASE_REQUEST: 'create_purchase_request',
     APPROVE_PURCHASE_REQUEST_HOSPITAL: 'approve_purchase_request_hospital',
-    APPROVE_PURCHASE_REQUEST_COMMITTEE: 'approve_purchase_request_committee',
-    MANAGE_PURCHASE_ORDERS: 'manage_purchase_orders',
+    APPROVE_PURCHASE_REQUEST_MANAGER: 'approve_purchase_request_manager',
     RECEIVE_PURCHASE: 'receive_purchase',
     CONFIRM_PURCHASE_RECEIPT: 'confirm_purchase_receipt',
     VIEW_PURCHASING_HISTORY: 'view_purchasing_history',
     VIEW_PURCHASING_REPORTS: 'view_purchasing_reports',
 
     CREATE_DEPARTMENT_REFILL_REQUEST: 'create_department_refill_request',
-    APPROVE_DEPARTMENT_REFILL_REQUEST: 'approve_department_refill_request',
+    APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL:
+        'approve_department_refill_request_hospital',
+    APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER:
+        'approve_department_refill_request_manager',
     PREPARE_DEPARTMENT_REFILL: 'prepare_department_refill',
     CONFIRM_DEPARTMENT_DELIVERY: 'confirm_department_delivery',
 

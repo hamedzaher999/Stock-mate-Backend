@@ -1,27 +1,77 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    IsArray,
     IsDateString,
+    IsEnum,
+    IsNumber,
     IsOptional,
     IsString,
     IsUUID,
+    Min,
     ValidateNested,
 } from 'class-validator';
-import { CreatePurchaseReceiptItemDto } from './create-purchase-receipt-item.dto';
+
+enum BatchTypeDto {
+    batch = 'batch',
+    final_batch = 'final_batch',
+}
+
+class ReceiptItemDto {
+    @IsUUID()
+    purchaseRequestItemId!: string;
+
+    @IsNumber()
+    @Min(0.0001)
+    quantity!: number;
+
+    @IsString()
+    batchNumber!: string;
+
+    @IsOptional()
+    @IsDateString()
+    manufacturingDate?: string;
+
+    @IsOptional()
+    @IsDateString()
+    expirationDate?: string;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    purchasePrice?: number;
+}
 
 export class CreatePurchaseReceiptDto {
     @IsUUID()
-    purchaseOrderId!: string;
+    purchaseRequestId!: string;
+
+    @IsUUID()
+    supplierId!: string;
 
     @IsDateString()
     receivingDate!: string;
 
     @IsOptional()
+    @IsEnum(BatchTypeDto)
+    type?: BatchTypeDto;
+
+    @IsOptional()
     @IsString()
     notes?: string;
 
-    @ValidateNested({ each: true })
-    @Type(() => CreatePurchaseReceiptItemDto)
+    @IsArray()
     @ArrayMinSize(1)
-    items!: CreatePurchaseReceiptItemDto[];
+    @ValidateNested({ each: true })
+    @Type(() => ReceiptItemDto)
+    items!: ReceiptItemDto[];
+}
+
+export class CreatePurchaseReceiptFormDto {
+    purchaseRequestId!: string;
+    supplierId!: string;
+    receivingDate!: string;
+    type?: string;
+    notes?: string;
+    items!: string;
 }

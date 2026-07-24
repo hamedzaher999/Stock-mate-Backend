@@ -5,19 +5,18 @@ import {
     IsDateString,
     IsNumber,
     IsOptional,
-    IsPositive,
     IsString,
     IsUUID,
     Min,
     ValidateNested,
 } from 'class-validator';
 
-export class UpdatePurchaseReceiptItemDto {
+class UpdateReceiptItemDto {
     @IsUUID()
-    purchaseOrderItemId!: string;
+    purchaseRequestItemId!: string;
 
     @IsNumber()
-    @IsPositive()
+    @Min(0.0001)
     quantity!: number;
 
     @IsString()
@@ -50,6 +49,6 @@ export class UpdatePurchaseReceiptDto {
     @IsArray()
     @ArrayMinSize(1)
     @ValidateNested({ each: true })
-    @Type(() => UpdatePurchaseReceiptItemDto)
-    items?: UpdatePurchaseReceiptItemDto[];
+    @Type(() => UpdateReceiptItemDto)
+    items?: UpdateReceiptItemDto[];
 }

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+    ArrayMinSize,
     IsArray,
     IsNumber,
     IsOptional,
@@ -9,7 +10,7 @@ import {
     ValidateNested,
 } from 'class-validator';
 
-class ConfirmPurchaseReceiptItemDto {
+class ConfirmedReceiptItemDto {
     @IsUUID()
     purchaseReceiptItemId!: string;
 
@@ -20,9 +21,10 @@ class ConfirmPurchaseReceiptItemDto {
 
 export class ConfirmPurchaseReceiptDto {
     @IsArray()
+    @ArrayMinSize(1)
     @ValidateNested({ each: true })
-    @Type(() => ConfirmPurchaseReceiptItemDto)
-    items!: ConfirmPurchaseReceiptItemDto[];
+    @Type(() => ConfirmedReceiptItemDto)
+    items!: ConfirmedReceiptItemDto[];
 
     @IsOptional()
     @IsString()

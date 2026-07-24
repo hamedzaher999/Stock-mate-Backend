@@ -6,31 +6,23 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { PurchaseRequestsRepository } from './purchase-requests.repository';
-import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
-import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
-import { HospitalRejectDto } from './dto/hospital-reject.dto';
-import { CommitteeApproveDto } from './dto/committee-approve.dto';
-import { CommitteeRejectDto } from './dto/committee-reject.dto';
-import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
-import { NotificationsService } from '../../notifications/notifications.service';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { UserScopeService } from '../../rbac/user-scope.service';
-
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
+import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
+import { ApprovePurchaseRequestDto } from './dto/approve-purchase-request.dto';
+import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
+import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
 const CANCELLABLE_STATUSES = [
     'draft',
     'pending_hospital_approval',
-    'pending_purchasing_committee',
-    'approved',
-    'ready_for_receiving',
+    'pending_manager_approval',
 ];
-const UNRESTRICTED_ROLES = [
-    HOSPITAL_MANAGER_ROLE_NAME,
-    'purchasing_committee_manager',
-];
-
+const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'purchasing_manager'];
 @Injectable()
 export class PurchaseRequestsService {
     constructor(
@@ -115,6 +107,7 @@ export class PurchaseRequestsService {
             dto.items,
         );
     }
+
     async submit(id: string) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
@@ -141,7 +134,7 @@ export class PurchaseRequestsService {
             );
 
         const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'pending_purchasing_committee',
+            status: 'pending_manager_approval',
             hospitalApprovedById: approverId,
             hospitalApprovedAt: new Date(),
         });
@@ -149,7 +142,7 @@ export class PurchaseRequestsService {
         return updated;
     }
 
-    async hospitalReject(id: string, dto: HospitalRejectDto) {
+    async hospitalReject(id: string, dto: RejectRequestDto) {
         const pr = await this.findById(id);
         if (pr.status !== 'pending_hospital_approval')
             throw new ConflictException(
@@ -157,29 +150,28 @@ export class PurchaseRequestsService {
             );
 
         const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'rejected',
+            status: 'hospital_rejected',
             hospitalRejectionReason: dto.reason,
         });
         await this.notifyStatusChange(updated);
         return updated;
     }
 
-    async committeeApprove(
+    async approve(
         id: string,
-        dto: CommitteeApproveDto,
+        dto: ApprovePurchaseRequestDto,
         approverId: string,
     ) {
         const pr = await this.findById(id);
-        if (pr.status !== 'pending_purchasing_committee')
+        if (pr.status !== 'pending_manager_approval')
             throw new ConflictException(
-                'This request is not awaiting committee approval.',
+                'This request is not awaiting manager approval.',
             );
 
         const itemIds = new Set(pr.items.map((i) => i.id));
         const dtoItemIds = new Set(
             dto.items.map((i) => i.purchaseRequestItemId),
         );
-
         if (
             itemIds.size !== dtoItemIds.size ||
             ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
@@ -204,60 +196,98 @@ export class PurchaseRequestsService {
         }
 
         const updated =
-            await this.purchaseRequestsRepository.setCommitteeApprovedQuantities(
+            await this.purchaseRequestsRepository.approveWithQuantities(
                 id,
-                dto.items,
                 approverId,
+                dto.items,
             );
         await this.notifyStatusChange(updated);
         return updated;
     }
 
-    async committeeReject(id: string, dto: CommitteeRejectDto) {
+    async reject(id: string, dto: RejectRequestDto, requestingUserId: string) {
         const pr = await this.findById(id);
-        if (pr.status !== 'pending_purchasing_committee')
-            throw new ConflictException(
-                'This request is not awaiting committee approval.',
-            );
 
-        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'rejected',
-            committeeRejectionReason: dto.reason,
-        });
-        await this.notifyStatusChange(updated);
-        return updated;
+        if (pr.status === 'pending_manager_approval') {
+            const updated = await this.purchaseRequestsRepository.updateStatus(
+                id,
+                { status: 'manager_rejected', rejectionReason: dto.reason },
+            );
+            await this.notifyStatusChange(updated);
+            return updated;
+        }
+
+        if (pr.status === 'preparing') {
+            if (pr.approvedById !== requestingUserId) {
+                throw new ForbiddenException(
+                    'Only the manager who approved this request can reject it.',
+                );
+            }
+
+            const linkedReceipts =
+                await this.purchaseRequestsRepository.countReceiptsForRequest(
+                    id,
+                );
+            if (linkedReceipts > 0) {
+                throw new ConflictException(
+                    'Cannot reject once at least one receipt has been generated for this request -- complete it instead once all receipts are confirmed.',
+                );
+            }
+
+            const updated = await this.purchaseRequestsRepository.updateStatus(
+                id,
+                { status: 'manager_rejected', rejectionReason: dto.reason },
+            );
+            await this.notifyStatusChange(updated);
+            return updated;
+        }
+
+        throw new ConflictException(
+            'This request cannot be rejected from its current status.',
+        );
     }
 
-    async markReadyForReceiving(id: string, userId: string) {
+    async complete(id: string, requestingUserId: string) {
         const pr = await this.findById(id);
-        if (pr.status !== 'approved') {
+        if (pr.status !== 'partially_complete') {
             throw new ConflictException(
-                'This request must be approved by the committee before it can be marked ready for receiving.',
+                'Only a request awaiting further batches can be manually completed.',
+            );
+        }
+        if (pr.approvedById !== requestingUserId) {
+            throw new ForbiddenException(
+                'Only the manager who approved this request can complete it.',
             );
         }
 
-        const missingQuantities = pr.items.some(
-            (item) => item.committeeApprovedQuantity === null,
-        );
-        if (missingQuantities)
-            throw new BadRequestException(
-                'Every item must have a committee-approved quantity first.',
+        const pending =
+            await this.purchaseRequestsRepository.countUnconfirmedReceiptsForRequest(
+                id,
             );
+        if (pending > 0) {
+            throw new ConflictException(
+                `Cannot complete yet -- ${pending} receipt(s) linked to this request are still awaiting confirmation from the receiver.`,
+            );
+        }
 
-        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'ready_for_receiving',
-            committeeMarkedReadyById: userId,
-            committeeMarkedReadyAt: new Date(),
-        });
+        const updated =
+            await this.purchaseRequestsRepository.manualComplete(id);
         await this.notifyStatusChange(updated);
         return updated;
     }
 
-    async cancel(id: string) {
+    async cancel(id: string, requestingUserId: string) {
         const pr = await this.findById(id);
         if (!CANCELLABLE_STATUSES.includes(pr.status)) {
             throw new ConflictException(
                 `A request with status "${pr.status}" cannot be cancelled.`,
+            );
+        }
+
+        const ownerScope = await this.resolveOwnerScope(requestingUserId);
+        if (ownerScope && pr.requestedById !== ownerScope) {
+            throw new ForbiddenException(
+                'You can only cancel purchase requests you created.',
             );
         }
 
@@ -278,6 +308,7 @@ export class PurchaseRequestsService {
         if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
         return requestingUserId;
     }
+
     private async assertVariantsActive(variantIds: string[]) {
         const variants =
             await this.purchaseRequestsRepository.findVariantsWithActivation(

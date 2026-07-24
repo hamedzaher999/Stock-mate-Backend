@@ -6,17 +6,17 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { RefillDeliveriesRepository } from './refill-deliveries.repository';
+import { PrismaService } from '../../../core/prisma/prisma.service';
+import { NotificationsService } from '../../notifications/notifications.service';
+import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
-import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
-import { PrismaService } from '../../../core/prisma/prisma.service';
-import { NotificationsService } from '../../notifications/notifications.service';
-import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { InsufficientStockError } from '../../../common/utils/fefo.util';
-import { DepartmentsCacheService } from '../../departments/departments-cache.service';
-import { UserScopeService } from '../../rbac/user-scope.service';
-const SHIPPABLE_STATUSES = ['ready_for_delivery', 'partially_delivered'];
+
+const SHIPPABLE_STATUSES = ['preparing', 'partially_complete'];
 
 @Injectable()
 export class RefillDeliveriesService {
@@ -25,7 +25,6 @@ export class RefillDeliveriesService {
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
         private readonly departmentsCacheService: DepartmentsCacheService,
-        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(dto: ListDeliveriesDto): Promise<PaginatedResult<unknown>> {
@@ -89,22 +88,9 @@ export class RefillDeliveriesService {
                 throw new BadRequestException(
                     'One or more items do not belong to this refill request.',
                 );
-            if (refillItem.preparedQuantity === null) {
+            if (refillItem.approvedQuantity === null) {
                 throw new BadRequestException(
-                    'This item has not been assigned a prepared quantity yet.',
-                );
-            }
-
-            const alreadyShipped =
-                await this.refillDeliveriesRepository.sumShippedForRefillItem(
-                    refillItem.id,
-                );
-            const remaining =
-                Number(refillItem.preparedQuantity) -
-                Number(alreadyShipped._sum.shippedQuantity ?? 0);
-            if (inputItem.shippedQuantity > remaining) {
-                throw new BadRequestException(
-                    `Shipped quantity exceeds what remains prepared (remaining: ${remaining}).`,
+                    'This item has not been assigned an approved quantity yet.',
                 );
             }
 
@@ -140,6 +126,7 @@ export class RefillDeliveriesService {
                 refillRequestId: dto.refillRequestId,
                 deliveredById,
                 warehouseDepartmentId: warehouse.id,
+                type: dto.type ?? 'batch',
                 notes: dto.notes,
                 lines,
             });
@@ -156,8 +143,7 @@ export class RefillDeliveriesService {
     async confirm(
         deliveryId: string,
         dto: ConfirmDeliveryDto,
-        confirmerId: string,
-        requestingUserId: string,
+        confirmingUserId: string,
     ) {
         const delivery = await this.findById(deliveryId);
         if (delivery.confirmedAt)
@@ -172,10 +158,11 @@ export class RefillDeliveriesService {
         if (!request)
             throw new NotFoundException('Associated refill request not found.');
 
-        await this.assertDepartmentScope(
-            requestingUserId,
-            request.departmentId,
-        );
+        if (request.requestedById !== confirmingUserId) {
+            throw new ForbiddenException(
+                'Only the department manager who created this refill request can confirm deliveries against it.',
+            );
+        }
 
         const deliveryItems =
             await this.refillDeliveriesRepository.findDeliveryItemsForConfirm(
@@ -208,14 +195,6 @@ export class RefillDeliveriesService {
                 throw new BadRequestException(
                     'One or more items do not belong to this delivery.',
                 );
-            if (
-                confirmedItem.receivedQuantity >
-                Number(deliveryItem.shippedQuantity)
-            ) {
-                throw new BadRequestException(
-                    'Received quantity cannot exceed shipped quantity.',
-                );
-            }
 
             confirmations.push({
                 deliveryItemId: deliveryItem.id,
@@ -225,12 +204,14 @@ export class RefillDeliveriesService {
                 received: confirmedItem.receivedQuantity,
             });
         }
+
         const result = await this.refillDeliveriesRepository.confirmDelivery({
             deliveryId,
             refillRequestId: request.id,
             departmentId: request.departmentId,
-            confirmedById: confirmerId,
+            confirmedById: confirmingUserId,
             notes: dto.notes,
+            batchType: delivery.type,
             confirmations,
         });
 
@@ -257,23 +238,5 @@ export class RefillDeliveriesService {
         });
 
         return result;
-    }
-
-    private async assertDepartmentScope(
-        requestingUserId: string,
-        targetDepartmentId: string,
-    ) {
-        const scope =
-            await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
-
-        const unrestrictedRoles = ['hospital_manager', 'warehouse_manager'];
-        if (unrestrictedRoles.includes(scope.roleName)) return;
-
-        if (scope.departmentId !== targetDepartmentId) {
-            throw new ForbiddenException(
-                'You can only confirm deliveries for your own department.',
-            );
-        }
     }
 }

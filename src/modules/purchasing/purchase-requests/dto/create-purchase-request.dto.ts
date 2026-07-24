@@ -10,17 +10,15 @@ import {
     ValidateNested,
 } from 'class-validator';
 
-class PurchaseRequestItemInputDto {
+class PurchaseRequestItemDto {
     @IsUUID()
     variantId!: string;
 
-    @Type(() => Number)
     @IsNumber()
-    @Min(0.01)
+    @Min(0.0001)
     requestedQuantity!: number;
 
     @IsOptional()
-    @Type(() => Number)
     @IsNumber()
     @Min(0)
     estimatedPrice?: number;
@@ -34,8 +32,8 @@ export class CreatePurchaseRequestDto {
     @IsArray()
     @ArrayMinSize(1)
     @ValidateNested({ each: true })
-    @Type(() => PurchaseRequestItemInputDto)
-    items!: PurchaseRequestItemInputDto[];
+    @Type(() => PurchaseRequestItemDto)
+    items!: PurchaseRequestItemDto[];
 
     @IsOptional()
     @IsString()

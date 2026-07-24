@@ -6,25 +6,24 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { RefillRequestsRepository } from './refill-requests.repository';
-import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
-import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
-import { HospitalRejectDto } from './dto/hospital-reject.dto';
-import { PrepareRefillRequestDto } from './dto/prepare-refill-request.dto';
-import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
-import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
-import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
-import { HospitalApproveRefillRequestDto } from './dto/hospital-approve-refill-request.dto';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
+import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
+import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
+import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
+import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
+import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
+import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
+import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
+
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'warehouse_manager'];
 const CANCELLABLE_STATUSES = [
     'draft',
     'pending_hospital_approval',
-    'approved',
-    'ready_for_delivery',
+    'pending_manager_approval',
 ];
 
 @Injectable()
@@ -157,24 +156,6 @@ export class RefillRequestsService {
         );
     }
 
-    private async assertVariantsActive(variantIds: string[]) {
-        const variants =
-            await this.refillRequestsRepository.findVariantsWithActivation(
-                variantIds,
-            );
-        if (variants.length !== variantIds.length)
-            throw new BadRequestException('One or more variants do not exist.');
-
-        const inactive = variants.filter(
-            (v) => !v.isActive || !v.product.isActive,
-        );
-        if (inactive.length > 0) {
-            throw new BadRequestException(
-                'One or more selected variants (or their parent product) are inactive.',
-            );
-        }
-    }
-
     async submit(id: string) {
         const request = await this.findById(id);
         if (request.status !== 'draft')
@@ -193,16 +174,74 @@ export class RefillRequestsService {
         return updated;
     }
 
-    async hospitalApprove(
-        id: string,
-        dto: HospitalApproveRefillRequestDto,
-        approverId: string,
-    ) {
+    async hospitalApprove(id: string, approverId: string) {
         const request = await this.findById(id);
         if (request.status !== 'pending_hospital_approval') {
             throw new ConflictException(
                 'This request is not awaiting hospital approval.',
             );
+        }
+
+        const updated = await this.refillRequestsRepository.updateStatus(id, {
+            status: 'pending_manager_approval',
+            hospitalApprovedById: approverId,
+            hospitalApprovedAt: new Date(),
+        });
+        await this.notifyStatusChange(updated);
+        return updated;
+    }
+
+    async hospitalReject(id: string, dto: RejectRequestDto) {
+        const request = await this.findById(id);
+        if (request.status !== 'pending_hospital_approval') {
+            throw new ConflictException(
+                'This request is not awaiting hospital approval.',
+            );
+        }
+
+        const updated = await this.refillRequestsRepository.updateStatus(id, {
+            status: 'hospital_rejected',
+            hospitalRejectionReason: dto.reason,
+        });
+        await this.notifyStatusChange(updated);
+        return updated;
+    }
+
+    async approve(
+        id: string,
+        dto: ApproveRefillRequestDto,
+        approverId: string,
+    ) {
+        const request = await this.findById(id);
+        if (request.status !== 'pending_manager_approval') {
+            throw new ConflictException(
+                'This request is not awaiting manager approval.',
+            );
+        }
+
+        const itemIds = new Set(request.items.map((i) => i.id));
+        const dtoItemIds = new Set(dto.items.map((i) => i.refillItemId));
+        if (
+            itemIds.size !== dtoItemIds.size ||
+            ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
+        ) {
+            throw new BadRequestException(
+                'Approved quantities must be provided for exactly every item on this request.',
+            );
+        }
+
+        for (const approval of dto.items) {
+            const item = request.items.find(
+                (i) => i.id === approval.refillItemId,
+            );
+            if (
+                item &&
+                approval.approvedQuantity > Number(item.requestedQuantity)
+            ) {
+                throw new BadRequestException(
+                    `Approved quantity for variant "${item.variant.variantName}" cannot exceed the requested quantity.`,
+                );
+            }
         }
 
         const isNewRecurringProposal =
@@ -221,100 +260,128 @@ export class RefillRequestsService {
         }
 
         const updated =
-            await this.refillRequestsRepository.hospitalApproveAndMaybeCreateSchedule(
+            await this.refillRequestsRepository.approveWithQuantities(
                 id,
                 approverId,
+                dto.items,
                 isNewRecurringProposal ? dto.approvalPolicy : undefined,
             );
         await this.notifyStatusChange(updated);
         return updated;
     }
 
-    async hospitalReject(id: string, dto: HospitalRejectDto) {
+    async reject(id: string, dto: RejectRequestDto, requestingUserId: string) {
         const request = await this.findById(id);
-        if (request.status !== 'pending_hospital_approval') {
-            throw new ConflictException(
-                'This request is not awaiting hospital approval.',
+
+        if (request.status === 'pending_manager_approval') {
+            const updated = await this.refillRequestsRepository.updateStatus(
+                id,
+                {
+                    status: 'manager_rejected',
+                    rejectionReason: dto.reason,
+                },
             );
+            await this.notifyStatusChange(updated);
+            return updated;
         }
 
-        const updated = await this.refillRequestsRepository.updateStatus(id, {
-            status: 'cancelled',
-            hospitalRejectionReason: dto.reason,
-        });
-        await this.notifyStatusChange(updated);
-        return updated;
-    }
-
-    async startPreparing(id: string) {
-        const request = await this.findById(id);
-        if (request.status !== 'approved') {
-            throw new ConflictException(
-                'Only approved refill requests can be moved to preparing.',
-            );
-        }
-        const updated = await this.refillRequestsRepository.updateStatus(id, {
-            status: 'preparing',
-        });
-        await this.notifyStatusChange(updated);
-        return updated;
-    }
-
-    async prepare(id: string, dto: PrepareRefillRequestDto) {
-        const request = await this.findById(id);
-        if (request.status !== 'preparing') {
-            throw new ConflictException(
-                'Only requests currently being prepared can have prepared quantities set.',
-            );
-        }
-
-        const itemIds = new Set(request.items.map((i) => i.id));
-        const dtoItemIds = new Set(dto.items.map((i) => i.refillItemId));
-        if (
-            itemIds.size !== dtoItemIds.size ||
-            ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
-        ) {
-            throw new BadRequestException(
-                'Prepared quantities must be provided for exactly every item on this request.',
-            );
-        }
-
-        for (const prepared of dto.items) {
-            const item = request.items.find(
-                (i) => i.id === prepared.refillItemId,
-            );
-            if (
-                item &&
-                prepared.preparedQuantity > Number(item.requestedQuantity)
-            ) {
-                throw new BadRequestException(
-                    `Prepared quantity for variant "${item.variant.variantName}" cannot exceed the requested quantity.`,
+        if (request.status === 'preparing') {
+            if (request.approvedById !== requestingUserId) {
+                throw new ForbiddenException(
+                    'Only the manager who approved this request can reject it.',
                 );
             }
+
+            const linkedDeliveries =
+                await this.refillRequestsRepository.countDeliveriesForRequest(
+                    id,
+                );
+            if (linkedDeliveries > 0) {
+                throw new ConflictException(
+                    'Cannot reject once at least one delivery has been generated for this request -- complete it instead once all deliveries are confirmed.',
+                );
+            }
+
+            const updated = await this.refillRequestsRepository.updateStatus(
+                id,
+                {
+                    status: 'manager_rejected',
+                    rejectionReason: dto.reason,
+                },
+            );
+            await this.notifyStatusChange(updated);
+            return updated;
         }
 
-        const updated =
-            await this.refillRequestsRepository.setPreparedQuantities(
-                id,
-                dto.items,
+        throw new ConflictException(
+            'This request cannot be rejected from its current status.',
+        );
+    }
+
+    async complete(id: string, requestingUserId: string) {
+        const request = await this.findById(id);
+        if (request.status !== 'partially_complete') {
+            throw new ConflictException(
+                'Only a request awaiting further batches can be manually completed.',
             );
+        }
+        if (request.approvedById !== requestingUserId) {
+            throw new ForbiddenException(
+                'Only the manager who approved this request can complete it.',
+            );
+        }
+
+        const pending =
+            await this.refillRequestsRepository.countUnconfirmedDeliveriesForRequest(
+                id,
+            );
+        if (pending > 0) {
+            throw new ConflictException(
+                `Cannot complete yet -- ${pending} delivery(ies) linked to this request are still awaiting confirmation from the receiving department.`,
+            );
+        }
+
+        const updated = await this.refillRequestsRepository.manualComplete(id);
         await this.notifyStatusChange(updated);
         return updated;
     }
 
-    async cancel(id: string) {
+    async cancel(id: string, requestingUserId: string) {
         const request = await this.findById(id);
         if (!CANCELLABLE_STATUSES.includes(request.status)) {
             throw new ConflictException(
                 `A request with status "${request.status}" cannot be cancelled.`,
             );
         }
+        if (request.requestedById !== requestingUserId) {
+            throw new ForbiddenException(
+                'You can only cancel refill requests you created.',
+            );
+        }
 
         const updated = await this.refillRequestsRepository.updateStatus(id, {
             status: 'cancelled',
         });
         await this.notifyStatusChange(updated);
         return updated;
+    }
+
+    private async assertVariantsActive(variantIds: string[]) {
+        const variants =
+            await this.refillRequestsRepository.findVariantsWithActivation(
+                variantIds,
+            );
+        if (variants.length !== variantIds.length)
+            throw new BadRequestException('One or more variants do not exist.');
+
+        const inactive = variants.filter(
+            (v) => !v.isActive || !v.product.isActive,
+        );
+        if (inactive.length > 0) {
+            throw new BadRequestException(
+                'One or more selected variants (or their parent product) are inactive.',
+            );
+        }
     }
 
     private async resolveDepartmentScope(

@@ -3,14 +3,17 @@ model DepartmentRefillRequest {
   requestNumber           String                @unique @map("request_number")
   departmentId            String                @map("department_id") @db.Uuid
   requestedById           String                @map("requested_by") @db.Uuid
-  status                  RefillRequestStatus   @default(draft)
+  status                  RequestStatus         @default(draft)
   priority                RefillRequestPriority @default(normal)
   requestType             RefillRequestType     @default(normal) @map("request_type")
-  frequencyInterval       Int?                  @map("frequency_interval") // period count; only set when requestType != normal
-  periodicScheduleId      String?               @map("periodic_schedule_id") @db.Uuid // set once this request is linked to a schedule (as origin or as a generated instance)
+  frequencyInterval       Int?                  @map("frequency_interval")
+  periodicScheduleId      String?               @map("periodic_schedule_id") @db.Uuid
   hospitalApprovedById    String?               @map("hospital_approved_by") @db.Uuid
   hospitalApprovedAt      DateTime?             @map("hospital_approved_at")
   hospitalRejectionReason String?               @map("hospital_rejection_reason")
+  approvedById            String?               @map("approved_by") @db.Uuid
+  approvedAt              DateTime?             @map("approved_at")
+  rejectionReason         String?               @map("rejection_reason")
   notes                   String?
   createdAt               DateTime              @default(now()) @map("created_at")
   updatedAt               DateTime?             @updatedAt @map("updated_at")
@@ -18,8 +21,9 @@ model DepartmentRefillRequest {
   department          Department                 @relation(fields: [departmentId], references: [id])
   requestedBy         User                       @relation("DRRequestedBy", fields: [requestedById], references: [id])
   hospitalApprovedBy  User?                      @relation("DRHospitalApprovedBy", fields: [hospitalApprovedById], references: [id])
+  approvedBy          User?                      @relation("DRApprovedBy", fields: [approvedById], references: [id])
   periodicSchedule    PeriodicRefillSchedule?    @relation("PeriodicScheduleGenerated", fields: [periodicScheduleId], references: [id])
-  originatesSchedule  PeriodicRefillSchedule?    @relation("PeriodicScheduleOrigin") // mirror side -- no @relation attribute needed here, FK lives on PeriodicRefillSchedule.originRequestId
+  originatesSchedule  PeriodicRefillSchedule?    @relation("PeriodicScheduleOrigin")
   items               DepartmentRefillItem[]
   deliveries          DepartmentRefillDelivery[]
 
@@ -33,7 +37,7 @@ model DepartmentRefillItem {
   refillRequestId     String   @map("refill_request_id") @db.Uuid
   variantId           String   @map("variant_id") @db.Uuid
   requestedQuantity   Decimal  @map("requested_quantity")
-  preparedQuantity    Decimal? @map("prepared_quantity")
+  approvedQuantity    Decimal? @map("approved_quantity")
   deliveredQuantity   Decimal? @map("delivered_quantity")
   quantityDiscrepancy Decimal  @default(0) @map("quantity_discrepancy")
   createdAt           DateTime @default(now()) @map("created_at")
@@ -50,6 +54,7 @@ model DepartmentRefillDelivery {
   refillRequestId String    @map("refill_request_id") @db.Uuid
   deliveredById   String    @map("delivered_by") @db.Uuid
   deliveredAt     DateTime  @default(now()) @map("delivered_at")
+  type            BatchType @default(batch)
   receivedById    String?   @map("received_by") @db.Uuid
   confirmedAt     DateTime? @map("confirmed_at")
   notes           String?

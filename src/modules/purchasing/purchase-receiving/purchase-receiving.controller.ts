@@ -1,5 +1,4 @@
 import {
-    BadRequestException,
     Body,
     Controller,
     Get,
@@ -13,16 +12,17 @@ import {
     UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import multer from 'multer';
+import * as multer from 'multer';
 import { PurchaseReceivingService } from './purchase-receiving.service';
-import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
-import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
-import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
 import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
+import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
+import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt.dto';
+import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
 import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
+import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
+
 @Controller('purchasing/receipts')
 export class PurchaseReceivingController {
     constructor(
@@ -69,7 +69,7 @@ export class PurchaseReceivingController {
                     errorHttpStatusCode: HttpStatus.BAD_REQUEST,
                     fileIsRequired: true,
                     exceptionFactory: () =>
-                        new BadRequestException(
+                        new Error(
                             'A receipt image is required to create a purchase receipt.',
                         ),
                 }),
@@ -85,7 +85,7 @@ export class PurchaseReceivingController {
         );
         return {
             message:
-                'Purchase receipt recorded. Awaiting warehouse confirmation.',
+                'Purchase receipt recorded. Awaiting confirmation from the warehouse manager who requested it.',
             data,
         };
     }
@@ -107,6 +107,7 @@ export class PurchaseReceivingController {
             data,
         };
     }
+
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
     async update(
