@@ -8,6 +8,7 @@ import {
     BatchType,
     resolveRequestCompletion,
 } from '../../../common/utils/request-completion.util';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const deliveryDetailSelect = {
     id: true,
@@ -220,6 +221,20 @@ export class RefillDeliveriesRepository {
         }[];
     }) {
         return this.prisma.$transaction(async (tx) => {
+            const claimed = await tx.departmentRefillDelivery.updateMany({
+                where: { id: params.deliveryId, confirmedAt: null },
+                data: {
+                    receivedById: params.confirmedById,
+                    confirmedAt: new Date(),
+                    notes: params.notes,
+                },
+            });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This delivery has already been confirmed.',
+                );
+            }
+
             for (const c of params.confirmations) {
                 await tx.departmentRefillDeliveryItem.update({
                     where: { id: c.deliveryItemId },
@@ -261,15 +276,6 @@ export class RefillDeliveriesRepository {
                     performedById: params.confirmedById,
                 });
             }
-
-            await tx.departmentRefillDelivery.update({
-                where: { id: params.deliveryId },
-                data: {
-                    receivedById: params.confirmedById,
-                    confirmedAt: new Date(),
-                    notes: params.notes,
-                },
-            });
 
             const affectedItemIds = [
                 ...new Set(params.confirmations.map((c) => c.refillItemId)),

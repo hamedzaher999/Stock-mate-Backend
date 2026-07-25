@@ -15,6 +15,7 @@ import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const SHIPPABLE_STATUSES = ['preparing', 'partially_complete'];
 
@@ -205,15 +206,27 @@ export class RefillDeliveriesService {
             });
         }
 
-        const result = await this.refillDeliveriesRepository.confirmDelivery({
-            deliveryId,
-            refillRequestId: request.id,
-            departmentId: request.departmentId,
-            confirmedById: confirmingUserId,
-            notes: dto.notes,
-            batchType: delivery.type,
-            confirmations,
-        });
+        let result: Awaited<
+            ReturnType<typeof this.refillDeliveriesRepository.confirmDelivery>
+        >;
+        try {
+            result = await this.refillDeliveriesRepository.confirmDelivery({
+                deliveryId,
+                refillRequestId: request.id,
+                departmentId: request.departmentId,
+                confirmedById: confirmingUserId,
+                notes: dto.notes,
+                batchType: delivery.type,
+                confirmations,
+            });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This delivery has already been confirmed.',
+                );
+            }
+            throw error;
+        }
 
         const updatedRequest =
             await this.prisma.departmentRefillRequest.findUniqueOrThrow({

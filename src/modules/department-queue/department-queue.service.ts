@@ -12,11 +12,18 @@ import { ReleaseQueueEntryDto } from './dto/release-queue-entry.dto';
 import { RemoveQueueEntryDto } from './dto/remove-queue-entry.dto';
 import { ListQueueDto } from './dto/list-queue.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    RECEPTION_STAFF_ROLE_NAME,
+} from '../../common/constants/roles.constants';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
 import { UserScopeService } from '../rbac/user-scope.service';
 import { DepartmentsCacheService } from '../departments/departments-cache.service';
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'reception_staff'];
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
+const UNRESTRICTED_ROLES = [
+    HOSPITAL_MANAGER_ROLE_NAME,
+    RECEPTION_STAFF_ROLE_NAME,
+];
 const QUEUEABLE_DEPARTMENT_TYPE = 'standard';
 
 @Injectable()
@@ -144,7 +151,16 @@ export class DepartmentQueueService {
             );
         }
 
-        return this.departmentQueueRepository.lock(id, doctorId);
+        try {
+            return await this.departmentQueueRepository.lock(id, doctorId);
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This patient is no longer waiting -- someone else may have already selected them.',
+                );
+            }
+            throw error;
+        }
     }
 
     async release(

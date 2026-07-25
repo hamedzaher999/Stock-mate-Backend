@@ -17,6 +17,7 @@ import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constan
 import { PermissionsResolverService } from '../rbac/permissions-resolver.service';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
 import { UserScopeService } from '../rbac/user-scope.service';
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 
 @Injectable()
 export class MedicalVisitsService {
@@ -148,7 +149,19 @@ export class MedicalVisitsService {
             );
         }
 
-        return this.departmentQueueRepository.lock(entry.id, doctorId);
+        try {
+            return await this.departmentQueueRepository.lock(
+                entry.id,
+                doctorId,
+            );
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This patient is no longer waiting -- someone else may have already selected them.',
+                );
+            }
+            throw error;
+        }
     }
 
     async completeConsultation(dto: CompleteConsultationDto, doctorId: string) {

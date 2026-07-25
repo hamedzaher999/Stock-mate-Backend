@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { CacheKeys } from '../../core/cache/cache-keys.constants';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 
 const PERMISSIONS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -25,6 +24,7 @@ export class PermissionsResolverService {
                     select: {
                         name: true,
                         isActive: true,
+                        isSuperAdmin: true,
                         rolePermissions: {
                             select: { permission: { select: { code: true } } },
                         },
@@ -50,7 +50,7 @@ export class PermissionsResolverService {
                     effective.add(override.permission.code);
                 }
             }
-        } else if (user.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+        } else if (user.role.isSuperAdmin) {
             const allPermissions = await this.prisma.permission.findMany({
                 select: { code: true },
             });

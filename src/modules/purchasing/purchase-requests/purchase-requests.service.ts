@@ -11,18 +11,25 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    PURCHASING_MANAGER_ROLE_NAME,
+} from '../../../common/constants/roles.constants';
 import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
 import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
 import { ApprovePurchaseRequestDto } from './dto/approve-purchase-request.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 const CANCELLABLE_STATUSES = [
     'draft',
     'pending_hospital_approval',
     'pending_manager_approval',
 ];
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'purchasing_manager'];
+const UNRESTRICTED_ROLES = [
+    HOSPITAL_MANAGER_ROLE_NAME,
+    PURCHASING_MANAGER_ROLE_NAME,
+];
 @Injectable()
 export class PurchaseRequestsService {
     constructor(
@@ -108,6 +115,17 @@ export class PurchaseRequestsService {
         );
     }
 
+    private async runGuarded<T>(action: () => Promise<T>): Promise<T> {
+        try {
+            return await action();
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
+            }
+            throw error;
+        }
+    }
+
     async submit(id: string) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
@@ -119,9 +137,11 @@ export class PurchaseRequestsService {
                 'Cannot submit a purchase request with no items.',
             );
 
-        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'pending_hospital_approval',
-        });
+        const updated = await this.runGuarded(() =>
+            this.purchaseRequestsRepository.updateStatus(id, 'draft', {
+                status: 'pending_hospital_approval',
+            }),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -133,11 +153,17 @@ export class PurchaseRequestsService {
                 'This request is not awaiting hospital approval.',
             );
 
-        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'pending_manager_approval',
-            hospitalApprovedById: approverId,
-            hospitalApprovedAt: new Date(),
-        });
+        const updated = await this.runGuarded(() =>
+            this.purchaseRequestsRepository.updateStatus(
+                id,
+                'pending_hospital_approval',
+                {
+                    status: 'pending_manager_approval',
+                    hospitalApprovedById: approverId,
+                    hospitalApprovedAt: new Date(),
+                },
+            ),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -149,10 +175,16 @@ export class PurchaseRequestsService {
                 'This request is not awaiting hospital approval.',
             );
 
-        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'hospital_rejected',
-            hospitalRejectionReason: dto.reason,
-        });
+        const updated = await this.runGuarded(() =>
+            this.purchaseRequestsRepository.updateStatus(
+                id,
+                'pending_hospital_approval',
+                {
+                    status: 'hospital_rejected',
+                    hospitalRejectionReason: dto.reason,
+                },
+            ),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -195,12 +227,13 @@ export class PurchaseRequestsService {
             }
         }
 
-        const updated =
-            await this.purchaseRequestsRepository.approveWithQuantities(
+        const updated = await this.runGuarded(() =>
+            this.purchaseRequestsRepository.approveWithQuantities(
                 id,
                 approverId,
                 dto.items,
-            );
+            ),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -209,9 +242,12 @@ export class PurchaseRequestsService {
         const pr = await this.findById(id);
 
         if (pr.status === 'pending_manager_approval') {
-            const updated = await this.purchaseRequestsRepository.updateStatus(
-                id,
-                { status: 'manager_rejected', rejectionReason: dto.reason },
+            const updated = await this.runGuarded(() =>
+                this.purchaseRequestsRepository.updateStatus(
+                    id,
+                    'pending_manager_approval',
+                    { status: 'manager_rejected', rejectionReason: dto.reason },
+                ),
             );
             await this.notifyStatusChange(updated);
             return updated;
@@ -234,9 +270,11 @@ export class PurchaseRequestsService {
                 );
             }
 
-            const updated = await this.purchaseRequestsRepository.updateStatus(
-                id,
-                { status: 'manager_rejected', rejectionReason: dto.reason },
+            const updated = await this.runGuarded(() =>
+                this.purchaseRequestsRepository.updateStatus(id, 'preparing', {
+                    status: 'manager_rejected',
+                    rejectionReason: dto.reason,
+                }),
             );
             await this.notifyStatusChange(updated);
             return updated;
@@ -270,8 +308,9 @@ export class PurchaseRequestsService {
             );
         }
 
-        const updated =
-            await this.purchaseRequestsRepository.manualComplete(id);
+        const updated = await this.runGuarded(() =>
+            this.purchaseRequestsRepository.manualComplete(id),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -291,9 +330,11 @@ export class PurchaseRequestsService {
             );
         }
 
-        const updated = await this.purchaseRequestsRepository.updateStatus(id, {
-            status: 'cancelled',
-        });
+        const updated = await this.runGuarded(() =>
+            this.purchaseRequestsRepository.updateStatus(id, pr.status, {
+                status: 'cancelled',
+            }),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }

@@ -66,12 +66,3 @@ export class CreatePurchaseReceiptDto {
     @Type(() => ReceiptItemDto)
     items!: ReceiptItemDto[];
 }
-
-export class CreatePurchaseReceiptFormDto {
-    purchaseRequestId!: string;
-    supplierId!: string;
-    receivingDate!: string;
-    type?: string;
-    notes?: string;
-    items!: string;
-}

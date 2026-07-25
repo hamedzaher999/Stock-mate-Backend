@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, PeriodicScheduleStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const scheduleDetailSelect = {
     id: true,
@@ -63,20 +64,30 @@ export class PeriodicSchedulesRepository {
             select: scheduleDetailSelect,
         });
     }
-
-    cancel(params: { id: string; reason: string; cancelledById: string }) {
-        return this.prisma.periodicRefillSchedule.update({
-            where: { id: params.id },
+    async cancel(params: {
+        id: string;
+        reason: string;
+        cancelledById: string;
+    }) {
+        const claimed = await this.prisma.periodicRefillSchedule.updateMany({
+            where: { id: params.id, status: 'active' },
             data: {
                 status: 'cancelled',
                 cancelledById: params.cancelledById,
                 cancelledAt: new Date(),
                 cancelReason: params.reason,
             },
+        });
+        if (claimed.count === 0) {
+            throw new AlreadyProcessedError(
+                'This schedule was already cancelled by another request.',
+            );
+        }
+        return this.prisma.periodicRefillSchedule.findUniqueOrThrow({
+            where: { id: params.id },
             select: scheduleDetailSelect,
         });
     }
-
     findDueSchedules(asOf: Date) {
         return this.prisma.periodicRefillSchedule.findMany({
             where: { status: 'active', nextRunDate: { lte: asOf } },

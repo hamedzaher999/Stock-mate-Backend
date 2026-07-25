@@ -6,6 +6,7 @@ import {
     computeCycleEnd,
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const refillRequestDetailSelect = {
     id: true,
@@ -200,13 +201,22 @@ export class RefillRequestsRepository {
         });
     }
 
-    updateStatus(
+    async updateStatus(
         id: string,
+        expectedStatus: RequestStatus,
         data: Prisma.DepartmentRefillRequestUncheckedUpdateInput,
     ) {
-        return this.prisma.departmentRefillRequest.update({
-            where: { id },
+        const claimed = await this.prisma.departmentRefillRequest.updateMany({
+            where: { id, status: expectedStatus },
             data,
+        });
+        if (claimed.count === 0) {
+            throw new AlreadyProcessedError(
+                'This refill request was already updated by another request.',
+            );
+        }
+        return this.prisma.departmentRefillRequest.findUniqueOrThrow({
+            where: { id },
             select: refillRequestDetailSelect,
         });
     }
@@ -220,6 +230,20 @@ export class RefillRequestsRepository {
         return this.prisma.$transaction(async (tx) => {
             const approvedAt = new Date();
 
+            const claimed = await tx.departmentRefillRequest.updateMany({
+                where: { id, status: 'pending_manager_approval' },
+                data: {
+                    status: 'preparing',
+                    approvedById: approverId,
+                    approvedAt,
+                },
+            });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This refill request was already updated by another request.',
+                );
+            }
+
             for (const item of items) {
                 await tx.departmentRefillItem.update({
                     where: { id: item.refillItemId },
@@ -229,15 +253,6 @@ export class RefillRequestsRepository {
                     },
                 });
             }
-
-            await tx.departmentRefillRequest.update({
-                where: { id },
-                data: {
-                    status: 'preparing',
-                    approvedById: approverId,
-                    approvedAt,
-                },
-            });
 
             if (newScheduleApprovalPolicy) {
                 const request =
@@ -287,10 +302,18 @@ export class RefillRequestsRepository {
         });
     }
 
-    manualComplete(id: string) {
-        return this.prisma.departmentRefillRequest.update({
-            where: { id },
+    async manualComplete(id: string) {
+        const claimed = await this.prisma.departmentRefillRequest.updateMany({
+            where: { id, status: 'partially_complete' },
             data: { status: 'complete' },
+        });
+        if (claimed.count === 0) {
+            throw new AlreadyProcessedError(
+                'This refill request was already updated by another request.',
+            );
+        }
+        return this.prisma.departmentRefillRequest.findUniqueOrThrow({
+            where: { id },
             select: refillRequestDetailSelect,
         });
     }

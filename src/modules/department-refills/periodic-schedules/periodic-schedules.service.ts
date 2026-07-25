@@ -11,6 +11,7 @@ import { CancelPeriodicScheduleDto } from './dto/cancel-periodic-schedule.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { UserScopeService } from '../../rbac/user-scope.service';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
@@ -79,13 +80,21 @@ export class PeriodicSchedulesService {
             );
         }
 
-        return this.periodicSchedulesRepository.cancel({
-            id,
-            reason: dto.reason,
-            cancelledById: requestingUserId,
-        });
+        try {
+            return await this.periodicSchedulesRepository.cancel({
+                id,
+                reason: dto.reason,
+                cancelledById: requestingUserId,
+            });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This schedule was already cancelled by another request.',
+                );
+            }
+            throw error;
+        }
     }
-
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {

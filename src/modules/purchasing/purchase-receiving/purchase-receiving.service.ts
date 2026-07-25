@@ -18,13 +18,13 @@ import {
 } from '../../../core/storage/storage.interface';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import {
-    CreatePurchaseReceiptDto,
-    CreatePurchaseReceiptFormDto,
-} from './dto/create-purchase-receipt.dto';
+import { CreatePurchaseReceiptDto } from './dto/create-purchase-receipt.dto';
 import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
 import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
 import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
+import { detectImageMimeType } from '../../../common/utils/image-signature.util';
 
 const RECEIVABLE_REQUEST_STATUSES = ['preparing', 'partially_complete'];
 
@@ -121,6 +121,12 @@ export class PurchaseReceivingService {
         receivedById: string,
         receiptImage: Express.Multer.File,
     ) {
+        const detectedMimeType = detectImageMimeType(receiptImage.buffer);
+        if (!detectedMimeType) {
+            throw new BadRequestException(
+                'The uploaded file is not a valid JPEG, PNG, or WEBP image.',
+            );
+        }
         const request =
             await this.purchaseReceivingRepository.findRequestForReceiving(
                 dto.purchaseRequestId,
@@ -193,7 +199,7 @@ export class PurchaseReceivingService {
             receiptImage.buffer,
             {
                 folder: `purchase-receipts/${dto.purchaseRequestId}`,
-                contentType: receiptImage.mimetype,
+                contentType: detectedMimeType,
             },
         );
 
@@ -294,16 +300,28 @@ export class PurchaseReceivingService {
             };
         });
 
-        const result = await this.purchaseReceivingRepository.confirmReceipt({
-            receiptId: id,
-            purchaseRequestId: receipt.purchaseRequestId,
-            warehouseDepartmentId: warehouse.id,
-            receivingDate: receipt.receivingDate,
-            confirmedById: confirmingUserId,
-            notes: dto.notes,
-            batchType: receipt.type,
-            confirmations,
-        });
+        let result: Awaited<
+            ReturnType<typeof this.purchaseReceivingRepository.confirmReceipt>
+        >;
+        try {
+            result = await this.purchaseReceivingRepository.confirmReceipt({
+                receiptId: id,
+                purchaseRequestId: receipt.purchaseRequestId,
+                warehouseDepartmentId: warehouse.id,
+                receivingDate: receipt.receivingDate,
+                confirmedById: confirmingUserId,
+                notes: dto.notes,
+                batchType: receipt.type,
+                confirmations,
+            });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This receipt has already been confirmed.',
+                );
+            }
+            throw error;
+        }
 
         const updatedRequest =
             await this.prisma.purchaseRequest.findUniqueOrThrow({

@@ -13,6 +13,7 @@ import { PaginatedResult } from '../../core/interfaces/paginated-result.interfac
 import { PermissionsResolverService } from '../rbac/permissions-resolver.service';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
 import { computeCycleEnd } from '../../common/utils/recurrence.util';
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 
 @Injectable()
 export class PrescriptionsService {
@@ -63,11 +64,20 @@ export class PrescriptionsService {
 
         await this.assertCanManage(prescription.doctorId, requestingUserId);
 
-        return this.prescriptionsRepository.cancel({
-            prescriptionId: id,
-            reason: dto.reason,
-            cancelledById: requestingUserId,
-        });
+        try {
+            return await this.prescriptionsRepository.cancel({
+                prescriptionId: id,
+                reason: dto.reason,
+                cancelledById: requestingUserId,
+            });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This prescription was already updated by another request.',
+                );
+            }
+            throw error;
+        }
     }
 
     async renew(id: string, dto: RenewPrescriptionDto, doctorId: string) {
@@ -105,18 +115,27 @@ export class PrescriptionsService {
             dto.frequencyInterval,
         );
 
-        return this.prescriptionsRepository.renew({
-            oldPrescriptionId: id,
-            visitId: dto.visitId,
-            patientId: oldPrescription.patientId,
-            doctorId,
-            frequencyUnit: dto.frequencyUnit,
-            frequencyInterval: dto.frequencyInterval,
-            totalCycles: dto.totalCycles,
-            startDate,
-            currentCycleEnd,
-            items: dto.items,
-        });
+        try {
+            return await this.prescriptionsRepository.renew({
+                oldPrescriptionId: id,
+                visitId: dto.visitId,
+                patientId: oldPrescription.patientId,
+                doctorId,
+                frequencyUnit: dto.frequencyUnit,
+                frequencyInterval: dto.frequencyInterval,
+                totalCycles: dto.totalCycles,
+                startDate,
+                currentCycleEnd,
+                items: dto.items,
+            });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(
+                    'This prescription was already updated by another request.',
+                );
+            }
+            throw error;
+        }
     }
 
     private async assertCanManage(

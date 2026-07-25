@@ -1,11 +1,29 @@
-import { IsDateString, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+    IsDateString,
+    IsEnum,
+    IsOptional,
+    IsString,
+    IsUUID,
+} from 'class-validator';
+
+enum BatchTypeDto {
+    batch = 'batch',
+    final_batch = 'final_batch',
+}
 
 export class CreatePurchaseReceiptFormDto {
     @IsUUID()
-    purchaseOrderId!: string;
+    purchaseRequestId!: string;
+
+    @IsUUID()
+    supplierId!: string;
 
     @IsDateString()
     receivingDate!: string;
+
+    @IsOptional()
+    @IsEnum(BatchTypeDto)
+    type?: BatchTypeDto;
 
     @IsOptional()
     @IsString()

@@ -18,10 +18,10 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
-import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt.dto';
 import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
 import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
 import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
+import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
 
 @Controller('purchasing/receipts')
 export class PurchaseReceivingController {

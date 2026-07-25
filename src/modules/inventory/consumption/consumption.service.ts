@@ -1,14 +1,22 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+} from '@nestjs/common';
 import { ConsumptionRepository } from './consumption.repository';
 import { CreateConsumptionDto } from './dto/create-consumption.dto';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { UserScopeService } from '../../rbac/user-scope.service';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class ConsumptionService {
     constructor(
         private readonly consumptionRepository: ConsumptionRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async create(dto: CreateConsumptionDto, performedById: string) {
@@ -24,6 +32,8 @@ export class ConsumptionService {
                 'This department does not track inventory.',
             );
         }
+
+        await this.assertDepartmentScope(performedById, dto.departmentId);
 
         for (const line of dto.items) {
             const variant =
@@ -58,6 +68,29 @@ export class ConsumptionService {
                 );
             }
             throw error;
+        }
+    }
+
+    private async resolveDepartmentScope(
+        requestingUserId: string,
+    ): Promise<string | null> {
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
+
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
+    }
+
+    private async assertDepartmentScope(
+        requestingUserId: string,
+        targetDepartmentId: string,
+    ) {
+        const scope = await this.resolveDepartmentScope(requestingUserId);
+        if (scope && scope !== targetDepartmentId) {
+            throw new ForbiddenException(
+                'You can only record consumption for your own department.',
+            );
         }
     }
 }

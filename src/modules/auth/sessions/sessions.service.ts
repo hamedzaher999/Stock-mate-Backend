@@ -7,7 +7,6 @@ import { hashToken } from '../../../common/utils/token-hash.util';
 
 const ACCESS_TOKEN_TTL_MS = 3 * 60 * 60 * 1000;
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-
 @Injectable()
 export class SessionsService {
     constructor(
@@ -21,7 +20,7 @@ export class SessionsService {
         roleId: string;
     }) {
         return this.jwtService.sign(payload, {
-            expiresIn: '15m',
+            expiresIn: ACCESS_TOKEN_TTL_MS / 1000,
             secret: process.env.JWT_ACCESS_SECRET as string,
         });
     }

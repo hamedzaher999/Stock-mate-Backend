@@ -3,6 +3,7 @@ import { Prisma, PrescriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { DispenseQueueRepository } from '../pharmacy/dispense-queue/dispense-queue.repository';
 import { variantMinimalSelect } from '../../common/selects/variant.select';
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 
 const prescriptionDetailSelect = {
     id: true,
@@ -106,8 +107,8 @@ export class PrescriptionsRepository {
         cancelledById: string;
     }) {
         return this.prisma.$transaction(async (tx) => {
-            const cancelled = await tx.prescription.update({
-                where: { id: params.prescriptionId },
+            const claimed = await tx.prescription.updateMany({
+                where: { id: params.prescriptionId, status: 'active' },
                 data: {
                     status: 'cancelled',
                     currentCycleStatus: 'cancelled',
@@ -115,15 +116,22 @@ export class PrescriptionsRepository {
                     cancelledById: params.cancelledById,
                     cancelledAt: new Date(),
                 },
-                select: prescriptionDetailSelect,
             });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This prescription was already updated by another request.',
+                );
+            }
 
             await this.dispenseQueueRepository.removeForPrescription(
                 tx,
                 params.prescriptionId,
             );
 
-            return cancelled;
+            return tx.prescription.findUniqueOrThrow({
+                where: { id: params.prescriptionId },
+                select: prescriptionDetailSelect,
+            });
         });
     }
 
@@ -146,10 +154,16 @@ export class PrescriptionsRepository {
         }[];
     }) {
         return this.prisma.$transaction(async (tx) => {
-            await tx.prescription.update({
-                where: { id: params.oldPrescriptionId },
+            const claimed = await tx.prescription.updateMany({
+                where: { id: params.oldPrescriptionId, status: 'active' },
                 data: { status: 'completed' },
             });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This prescription was already updated by another request.',
+                );
+            }
+
             await this.dispenseQueueRepository.removeForPrescription(
                 tx,
                 params.oldPrescriptionId,
@@ -197,6 +211,7 @@ export class PrescriptionsRepository {
             });
         });
     }
+
     findDueCycleChecks(asOf: Date) {
         return this.prisma.prescription.findMany({
             where: {

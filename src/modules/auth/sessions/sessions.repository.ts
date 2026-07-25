@@ -65,4 +65,10 @@ export class SessionsRepository {
             data: { revokedAt: new Date() },
         });
     }
+    findActiveById(id: string) {
+        return this.prisma.session.findFirst({
+            where: { id, revokedAt: null, accessExpiresAt: { gt: new Date() } },
+            select: { id: true },
+        });
+    }
 }

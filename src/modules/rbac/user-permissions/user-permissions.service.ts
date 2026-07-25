@@ -7,7 +7,6 @@ import { UserPermissionsRepository } from './user-permissions.repository';
 import { PermissionsRepository } from '../permissions/permissions.repository';
 import { PermissionsResolverService } from '../permissions-resolver.service';
 import { UpsertUserPermissionDto } from './dto/upsert-user-permission.dto';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { RolesRepository } from '../roles/roles.repository';
 import { PermissionGroupDto } from './dto/permission-group.dto';
 @Injectable()
@@ -243,9 +242,9 @@ export class UserPermissionsService {
         const target =
             await this.userPermissionsRepository.findUserRole(targetUserId);
         if (!target) throw new NotFoundException('User not found.');
-        if (target.role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+        if (target.role.isSuperAdmin) {
             throw new BadRequestException(
-                'The Hospital Manager account already has full access -- overrides do not apply to it.',
+                'The super-admin account already has full access -- overrides do not apply to it.',
             );
         }
         return target;

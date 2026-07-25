@@ -7,6 +7,7 @@ import {
     BatchType,
     resolveRequestCompletion,
 } from '../../../common/utils/request-completion.util';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const purchaseReceiptDetailSelect = {
     id: true,
@@ -201,6 +202,21 @@ export class PurchaseReceivingRepository {
         }[];
     }) {
         return this.prisma.$transaction(async (tx) => {
+            const claimed = await tx.purchaseReceipt.updateMany({
+                where: { id: params.receiptId, status: 'pending_confirmation' },
+                data: {
+                    status: 'confirmed',
+                    confirmedById: params.confirmedById,
+                    confirmedAt: new Date(),
+                    notes: params.notes,
+                },
+            });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This receipt has already been confirmed.',
+                );
+            }
+
             for (const c of params.confirmations) {
                 await tx.purchaseReceiptItem.update({
                     where: { id: c.receiptItemId },
@@ -248,16 +264,6 @@ export class PurchaseReceivingRepository {
                     });
                 }
             }
-
-            await tx.purchaseReceipt.update({
-                where: { id: params.receiptId },
-                data: {
-                    status: 'confirmed',
-                    confirmedById: params.confirmedById,
-                    confirmedAt: new Date(),
-                    notes: params.notes,
-                },
-            });
 
             const affectedItemIds = [
                 ...new Set(

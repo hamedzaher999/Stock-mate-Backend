@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { Prisma, QueueStatus } from '@prisma/client';
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 
 const queueEntrySelect = {
     id: true,
@@ -125,14 +126,22 @@ export class DepartmentQueueRepository {
         });
     }
 
-    lock(id: string, lockedById: string) {
-        return this.prisma.departmentQueue.update({
-            where: { id },
+    async lock(id: string, lockedById: string) {
+        const claimed = await this.prisma.departmentQueue.updateMany({
+            where: { id, status: 'waiting' },
             data: {
                 status: 'in_consultation',
                 lockedById,
                 lockedAt: new Date(),
             },
+        });
+        if (claimed.count === 0) {
+            throw new AlreadyProcessedError(
+                'This patient is no longer waiting -- someone else may have already selected them.',
+            );
+        }
+        return this.prisma.departmentQueue.findUniqueOrThrow({
+            where: { id },
             select: queueEntrySelect,
         });
     }

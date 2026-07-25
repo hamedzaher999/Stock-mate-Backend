@@ -13,9 +13,11 @@ import { UpdateMeDto } from './dto/update-me.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
+import {
+    DOCTOR_ROLE_NAME,
+    HOSPITAL_MANAGER_ROLE_NAME,
+} from '../../common/constants/roles.constants';
 import { UserScopeService } from '../rbac/user-scope.service';
-const DOCTOR_ROLE_NAME = 'doctor';
 
 @Injectable()
 export class UsersService {

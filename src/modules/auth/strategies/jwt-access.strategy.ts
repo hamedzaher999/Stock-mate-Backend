@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import {
     ExtractJwt,
@@ -8,7 +8,7 @@ import {
 import type { Request } from 'express';
 import { JwtPayload } from '../../../core/interfaces/jwt-payload.interface';
 import { RequestWithCookies } from '../../../core/interfaces/request-with-cookies.interface';
-
+import { SessionsRepository } from '../sessions/sessions.repository';
 function cookieOrHeaderExtractor(req: Request): string | null {
     const cookies = (req as RequestWithCookies).cookies;
     const cookieToken = cookies?.access_token;
@@ -31,11 +31,20 @@ export class JwtAccessStrategy extends PassportStrategy(
     Strategy,
     'jwt-access',
 ) {
-    constructor() {
+    constructor(private readonly sessionsRepository: SessionsRepository) {
         super(strategyOptions);
     }
 
-    validate(payload: JwtPayload): JwtPayload {
+    async validate(payload: JwtPayload): Promise<JwtPayload> {
+        const session = await this.sessionsRepository.findActiveById(
+            payload.sessionId,
+        );
+        if (!session) {
+            throw new UnauthorizedException(
+                'Session has been revoked or has expired.',
+            );
+        }
+
         return {
             sub: payload.sub,
             sessionId: payload.sessionId,

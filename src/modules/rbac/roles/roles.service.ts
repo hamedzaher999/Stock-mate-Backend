@@ -9,7 +9,6 @@ import { PermissionsRepository } from '../permissions/permissions.repository';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { SetRolePermissionsDto } from './dto/set-role-permissions.dto';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { PermissionsResolverService } from '../permissions-resolver.service';
 @Injectable()
 export class RolesService {
@@ -68,9 +67,9 @@ export class RolesService {
     async setPermissions(roleId: string, dto: SetRolePermissionsDto) {
         const role = await this.findById(roleId);
 
-        if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
+        if (role.isSuperAdmin) {
             throw new BadRequestException(
-                'The Hospital Manager role automatically has every permission -- its role_permissions cannot be edited.',
+                'The super-admin role automatically has every permission -- its role_permissions cannot be edited.',
             );
         }
 

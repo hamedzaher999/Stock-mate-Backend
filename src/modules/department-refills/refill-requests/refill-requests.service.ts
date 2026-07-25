@@ -12,14 +12,21 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    WAREHOUSE_MANAGER_ROLE_NAME,
+} from '../../../common/constants/roles.constants';
 import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
 import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
 import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
 import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME, 'warehouse_manager'];
+const UNRESTRICTED_ROLES = [
+    HOSPITAL_MANAGER_ROLE_NAME,
+    WAREHOUSE_MANAGER_ROLE_NAME,
+];
 const CANCELLABLE_STATUSES = [
     'draft',
     'pending_hospital_approval',
@@ -167,9 +174,11 @@ export class RefillRequestsService {
                 'Cannot submit a refill request with no items.',
             );
 
-        const updated = await this.refillRequestsRepository.updateStatus(id, {
-            status: 'pending_hospital_approval',
-        });
+        const updated = await this.runGuarded(() =>
+            this.refillRequestsRepository.updateStatus(id, 'draft', {
+                status: 'pending_hospital_approval',
+            }),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -182,11 +191,17 @@ export class RefillRequestsService {
             );
         }
 
-        const updated = await this.refillRequestsRepository.updateStatus(id, {
-            status: 'pending_manager_approval',
-            hospitalApprovedById: approverId,
-            hospitalApprovedAt: new Date(),
-        });
+        const updated = await this.runGuarded(() =>
+            this.refillRequestsRepository.updateStatus(
+                id,
+                'pending_hospital_approval',
+                {
+                    status: 'pending_manager_approval',
+                    hospitalApprovedById: approverId,
+                    hospitalApprovedAt: new Date(),
+                },
+            ),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -199,10 +214,16 @@ export class RefillRequestsService {
             );
         }
 
-        const updated = await this.refillRequestsRepository.updateStatus(id, {
-            status: 'hospital_rejected',
-            hospitalRejectionReason: dto.reason,
-        });
+        const updated = await this.runGuarded(() =>
+            this.refillRequestsRepository.updateStatus(
+                id,
+                'pending_hospital_approval',
+                {
+                    status: 'hospital_rejected',
+                    hospitalRejectionReason: dto.reason,
+                },
+            ),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -259,13 +280,14 @@ export class RefillRequestsService {
             );
         }
 
-        const updated =
-            await this.refillRequestsRepository.approveWithQuantities(
+        const updated = await this.runGuarded(() =>
+            this.refillRequestsRepository.approveWithQuantities(
                 id,
                 approverId,
                 dto.items,
                 isNewRecurringProposal ? dto.approvalPolicy : undefined,
-            );
+            ),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -274,12 +296,15 @@ export class RefillRequestsService {
         const request = await this.findById(id);
 
         if (request.status === 'pending_manager_approval') {
-            const updated = await this.refillRequestsRepository.updateStatus(
-                id,
-                {
-                    status: 'manager_rejected',
-                    rejectionReason: dto.reason,
-                },
+            const updated = await this.runGuarded(() =>
+                this.refillRequestsRepository.updateStatus(
+                    id,
+                    'pending_manager_approval',
+                    {
+                        status: 'manager_rejected',
+                        rejectionReason: dto.reason,
+                    },
+                ),
             );
             await this.notifyStatusChange(updated);
             return updated;
@@ -302,12 +327,11 @@ export class RefillRequestsService {
                 );
             }
 
-            const updated = await this.refillRequestsRepository.updateStatus(
-                id,
-                {
+            const updated = await this.runGuarded(() =>
+                this.refillRequestsRepository.updateStatus(id, 'preparing', {
                     status: 'manager_rejected',
                     rejectionReason: dto.reason,
-                },
+                }),
             );
             await this.notifyStatusChange(updated);
             return updated;
@@ -341,7 +365,9 @@ export class RefillRequestsService {
             );
         }
 
-        const updated = await this.refillRequestsRepository.manualComplete(id);
+        const updated = await this.runGuarded(() =>
+            this.refillRequestsRepository.manualComplete(id),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
@@ -359,13 +385,14 @@ export class RefillRequestsService {
             );
         }
 
-        const updated = await this.refillRequestsRepository.updateStatus(id, {
-            status: 'cancelled',
-        });
+        const updated = await this.runGuarded(() =>
+            this.refillRequestsRepository.updateStatus(id, request.status, {
+                status: 'cancelled',
+            }),
+        );
         await this.notifyStatusChange(updated);
         return updated;
     }
-
     private async assertVariantsActive(variantIds: string[]) {
         const variants =
             await this.refillRequestsRepository.findVariantsWithActivation(
@@ -424,5 +451,15 @@ export class RefillRequestsService {
             body: `Refill request ${request.requestNumber} is now "${request.status}".`,
             data: { refillRequestId: request.id, status: request.status },
         });
+    }
+    private async runGuarded<T>(action: () => Promise<T>): Promise<T> {
+        try {
+            return await action();
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
+            }
+            throw error;
+        }
     }
 }

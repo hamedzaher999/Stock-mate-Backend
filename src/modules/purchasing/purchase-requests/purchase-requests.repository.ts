@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
 const purchaseRequestDetailSelect = {
     id: true,
@@ -141,10 +142,22 @@ export class PurchaseRequestsRepository {
         });
     }
 
-    updateStatus(id: string, data: Prisma.PurchaseRequestUncheckedUpdateInput) {
-        return this.prisma.purchaseRequest.update({
-            where: { id },
+    async updateStatus(
+        id: string,
+        expectedStatus: RequestStatus,
+        data: Prisma.PurchaseRequestUncheckedUpdateInput,
+    ) {
+        const claimed = await this.prisma.purchaseRequest.updateMany({
+            where: { id, status: expectedStatus },
             data,
+        });
+        if (claimed.count === 0) {
+            throw new AlreadyProcessedError(
+                'This purchase request was already updated by another request.',
+            );
+        }
+        return this.prisma.purchaseRequest.findUniqueOrThrow({
+            where: { id },
             select: purchaseRequestDetailSelect,
         });
     }
@@ -155,6 +168,20 @@ export class PurchaseRequestsRepository {
         items: { purchaseRequestItemId: string; approvedQuantity: number }[],
     ) {
         return this.prisma.$transaction(async (tx) => {
+            const claimed = await tx.purchaseRequest.updateMany({
+                where: { id, status: 'pending_manager_approval' },
+                data: {
+                    status: 'preparing',
+                    approvedById: approverId,
+                    approvedAt: new Date(),
+                },
+            });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This purchase request was already updated by another request.',
+                );
+            }
+
             for (const item of items) {
                 await tx.purchaseRequestItem.update({
                     where: { id: item.purchaseRequestItemId },
@@ -164,22 +191,26 @@ export class PurchaseRequestsRepository {
                     },
                 });
             }
-            return tx.purchaseRequest.update({
+
+            return tx.purchaseRequest.findUniqueOrThrow({
                 where: { id },
-                data: {
-                    status: 'preparing',
-                    approvedById: approverId,
-                    approvedAt: new Date(),
-                },
                 select: purchaseRequestDetailSelect,
             });
         });
     }
 
-    manualComplete(id: string) {
-        return this.prisma.purchaseRequest.update({
-            where: { id },
+    async manualComplete(id: string) {
+        const claimed = await this.prisma.purchaseRequest.updateMany({
+            where: { id, status: 'partially_complete' },
             data: { status: 'complete' },
+        });
+        if (claimed.count === 0) {
+            throw new AlreadyProcessedError(
+                'This purchase request was already updated by another request.',
+            );
+        }
+        return this.prisma.purchaseRequest.findUniqueOrThrow({
+            where: { id },
             select: purchaseRequestDetailSelect,
         });
     }

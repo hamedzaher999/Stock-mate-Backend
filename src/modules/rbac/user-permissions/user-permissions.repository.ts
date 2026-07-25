@@ -77,7 +77,9 @@ export class UserPermissionsRepository {
     findUserRole(userId: string) {
         return this.prisma.user.findUnique({
             where: { id: userId },
-            select: { role: { select: { id: true, name: true } } },
+            select: {
+                role: { select: { id: true, name: true, isSuperAdmin: true } },
+            },
         });
     }
 
