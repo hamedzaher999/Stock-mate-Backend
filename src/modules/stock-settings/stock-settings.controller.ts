@@ -17,22 +17,27 @@ import { RequirePermissions } from '../../core/decorators/require-permissions.de
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
-
 @Controller('stock-settings')
 export class StockSettingsController {
     constructor(private readonly stockSettingsService: StockSettingsService) {}
 
     @Get()
     @RequirePermissions(PERMISSIONS.VIEW_INVENTORY)
-    async findAll(@Query() query: ListStockSettingsDto) {
-        const data = await this.stockSettingsService.list(query);
+    async findAll(
+        @Query() query: ListStockSettingsDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.stockSettingsService.list(query, user.sub);
         return { message: 'Success', data };
     }
 
     @Get(':id')
     @RequirePermissions(PERMISSIONS.VIEW_INVENTORY)
-    async findOne(@Param('id') id: string) {
-        const data = await this.stockSettingsService.findById(id);
+    async findOne(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.stockSettingsService.findById(id, user.sub);
         return { message: 'Success', data };
     }
 

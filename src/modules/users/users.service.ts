@@ -18,13 +18,14 @@ import {
     HOSPITAL_MANAGER_ROLE_NAME,
 } from '../../common/constants/roles.constants';
 import { UserScopeService } from '../rbac/user-scope.service';
-
+import { SessionsService } from '../auth/sessions/sessions.service';
 @Injectable()
 export class UsersService {
     constructor(
         private readonly usersRepository: UsersRepository,
         private readonly permissionsResolver: PermissionsResolverService,
         private readonly userScopeService: UserScopeService,
+        private readonly sessionsService: SessionsService,
     ) {}
 
     async list(dto: ListUsersDto): Promise<PaginatedResult<unknown>> {
@@ -210,7 +211,15 @@ export class UsersService {
             );
         }
 
-        return this.usersRepository.updateStatus(id, dto.status);
+        const updated = await this.usersRepository.updateStatus(id, dto.status);
+
+        // أمان: عند تعطيل المستخدم، أنهِ كل جلساته النشطة فورًا بدل انتظار
+        // انتهاء صلاحية الـ access token (حتى 3 ساعات).
+        if (dto.status === 'inactive') {
+            await this.sessionsService.revokeAllForUser(id);
+        }
+
+        return updated;
     }
 
     async updateMe(userId: string, dto: UpdateMeDto) {

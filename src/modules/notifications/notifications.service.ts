@@ -5,6 +5,7 @@ import { PushService } from './push/push.service';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { NotificationCategory, Prisma } from '@prisma/client';
+import { stripHtml } from '../../common/utils/sanitize.util';
 
 @Injectable()
 export class NotificationsService {
@@ -56,7 +57,6 @@ export class NotificationsService {
     markAllRead(userId: string) {
         return this.notificationsRepository.markAllRead(userId);
     }
-
     async create(params: {
         userId: string;
         type: string;
@@ -65,18 +65,21 @@ export class NotificationsService {
         body: string;
         data?: Record<string, unknown>;
     }) {
+        const safeTitle = stripHtml(params.title).slice(0, 200);
+        const safeBody = stripHtml(params.body).slice(0, 1000);
+
         const notification = await this.notificationsRepository.create({
             userId: params.userId,
             type: params.type,
             category: params.category,
-            title: params.title,
-            body: params.body,
+            title: safeTitle,
+            body: safeBody,
             data: params.data as Prisma.InputJsonValue,
         });
 
         this.pushToUser(params.userId, {
-            title: params.title,
-            body: params.body,
+            title: safeTitle,
+            body: safeBody,
             data: { type: params.type, notificationId: notification.id },
         }).catch((error) =>
             this.logger.warn('Push dispatch failed.', error as Error),

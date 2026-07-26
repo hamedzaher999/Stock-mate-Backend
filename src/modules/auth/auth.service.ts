@@ -38,12 +38,17 @@ export class AuthService {
                 'No destination available for the selected channel.',
             );
         }
-        //  TODO:DELETE CODE FROM RESPONSE
 
         const r = await this.otpService.issueOtp(user.id, channel, destination);
+        // TODO : Delete in production
+        const data =
+            process.env.NODE_ENV === 'production'
+                ? undefined
+                : { code: r.code };
+
         return {
             message: 'If this account exists, an OTP has been sent.',
-            data: { code: r.code },
+            data,
         };
     }
 

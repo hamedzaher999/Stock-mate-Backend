@@ -12,10 +12,7 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import {
-    HOSPITAL_MANAGER_ROLE_NAME,
-    WAREHOUSE_MANAGER_ROLE_NAME,
-} from '../../../common/constants/roles.constants';
+import { WAREHOUSE_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
 import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
 import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
@@ -23,10 +20,7 @@ import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
-const UNRESTRICTED_ROLES = [
-    HOSPITAL_MANAGER_ROLE_NAME,
-    WAREHOUSE_MANAGER_ROLE_NAME,
-];
+const UNRESTRICTED_ROLES = [WAREHOUSE_MANAGER_ROLE_NAME];
 const CANCELLABLE_STATUSES = [
     'draft',
     'pending_hospital_approval',
@@ -144,12 +138,22 @@ export class RefillRequestsService {
         });
     }
 
-    async update(id: string, dto: UpdateRefillRequestDto) {
+    async update(
+        id: string,
+        dto: UpdateRefillRequestDto,
+        requestingUserId: string,
+    ) {
         const request = await this.findById(id);
         if (request.status !== 'draft')
             throw new ConflictException(
                 'Only draft refill requests can be edited.',
             );
+
+        if (request.requestedById !== requestingUserId) {
+            throw new ForbiddenException(
+                'You can only edit refill requests you created.',
+            );
+        }
 
         if (dto.items) {
             const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
@@ -163,7 +167,7 @@ export class RefillRequestsService {
         );
     }
 
-    async submit(id: string) {
+    async submit(id: string, requestingUserId: string) {
         const request = await this.findById(id);
         if (request.status !== 'draft')
             throw new ConflictException(
@@ -174,6 +178,12 @@ export class RefillRequestsService {
                 'Cannot submit a refill request with no items.',
             );
 
+        if (request.requestedById !== requestingUserId) {
+            throw new ForbiddenException(
+                'You can only submit refill requests you created.',
+            );
+        }
+
         const updated = await this.runGuarded(() =>
             this.refillRequestsRepository.updateStatus(id, 'draft', {
                 status: 'pending_hospital_approval',
@@ -182,7 +192,6 @@ export class RefillRequestsService {
         await this.notifyStatusChange(updated);
         return updated;
     }
-
     async hospitalApprove(id: string, approverId: string) {
         const request = await this.findById(id);
         if (request.status !== 'pending_hospital_approval') {
@@ -418,7 +427,8 @@ export class RefillRequestsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return scope.departmentId;
     }
 

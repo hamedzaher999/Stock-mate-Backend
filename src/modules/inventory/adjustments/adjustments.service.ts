@@ -7,11 +7,9 @@ import { AdjustmentsRepository } from './adjustments.repository';
 import { CreateAdjustmentDto } from './dto/create-adjustment.dto';
 import { ListAdjustmentsDto } from './dto/list-adjustments.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 const INCREASING_ADJUSTMENT_TYPES = ['found'];
 const FIXED_ASSET_ALLOWED_TYPES = ['damaged', 'shrinkage'];
 
@@ -138,7 +136,7 @@ export class AdjustmentsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin) return null;
         return scope.departmentId;
     }
     private async assertDepartmentScope(

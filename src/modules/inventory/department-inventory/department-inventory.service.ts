@@ -4,11 +4,9 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { DepartmentInventoryRepository } from './department-inventory.repository';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class DepartmentInventoryService {
@@ -56,6 +54,7 @@ export class DepartmentInventoryService {
             totalPages: Math.ceil(total / limit),
         };
     }
+
     private async resolveDepartmentScope(
         requestingUserId: string,
     ): Promise<string | null> {
@@ -63,7 +62,7 @@ export class DepartmentInventoryService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin) return null;
         return scope.departmentId;
     }
 }

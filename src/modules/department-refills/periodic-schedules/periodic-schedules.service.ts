@@ -9,11 +9,8 @@ import { PeriodicSchedulesRepository } from './periodic-schedules.repository';
 import { ListPeriodicSchedulesDto } from './dto/list-periodic-schedules.dto';
 import { CancelPeriodicScheduleDto } from './dto/cancel-periodic-schedule.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { UserScopeService } from '../../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
-
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class PeriodicSchedulesService {
@@ -101,7 +98,7 @@ export class PeriodicSchedulesService {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin) return null;
         return scope.departmentId;
     }
 }

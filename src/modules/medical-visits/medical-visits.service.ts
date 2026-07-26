@@ -29,10 +29,7 @@ export class MedicalVisitsService {
         private readonly userScopeService: UserScopeService,
     ) {}
 
-    async list(
-        dto: ListMedicalVisitsDto,
-        requestingUserId: string,
-    ): Promise<PaginatedResult<unknown>> {
+    async list(dto: ListMedicalVisitsDto): Promise<PaginatedResult<unknown>> {
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
 

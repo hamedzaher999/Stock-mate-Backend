@@ -17,7 +17,7 @@ import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
 import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
 import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
-
+import { Throttle } from '@nestjs/throttler';
 @Controller('department-refills/requests')
 export class RefillRequestsController {
     constructor(
@@ -74,15 +74,22 @@ export class RefillRequestsController {
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
-    async update(@Param('id') id: string, @Body() dto: UpdateRefillRequestDto) {
-        const data = await this.refillRequestsService.update(id, dto);
+    async update(
+        @Param('id') id: string,
+        @Body() dto: UpdateRefillRequestDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillRequestsService.update(id, dto, user.sub);
         return { message: 'Refill request updated.', data };
     }
 
     @Post(':id/submit')
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
-    async submit(@Param('id') id: string) {
-        const data = await this.refillRequestsService.submit(id);
+    async submit(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.refillRequestsService.submit(id, user.sub);
         return {
             message: 'Refill request submitted for hospital approval.',
             data,
@@ -90,6 +97,7 @@ export class RefillRequestsController {
     }
 
     @Post(':id/hospital-approve')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL)
     async hospitalApprove(
         @Param('id') id: string,
@@ -106,6 +114,7 @@ export class RefillRequestsController {
     }
 
     @Post(':id/hospital-reject')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL)
     async hospitalReject(
         @Param('id') id: string,
@@ -116,6 +125,7 @@ export class RefillRequestsController {
     }
 
     @Post(':id/approve')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER)
     async approve(
         @Param('id') id: string,
@@ -131,6 +141,7 @@ export class RefillRequestsController {
     }
 
     @Post(':id/reject')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER)
     async reject(
         @Param('id') id: string,
@@ -142,6 +153,7 @@ export class RefillRequestsController {
     }
 
     @Post(':id/complete')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER)
     async complete(
         @Param('id') id: string,
@@ -152,6 +164,7 @@ export class RefillRequestsController {
     }
 
     @Post(':id/cancel')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
     async cancel(
         @Param('id') id: string,

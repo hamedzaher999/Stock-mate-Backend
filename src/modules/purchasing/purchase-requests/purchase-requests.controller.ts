@@ -17,7 +17,7 @@ import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
 import { ApprovePurchaseRequestDto } from './dto/approve-purchase-request.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 import { ListPurchaseRequestsDto } from './dto/list-purchase-requests.dto';
-
+import { Throttle } from '@nestjs/throttler';
 @Controller('purchasing/requests')
 export class PurchaseRequestsController {
     constructor(
@@ -62,15 +62,23 @@ export class PurchaseRequestsController {
     async update(
         @Param('id') id: string,
         @Body() dto: UpdatePurchaseRequestDto,
+        @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.purchaseRequestsService.update(id, dto);
+        const data = await this.purchaseRequestsService.update(
+            id,
+            dto,
+            user.sub,
+        );
         return { message: 'Purchase request updated.', data };
     }
 
     @Post(':id/submit')
     @RequirePermissions(PERMISSIONS.CREATE_PURCHASE_REQUEST)
-    async submit(@Param('id') id: string) {
-        const data = await this.purchaseRequestsService.submit(id);
+    async submit(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.purchaseRequestsService.submit(id, user.sub);
         return {
             message: 'Purchase request submitted for hospital approval.',
             data,
@@ -78,6 +86,7 @@ export class PurchaseRequestsController {
     }
 
     @Post(':id/hospital-approve')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_HOSPITAL)
     async hospitalApprove(
         @Param('id') id: string,
@@ -94,6 +103,7 @@ export class PurchaseRequestsController {
     }
 
     @Post(':id/hospital-reject')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_HOSPITAL)
     async hospitalReject(
         @Param('id') id: string,
@@ -104,6 +114,7 @@ export class PurchaseRequestsController {
     }
 
     @Post(':id/approve')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_MANAGER)
     async approve(
         @Param('id') id: string,
@@ -119,6 +130,7 @@ export class PurchaseRequestsController {
     }
 
     @Post(':id/reject')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_MANAGER)
     async reject(
         @Param('id') id: string,
@@ -134,6 +146,7 @@ export class PurchaseRequestsController {
     }
 
     @Post(':id/complete')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.APPROVE_PURCHASE_REQUEST_MANAGER)
     async complete(
         @Param('id') id: string,
@@ -144,6 +157,7 @@ export class PurchaseRequestsController {
     }
 
     @Post(':id/cancel')
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.CREATE_PURCHASE_REQUEST)
     async cancel(
         @Param('id') id: string,

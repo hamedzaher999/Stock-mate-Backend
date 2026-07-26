@@ -125,6 +125,7 @@ export class DepartmentsService {
         const updated = await this.departmentsRepository.updateStatus(
             id,
             dto.isActive,
+            dto.hasQueue,
         );
         await this.departmentsCacheService.invalidate(id, department.type);
         return updated;

@@ -14,6 +14,7 @@ import { PaginatedResult } from '../../core/interfaces/paginated-result.interfac
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 import { DepartmentsCacheService } from '../departments/departments-cache.service';
 import { UserScopeService } from '../rbac/user-scope.service';
+const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class StockSettingsService {
@@ -23,14 +24,24 @@ export class StockSettingsService {
         private readonly userScopeService: UserScopeService,
     ) {}
 
-    async list(dto: ListStockSettingsDto): Promise<PaginatedResult<unknown>> {
+    async list(
+        dto: ListStockSettingsDto,
+        requestingUserId: string,
+    ): Promise<PaginatedResult<unknown>> {
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
+
+        const scope = await this.resolveDepartmentScope(requestingUserId);
+        if (scope && dto.departmentId && dto.departmentId !== scope) {
+            throw new ForbiddenException(
+                'You can only view stock settings for your own department.',
+            );
+        }
 
         const { items, total } = await this.stockSettingsRepository.findMany({
             skip: (page - 1) * limit,
             take: limit,
-            departmentId: dto.departmentId,
+            departmentId: dto.departmentId ?? scope ?? undefined,
             variantId: dto.variantId,
             isActive:
                 dto.isActive === undefined
@@ -47,9 +58,16 @@ export class StockSettingsService {
         };
     }
 
-    async findById(id: string) {
-        const setting = await this.stockSettingsRepository.findById(id);
-        if (!setting) throw new NotFoundException('Stock setting not found.');
+    async findById(id: string, requestingUserId: string) {
+        const setting = await this.fetchById(id);
+
+        const scope = await this.resolveDepartmentScope(requestingUserId);
+        if (scope && setting.departmentId !== scope) {
+            throw new ForbiddenException(
+                'You can only view stock settings for your own department.',
+            );
+        }
+
         return setting;
     }
 
@@ -97,12 +115,13 @@ export class StockSettingsService {
             createdById: requestingUserId,
         });
     }
+
     async update(
         id: string,
         dto: UpdateStockSettingDto,
         requestingUserId: string,
     ) {
-        const existing = await this.findById(id);
+        const existing = await this.fetchById(id);
         await this.assertDepartmentScope(
             requestingUserId,
             existing.departmentId,
@@ -124,7 +143,7 @@ export class StockSettingsService {
         dto: UpdateStockSettingStatusDto,
         requestingUserId: string,
     ) {
-        const existing = await this.findById(id);
+        const existing = await this.fetchById(id);
         await this.assertDepartmentScope(
             requestingUserId,
             existing.departmentId,
@@ -133,12 +152,18 @@ export class StockSettingsService {
     }
 
     async delete(id: string, requestingUserId: string) {
-        const existing = await this.findById(id);
+        const existing = await this.fetchById(id);
         await this.assertDepartmentScope(
             requestingUserId,
             existing.departmentId,
         );
         return this.stockSettingsRepository.delete(id);
+    }
+
+    private async fetchById(id: string) {
+        const setting = await this.stockSettingsRepository.findById(id);
+        if (!setting) throw new NotFoundException('Stock setting not found.');
+        return setting;
     }
 
     private assertValidRange(min?: number, max?: number) {
@@ -149,6 +174,17 @@ export class StockSettingsService {
         }
     }
 
+    private async resolveDepartmentScope(
+        requestingUserId: string,
+    ): Promise<string | null> {
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
+
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        return scope.departmentId;
+    }
+
     private async assertDepartmentScope(
         requestingUserId: string,
         targetDepartmentId: string,
@@ -157,7 +193,7 @@ export class StockSettingsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (scope.roleName === HOSPITAL_MANAGER_ROLE_NAME) return;
+        if (scope.isSuperAdmin) return;
 
         if (scope.departmentId !== targetDepartmentId) {
             throw new ForbiddenException(

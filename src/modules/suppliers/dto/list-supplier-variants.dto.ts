@@ -1,16 +1,3 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-export class ListSupplierVariantsDto {
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1)
-    page?: number;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1)
-    limit?: number;
-}
+export class ListSupplierVariantsDto extends PaginationDto {}

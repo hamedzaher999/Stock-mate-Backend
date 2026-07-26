@@ -7,6 +7,7 @@ import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { RequirePermissions } from '../../core/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('prescriptions')
 export class PrescriptionsController {
@@ -36,8 +37,8 @@ export class PrescriptionsController {
         const data = await this.prescriptionsService.renew(id, dto, user.sub);
         return { message: 'Prescription renewed.', data };
     }
-
     @Post(':id/cancel')
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.CANCEL_PRESCRIPTION)
     async cancel(
         @Param('id') id: string,

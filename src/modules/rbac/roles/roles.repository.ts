@@ -31,7 +31,10 @@ export class RolesRepository {
     }
 
     delete(id: string) {
-        return this.prisma.role.delete({ where: { id } });
+        return this.prisma.$transaction(async (tx) => {
+            await tx.rolePermission.deleteMany({ where: { roleId: id } });
+            return tx.role.delete({ where: { id } });
+        });
     }
 
     setPermissions(roleId: string, permissionIds: string[]) {

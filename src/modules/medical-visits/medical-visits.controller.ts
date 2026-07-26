@@ -8,6 +8,7 @@ import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { RequirePermissions } from '../../core/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('medical-visits')
 export class MedicalVisitsController {
@@ -15,11 +16,8 @@ export class MedicalVisitsController {
 
     @Get()
     @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
-    async findAll(
-        @Query() query: ListMedicalVisitsDto,
-        @CurrentUser() user: AuthenticatedUser,
-    ) {
-        const data = await this.medicalVisitsService.list(query, user.sub);
+    async findAll(@Query() query: ListMedicalVisitsDto) {
+        const data = await this.medicalVisitsService.list(query);
         return { message: 'Success', data };
     }
 
@@ -63,8 +61,8 @@ export class MedicalVisitsController {
         );
         return { message: 'Consultation completed and visit recorded.', data };
     }
-
     @Post(':id/cancel')
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     async cancel(
         @Param('id') id: string,
         @Body() dto: CancelVisitDto,

@@ -1,20 +1,7 @@
-import { Type } from 'class-transformer';
-import { IsEnum, IsIn, IsInt, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsIn, IsOptional } from 'class-validator';
 import { NotificationCategory } from '@prisma/client';
-
-export class ListNotificationsDto {
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1)
-    page?: number;
-
-    @IsOptional()
-    @Type(() => Number)
-    @IsInt()
-    @Min(1)
-    limit?: number;
-
+import { PaginationDto } from '../../../common/dto/pagination.dto';
+export class ListNotificationsDto extends PaginationDto {
     @IsOptional()
     @IsIn(['true', 'false'])
     isRead?: string;

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
-import { Prisma, StockCountStatus } from '@prisma/client';
+import { AdjustmentType, Prisma, StockCountStatus } from '@prisma/client';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
+import { InventoryLedgerService } from '../transactions/inventory-ledger.service';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 const sessionDetailSelect = {
     id: true,
     departmentId: true,
@@ -40,8 +43,10 @@ const sessionListSelect = {
 
 @Injectable()
 export class StockCountsRepository {
-    constructor(private readonly prisma: PrismaService) {}
-
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly inventoryLedger: InventoryLedgerService,
+    ) {}
     async findMany(params: {
         skip: number;
         take: number;
@@ -152,11 +157,97 @@ export class StockCountsRepository {
         return this.prisma.stockCountItem.count({ where: { sessionId } });
     }
 
-    completeSession(id: string) {
-        return this.prisma.stockCountSession.update({
-            where: { id },
-            data: { status: 'completed', completedAt: new Date() },
-            select: sessionDetailSelect,
+    completeSession(id: string, performedById: string) {
+        return this.prisma.$transaction(async (tx) => {
+            const claimed = await tx.stockCountSession.updateMany({
+                where: { id, status: 'draft' },
+                data: { status: 'completed', completedAt: new Date() },
+            });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This stock count has already been completed.',
+                );
+            }
+
+            const session = await tx.stockCountSession.findUniqueOrThrow({
+                where: { id },
+                select: { departmentId: true },
+            });
+
+            const items = await tx.stockCountItem.findMany({
+                where: { sessionId: id },
+            });
+
+            for (const item of items) {
+                const variance = Number(item.variance);
+                if (variance === 0 || !item.batchId) continue;
+
+                const adjustmentType: AdjustmentType =
+                    variance > 0 ? 'found' : 'shrinkage';
+                const quantity = Math.abs(variance);
+
+                await tx.inventoryAdjustment.create({
+                    data: {
+                        variantId: item.variantId,
+                        departmentId: session.departmentId,
+                        batchId: item.batchId,
+                        adjustmentType,
+                        quantity,
+                        notes: 'Auto-generated from stock count variance.',
+                        reportedById: performedById,
+                        referenceType: 'stock_count',
+                        referenceId: id,
+                    },
+                });
+
+                let balanceAfter: number;
+
+                if (variance > 0) {
+                    const updatedStock = await tx.batchStock.update({
+                        where: {
+                            batchId_departmentId: {
+                                batchId: item.batchId,
+                                departmentId: session.departmentId,
+                            },
+                        },
+                        data: { quantity: { increment: quantity } },
+                    });
+                    balanceAfter = Number(updatedStock.quantity);
+                } else {
+                    const updated = await tx.$queryRaw<{ quantity: number }[]>`
+                        UPDATE batch_stock
+                        SET quantity = quantity - ${quantity}
+                        WHERE batch_id = ${item.batchId}::uuid
+                          AND department_id = ${session.departmentId}::uuid
+                          AND quantity >= ${quantity}
+                        RETURNING quantity::float AS "quantity"
+                    `;
+                    if (updated.length === 0) {
+                        throw new InsufficientStockError(quantity);
+                    }
+                    balanceAfter = updated[0].quantity;
+                }
+
+                await this.inventoryLedger.record(tx, {
+                    transactionType:
+                        variance > 0
+                            ? 'adjustment_found'
+                            : 'adjustment_shrinkage',
+                    variantId: item.variantId,
+                    batchId: item.batchId,
+                    departmentId: session.departmentId,
+                    quantity: variance > 0 ? quantity : -quantity,
+                    balanceAfter,
+                    referenceType: 'stock_count',
+                    referenceId: id,
+                    performedById,
+                });
+            }
+
+            return tx.stockCountSession.findUniqueOrThrow({
+                where: { id },
+                select: sessionDetailSelect,
+            });
         });
     }
 }

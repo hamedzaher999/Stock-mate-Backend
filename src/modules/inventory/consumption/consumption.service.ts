@@ -8,8 +8,6 @@ import { CreateConsumptionDto } from './dto/create-consumption.dto';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class ConsumptionService {
@@ -78,7 +76,7 @@ export class ConsumptionService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin) return null;
         return scope.departmentId;
     }
 

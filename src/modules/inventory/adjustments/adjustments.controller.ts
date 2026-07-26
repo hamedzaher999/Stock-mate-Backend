@@ -6,7 +6,7 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
-
+import { Throttle } from '@nestjs/throttler';
 @Controller('inventory/adjustments')
 export class AdjustmentsController {
     constructor(private readonly adjustmentsService: AdjustmentsService) {}
@@ -22,6 +22,7 @@ export class AdjustmentsController {
     }
 
     @Post()
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     @RequirePermissions(PERMISSIONS.PERFORM_INVENTORY_ADJUSTMENT)
     async create(
         @Body() dto: CreateAdjustmentDto,

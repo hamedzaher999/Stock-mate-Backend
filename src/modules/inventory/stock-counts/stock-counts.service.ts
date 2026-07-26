@@ -11,10 +11,10 @@ import { AddStockCountItemDto } from './dto/add-item.dto';
 import { UpdateStockCountItemDto } from './dto/update-item.dto';
 import { ListStockCountSessionsDto } from './dto/list-sessions.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
-const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import { InsufficientStockError } from '../../../common/utils/fefo.util';
 
 @Injectable()
 export class StockCountsService {
@@ -176,7 +176,22 @@ export class StockCountsService {
                 'Cannot complete a stock count with no items.',
             );
 
-        return this.stockCountsRepository.completeSession(sessionId);
+        try {
+            return await this.stockCountsRepository.completeSession(
+                sessionId,
+                requestingUserId,
+            );
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
+            }
+            if (error instanceof InsufficientStockError) {
+                throw new ConflictException(
+                    'Cannot complete this stock count -- live stock has changed since counting and is now insufficient to apply a shrinkage adjustment for one or more items. Please review current stock levels first.',
+                );
+            }
+            throw error;
+        }
     }
 
     private async resolveDepartmentScope(
@@ -186,7 +201,7 @@ export class StockCountsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin) return null;
         return scope.departmentId;
     }
 

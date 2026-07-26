@@ -51,9 +51,6 @@ export class OtpService {
         await this.otpRepository.invalidateActiveCodes(userId);
 
         const code = this.generateCode();
-        console.log('----------------------------');
-        console.log(code);
-        console.log('----------------------------');
 
         const codeHash = await bcrypt.hash(code, SALT_ROUNDS);
         const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);

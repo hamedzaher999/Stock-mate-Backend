@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { CacheKeys } from '../../core/cache/cache-keys.constants';
-
 export interface UserScope {
     departmentId: string | null;
     roleName: string;
+    isSuperAdmin: boolean;
 }
 
 const USER_SCOPE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -24,13 +24,17 @@ export class UserScopeService {
 
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            select: { departmentId: true, role: { select: { name: true } } },
+            select: {
+                departmentId: true,
+                role: { select: { name: true, isSuperAdmin: true } },
+            },
         });
         if (!user) return null;
 
         const scope: UserScope = {
             departmentId: user.departmentId,
             roleName: user.role.name,
+            isSuperAdmin: user.role.isSuperAdmin,
         };
 
         await this.cacheService.set(cacheKey, scope, USER_SCOPE_CACHE_TTL_MS);

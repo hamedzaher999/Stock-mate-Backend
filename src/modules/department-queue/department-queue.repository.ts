@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { Prisma, QueueStatus } from '@prisma/client';
 import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
@@ -114,16 +114,31 @@ export class DepartmentQueueRepository {
             select: { id: true },
         });
     }
-
-    create(data: {
+    async create(data: {
         departmentId: string;
         patientId: string;
         addedById: string;
     }) {
-        return this.prisma.departmentQueue.create({
-            data,
-            select: queueEntrySelect,
-        });
+        return this.prisma.departmentQueue
+            .create({
+                data,
+                select: queueEntrySelect,
+            })
+            .catch((error) => {
+                if (
+                    error instanceof Prisma.PrismaClientKnownRequestError &&
+                    error.code === 'P2010' &&
+                    typeof error.meta?.message === 'string' &&
+                    error.meta.message.includes(
+                        'department_queues_active_patient_unique',
+                    )
+                ) {
+                    throw new ConflictException(
+                        'This patient already has an active queue entry in this department.',
+                    );
+                }
+                throw error;
+            });
     }
 
     async lock(id: string, lockedById: string) {

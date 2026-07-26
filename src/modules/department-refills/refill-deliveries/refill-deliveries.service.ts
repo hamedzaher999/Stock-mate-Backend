@@ -16,6 +16,8 @@ import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import { UserScopeService } from '../../rbac/user-scope.service';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 
 const SHIPPABLE_STATUSES = ['preparing', 'partially_complete'];
 
@@ -26,6 +28,7 @@ export class RefillDeliveriesService {
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
         private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(dto: ListDeliveriesDto): Promise<PaginatedResult<unknown>> {
@@ -160,9 +163,16 @@ export class RefillDeliveriesService {
             throw new NotFoundException('Associated refill request not found.');
 
         if (request.requestedById !== confirmingUserId) {
-            throw new ForbiddenException(
-                'Only the department manager who created this refill request can confirm deliveries against it.',
-            );
+            const scope =
+                await this.userScopeService.getUserScope(confirmingUserId);
+            const canConfirmOnBehalf =
+                scope?.roleName === HOSPITAL_MANAGER_ROLE_NAME ||
+                scope?.departmentId === request.departmentId;
+            if (!canConfirmOnBehalf) {
+                throw new ForbiddenException(
+                    'Only the original requester or another staff member in the requesting department can confirm deliveries against this request.',
+                );
+            }
         }
 
         const deliveryItems =

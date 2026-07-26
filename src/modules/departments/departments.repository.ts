@@ -82,10 +82,10 @@ export class DepartmentsRepository {
         });
     }
 
-    updateStatus(id: string, isActive: boolean) {
+    updateStatus(id: string, isActive: boolean, hasQueue?: boolean) {
         return this.prisma.department.update({
             where: { id },
-            data: { isActive },
+            data: { isActive, hasQueue },
             select: departmentSelect,
         });
     }

@@ -11,10 +11,7 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import {
-    HOSPITAL_MANAGER_ROLE_NAME,
-    PURCHASING_MANAGER_ROLE_NAME,
-} from '../../../common/constants/roles.constants';
+import { PURCHASING_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
 import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
 import { ApprovePurchaseRequestDto } from './dto/approve-purchase-request.dto';
@@ -26,10 +23,7 @@ const CANCELLABLE_STATUSES = [
     'pending_hospital_approval',
     'pending_manager_approval',
 ];
-const UNRESTRICTED_ROLES = [
-    HOSPITAL_MANAGER_ROLE_NAME,
-    PURCHASING_MANAGER_ROLE_NAME,
-];
+const UNRESTRICTED_ROLES = [PURCHASING_MANAGER_ROLE_NAME];
 @Injectable()
 export class PurchaseRequestsService {
     constructor(
@@ -95,13 +89,33 @@ export class PurchaseRequestsService {
             items: dto.items,
         });
     }
-
-    async update(id: string, dto: UpdatePurchaseRequestDto) {
+    private async runGuarded<T>(action: () => Promise<T>): Promise<T> {
+        try {
+            return await action();
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
+            }
+            throw error;
+        }
+    }
+    async update(
+        id: string,
+        dto: UpdatePurchaseRequestDto,
+        requestingUserId: string,
+    ) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
             throw new ConflictException(
                 'Only draft purchase requests can be edited.',
             );
+
+        const ownerScope = await this.resolveOwnerScope(requestingUserId);
+        if (ownerScope && pr.requestedById !== ownerScope) {
+            throw new ForbiddenException(
+                'You can only edit purchase requests you created.',
+            );
+        }
 
         if (dto.items) {
             const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
@@ -115,18 +129,7 @@ export class PurchaseRequestsService {
         );
     }
 
-    private async runGuarded<T>(action: () => Promise<T>): Promise<T> {
-        try {
-            return await action();
-        } catch (error) {
-            if (error instanceof AlreadyProcessedError) {
-                throw new ConflictException(error.message);
-            }
-            throw error;
-        }
-    }
-
-    async submit(id: string) {
+    async submit(id: string, requestingUserId: string) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
             throw new ConflictException(
@@ -136,6 +139,13 @@ export class PurchaseRequestsService {
             throw new BadRequestException(
                 'Cannot submit a purchase request with no items.',
             );
+
+        const ownerScope = await this.resolveOwnerScope(requestingUserId);
+        if (ownerScope && pr.requestedById !== ownerScope) {
+            throw new ForbiddenException(
+                'You can only submit purchase requests you created.',
+            );
+        }
 
         const updated = await this.runGuarded(() =>
             this.purchaseRequestsRepository.updateStatus(id, 'draft', {
@@ -346,7 +356,8 @@ export class PurchaseRequestsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return requestingUserId;
     }
 

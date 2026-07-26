@@ -20,10 +20,7 @@ import { PERMISSIONS } from '../../common/constants/permissions.constants';
 import { UserScopeService } from '../rbac/user-scope.service';
 import { DepartmentsCacheService } from '../departments/departments-cache.service';
 import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
-const UNRESTRICTED_ROLES = [
-    HOSPITAL_MANAGER_ROLE_NAME,
-    RECEPTION_STAFF_ROLE_NAME,
-];
+const UNRESTRICTED_ROLES = [RECEPTION_STAFF_ROLE_NAME];
 const QUEUEABLE_DEPARTMENT_TYPE = 'standard';
 
 @Injectable()
@@ -223,7 +220,8 @@ export class DepartmentQueueService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return scope.departmentId;
     }
 
