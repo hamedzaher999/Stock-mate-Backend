@@ -27,7 +27,7 @@ export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
     @Public()
-    @Throttle({ default: { limit: 3, ttl: 600000 } })
+    // @Throttle({ default: { limit: 3, ttl: 600000 } })
     @Post('otp/request')
     @HttpCode(HttpStatus.OK)
     async requestOtp(@Body() dto: RequestOtpDto) {
@@ -36,7 +36,7 @@ export class AuthController {
     }
 
     @Public()
-    @Throttle({ default: { limit: 10, ttl: 60000 } })
+    // @Throttle({ default: { limit: 10, ttl: 60000 } })
     @Post('otp/verify')
     @HttpCode(HttpStatus.OK)
     async verifyOtp(
