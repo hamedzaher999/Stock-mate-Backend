@@ -11,6 +11,7 @@ export class UpdatePatientDto {
     nationalId?: string;
 
     @IsOptional()
+    @MaxLength(50)
     @Matches(/^\d+$/, { message: 'familyBookNumber must contain digits only.' })
     familyBookNumber?: string;
 }

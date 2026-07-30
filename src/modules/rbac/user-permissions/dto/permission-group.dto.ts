@@ -1,5 +1,6 @@
 import { PermissionEffect } from '@prisma/client';
 import {
+    ArrayMaxSize,
     ArrayNotEmpty,
     IsArray,
     IsEnum,
@@ -10,7 +11,9 @@ import {
 export class PermissionGroupDto {
     @IsArray()
     @ArrayNotEmpty()
+    @ArrayMaxSize(300)
     @IsString({ each: true })
+    @MaxLength(100, { each: true })
     permissionCodes!: string[];
 
     @IsEnum(PermissionEffect)

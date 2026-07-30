@@ -11,7 +11,8 @@ import { CancelPeriodicScheduleDto } from './dto/cancel-periodic-schedule.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { UserScopeService } from '../../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
-
+import { WAREHOUSE_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+const UNRESTRICTED_ROLES = [WAREHOUSE_MANAGER_ROLE_NAME];
 @Injectable()
 export class PeriodicSchedulesService {
     constructor(
@@ -98,7 +99,8 @@ export class PeriodicSchedulesService {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
-        if (scope.isSuperAdmin) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return scope.departmentId;
     }
 }

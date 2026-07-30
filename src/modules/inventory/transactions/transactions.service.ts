@@ -7,7 +7,8 @@ import { TransactionsRepository } from './transactions.repository';
 import { ListTransactionsDto } from './dto/list-transactions.dto';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { UserScopeService } from '../../rbac/user-scope.service';
-
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 @Injectable()
 export class TransactionsService {
     constructor(
@@ -54,7 +55,8 @@ export class TransactionsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (scope.isSuperAdmin) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return scope.departmentId;
     }
 }

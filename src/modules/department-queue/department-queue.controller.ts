@@ -24,6 +24,7 @@ export class DepartmentQueueController {
     ) {}
 
     @Get()
+    @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
     async findAll(
         @Query() query: ListQueueDto,
         @CurrentUser() user: AuthenticatedUser,
@@ -33,6 +34,7 @@ export class DepartmentQueueController {
     }
 
     @Get(':id')
+    @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
     async findOne(
         @Param('id') id: string,
         @CurrentUser() user: AuthenticatedUser,

@@ -18,7 +18,13 @@ const departmentSelect = {
 @Injectable()
 export class DepartmentsRepository {
     constructor(private readonly prisma: PrismaService) {}
-
+    findSelectable() {
+        return this.prisma.department.findMany({
+            where: { isActive: true, tracksInventory: true },
+            select: { id: true, name: true, type: true },
+            orderBy: { name: 'asc' },
+        });
+    }
     async findMany(params: {
         skip: number;
         take: number;
@@ -129,6 +135,20 @@ export class DepartmentsRepository {
         return this.prisma.user.update({
             where: { id: userId },
             data: { departmentId },
+        });
+    }
+    findByFilter(where: Prisma.DepartmentWhereInput) {
+        return this.prisma.department.findMany({
+            where,
+            select: { id: true, name: true, type: true },
+            orderBy: { name: 'asc' },
+        });
+    }
+
+    findOneByFilter(id: string, where: Prisma.DepartmentWhereInput) {
+        return this.prisma.department.findFirst({
+            where: { ...where, id },
+            select: { id: true, name: true, type: true },
         });
     }
 }

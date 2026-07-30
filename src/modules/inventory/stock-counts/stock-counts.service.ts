@@ -15,6 +15,8 @@ import { DepartmentsCacheService } from '../../departments/departments-cache.ser
 import { UserScopeService } from '../../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
 export class StockCountsService {
@@ -201,7 +203,8 @@ export class StockCountsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (scope.isSuperAdmin) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return scope.departmentId;
     }
 

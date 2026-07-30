@@ -1,16 +1,24 @@
-import { IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
-
+import {
+    IsEmail,
+    IsOptional,
+    IsPhoneNumber,
+    IsString,
+    IsUUID,
+    MaxLength,
+} from 'class-validator';
 export class UpdateUserDto {
     @IsOptional()
     @IsString()
+    @MaxLength(150)
     fullName?: string;
 
     @IsOptional()
-    @IsString()
+    @IsPhoneNumber('SY')
     phone?: string;
 
     @IsOptional()
     @IsEmail()
+    @MaxLength(150)
     email?: string;
 
     @IsOptional()
@@ -23,5 +31,6 @@ export class UpdateUserDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(150)
     specialty?: string;
 }

@@ -11,13 +11,42 @@ import { AssignManagerDto } from './dto/assign-manager.dto';
 import { UpdateDepartmentStatusDto } from './dto/update-department-status.dto';
 import { ListDepartmentsDto } from './dto/list-departments.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
-import { DepartmentType } from '@prisma/client';
+import { DepartmentType, Prisma } from '@prisma/client';
 import { DepartmentsCacheService } from './departments-cache.service';
 import { UserScopeService } from '../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    RECEPTION_STAFF_ROLE_NAME,
+    WAREHOUSE_MANAGER_ROLE_NAME,
+} from '../../common/constants/roles.constants';
 
 const SINGLETON_TYPES: DepartmentType[] = ['central_warehouse', 'pharmacy'];
-
+const SELECTABLE_CONTEXTS: Record<
+    string,
+    { unrestrictedRoles: string[]; where: Prisma.DepartmentWhereInput }
+> = {
+    stock: {
+        unrestrictedRoles: [HOSPITAL_MANAGER_ROLE_NAME],
+        where: { isActive: true, tracksInventory: true },
+    },
+    batches: {
+        unrestrictedRoles: [HOSPITAL_MANAGER_ROLE_NAME],
+        where: { isActive: true },
+    },
+    queue: {
+        unrestrictedRoles: [RECEPTION_STAFF_ROLE_NAME],
+        where: { isActive: true, type: 'standard', hasQueue: true },
+    },
+    'refill-requests': {
+        unrestrictedRoles: [WAREHOUSE_MANAGER_ROLE_NAME],
+        where: { isActive: true, type: { not: 'central_warehouse' } },
+    },
+    'periodic-schedules': {
+        unrestrictedRoles: [WAREHOUSE_MANAGER_ROLE_NAME],
+        where: { isActive: true, type: { not: 'central_warehouse' } },
+    },
+};
 @Injectable()
 export class DepartmentsService {
     constructor(
@@ -26,6 +55,48 @@ export class DepartmentsService {
         private readonly userScopeService: UserScopeService,
     ) {}
 
+    async listSelectable(requestingUserId: string, context: string) {
+        const config = SELECTABLE_CONTEXTS[context];
+        if (!config) {
+            throw new BadRequestException(
+                `Unknown department selection context "${context}".`,
+            );
+        }
+        return this.resolveSelectable(requestingUserId, config);
+    }
+
+    private async resolveSelectable(
+        requestingUserId: string,
+        options: {
+            unrestrictedRoles: string[];
+            where: Prisma.DepartmentWhereInput;
+        },
+    ) {
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
+
+        const canViewAll =
+            scope.isSuperAdmin ||
+            options.unrestrictedRoles.includes(scope.roleName);
+
+        if (canViewAll) {
+            const departments = await this.departmentsRepository.findByFilter(
+                options.where,
+            );
+            return { scoped: false, departments };
+        }
+
+        if (!scope.departmentId) {
+            return { scoped: true, departments: [] };
+        }
+
+        const department = await this.departmentsRepository.findOneByFilter(
+            scope.departmentId,
+            options.where,
+        );
+        return { scoped: true, departments: department ? [department] : [] };
+    }
     async list(dto: ListDepartmentsDto): Promise<PaginatedResult<unknown>> {
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
@@ -67,7 +138,9 @@ export class DepartmentsService {
             await this.assertValidManagerCandidate(dto.managerId);
         }
 
-        let department;
+        let department: Awaited<
+            ReturnType<typeof this.departmentsRepository.create>
+        >;
         try {
             department = SINGLETON_TYPES.includes(dto.type)
                 ? await this.departmentsRepository.createSingleton({

@@ -15,6 +15,8 @@ import { UpdateDepartmentStatusDto } from './dto/update-department-status.dto';
 import { ListDepartmentsDto } from './dto/list-departments.dto';
 import { RequirePermissions } from '../../core/decorators/require-permissions.decorator';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 
 @Controller('departments')
 export class DepartmentsController {
@@ -26,6 +28,17 @@ export class DepartmentsController {
         return { message: 'Success', data };
     }
 
+    @Get('selectable')
+    async findSelectable(
+        @Query('context') context: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentsService.listSelectable(
+            user.sub,
+            context ?? 'stock',
+        );
+        return { message: 'Success', data };
+    }
     @Get(':id')
     async findOne(@Param('id') id: string) {
         const data = await this.departmentsService.findById(id);
