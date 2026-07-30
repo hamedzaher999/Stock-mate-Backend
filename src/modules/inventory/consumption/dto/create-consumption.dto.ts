@@ -5,11 +5,11 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-
 class ConsumptionLineDto {
     @IsUUID()
     variantId!: string;
@@ -32,5 +32,6 @@ export class CreateConsumptionDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 }

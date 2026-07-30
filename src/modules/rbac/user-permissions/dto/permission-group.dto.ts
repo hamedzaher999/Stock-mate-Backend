@@ -5,8 +5,8 @@ import {
     IsEnum,
     IsOptional,
     IsString,
+    MaxLength,
 } from 'class-validator';
-
 export class PermissionGroupDto {
     @IsArray()
     @ArrayNotEmpty()
@@ -18,5 +18,6 @@ export class PermissionGroupDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(500)
     reason?: string;
 }

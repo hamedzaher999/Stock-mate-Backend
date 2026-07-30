@@ -66,3 +66,4 @@ mine/
 source/
 dto.js
 dto.txt
+.env2

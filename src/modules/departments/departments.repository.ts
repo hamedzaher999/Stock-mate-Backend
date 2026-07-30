@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { Prisma, DepartmentType } from '@prisma/client';
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 
 const departmentSelect = {
     id: true,
@@ -71,6 +72,28 @@ export class DepartmentsRepository {
         return this.prisma.department.create({
             data,
             select: departmentSelect,
+        });
+    }
+
+    async createSingleton(data: {
+        name: string;
+        type: DepartmentType;
+        managerId?: string;
+        hasQueue?: boolean;
+    }) {
+        return this.prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${data.type}))`;
+
+            const count = await tx.department.count({
+                where: { type: data.type },
+            });
+            if (count > 0) {
+                throw new AlreadyProcessedError(
+                    `A department of type "${data.type}" already exists; only one is allowed.`,
+                );
+            }
+
+            return tx.department.create({ data, select: departmentSelect });
         });
     }
 

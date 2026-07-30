@@ -13,6 +13,9 @@ import { ListDepartmentsDto } from './dto/list-departments.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
 import { DepartmentType } from '@prisma/client';
 import { DepartmentsCacheService } from './departments-cache.service';
+import { UserScopeService } from '../rbac/user-scope.service';
+import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
+
 const SINGLETON_TYPES: DepartmentType[] = ['central_warehouse', 'pharmacy'];
 
 @Injectable()
@@ -20,6 +23,7 @@ export class DepartmentsService {
     constructor(
         private readonly departmentsRepository: DepartmentsRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async list(dto: ListDepartmentsDto): Promise<PaginatedResult<unknown>> {
@@ -59,33 +63,38 @@ export class DepartmentsService {
                 'A department with this name already exists.',
             );
 
-        if (SINGLETON_TYPES.includes(dto.type)) {
-            const count = await this.departmentsRepository.countByType(
-                dto.type,
-            );
-            if (count > 0) {
-                throw new ConflictException(
-                    `A department of type "${dto.type}" already exists; only one is allowed.`,
-                );
-            }
-        }
-
         if (dto.managerId) {
             await this.assertValidManagerCandidate(dto.managerId);
         }
 
-        const department = await this.departmentsRepository.create({
-            name: dto.name,
-            type: dto.type,
-            managerId: dto.managerId,
-            hasQueue: dto.hasQueue,
-        });
+        let department;
+        try {
+            department = SINGLETON_TYPES.includes(dto.type)
+                ? await this.departmentsRepository.createSingleton({
+                      name: dto.name,
+                      type: dto.type,
+                      managerId: dto.managerId,
+                      hasQueue: dto.hasQueue,
+                  })
+                : await this.departmentsRepository.create({
+                      name: dto.name,
+                      type: dto.type,
+                      managerId: dto.managerId,
+                      hasQueue: dto.hasQueue,
+                  });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
+            }
+            throw error;
+        }
 
         if (dto.managerId) {
             await this.departmentsRepository.setUserDepartment(
                 dto.managerId,
                 department.id,
             );
+            await this.userScopeService.invalidate(dto.managerId);
         }
 
         await this.departmentsCacheService.invalidate(
@@ -132,10 +141,18 @@ export class DepartmentsService {
     }
 
     async assignManager(id: string, dto: AssignManagerDto) {
-        await this.findById(id);
+        const department = await this.findById(id);
+        const previousManagerId = department.managerId;
 
         if (!dto.managerId) {
-            return this.departmentsRepository.setManager(id, null);
+            const updated = await this.departmentsRepository.setManager(
+                id,
+                null,
+            );
+            if (previousManagerId) {
+                await this.userScopeService.invalidate(previousManagerId);
+            }
+            return updated;
         }
 
         await this.assertValidManagerCandidate(dto.managerId);
@@ -145,6 +162,10 @@ export class DepartmentsService {
             dto.managerId,
         );
         await this.departmentsRepository.setUserDepartment(dto.managerId, id);
+        await this.userScopeService.invalidate(dto.managerId);
+        if (previousManagerId && previousManagerId !== dto.managerId) {
+            await this.userScopeService.invalidate(previousManagerId);
+        }
         return updated;
     }
 

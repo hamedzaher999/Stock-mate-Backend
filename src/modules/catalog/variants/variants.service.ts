@@ -65,6 +65,11 @@ export class VariantsService {
             dto.productId,
         );
         if (!product) throw new BadRequestException('Product does not exist.');
+        if (!product.isActive) {
+            throw new BadRequestException(
+                'Cannot create a variant under an inactive product.',
+            );
+        }
 
         const unit = await this.variantsRepository.unitExists(dto.unitId);
         if (!unit) throw new BadRequestException('Unit does not exist.');

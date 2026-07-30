@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, RequestStatus } from '@prisma/client';
+import { Prisma, RefillRequestPriority, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
-
 const purchaseRequestDetailSelect = {
     id: true,
     requestNumber: true,
     requestedById: true,
     status: true,
+    priority: true,
     hospitalApprovedById: true,
     hospitalApprovedAt: true,
     hospitalRejectionReason: true,
@@ -39,6 +39,7 @@ const purchaseRequestListSelect = {
     id: true,
     requestNumber: true,
     status: true,
+    priority: true,
     requestedBy: { select: { id: true, fullName: true } },
     createdAt: true,
 } satisfies Prisma.PurchaseRequestSelect;
@@ -51,10 +52,12 @@ export class PurchaseRequestsRepository {
         skip: number;
         take: number;
         status?: RequestStatus;
+        priority?: RefillRequestPriority;
         requestedById?: string;
     }) {
         const where: Prisma.PurchaseRequestWhereInput = {
             status: params.status,
+            priority: params.priority,
             requestedById: params.requestedById,
         };
 
@@ -93,6 +96,7 @@ export class PurchaseRequestsRepository {
     create(data: {
         requestNumber: string;
         requestedById: string;
+        priority?: RefillRequestPriority;
         notes?: string;
         items: {
             variantId: string;
@@ -105,6 +109,7 @@ export class PurchaseRequestsRepository {
             data: {
                 requestNumber: data.requestNumber,
                 requestedById: data.requestedById,
+                priority: data.priority,
                 notes: data.notes,
                 items: { create: data.items },
             },
@@ -115,6 +120,7 @@ export class PurchaseRequestsRepository {
     async replaceItems(
         id: string,
         notes: string | undefined,
+        priority: RefillRequestPriority | undefined,
         items?: {
             variantId: string;
             requestedQuantity: number;
@@ -136,7 +142,7 @@ export class PurchaseRequestsRepository {
             }
             return tx.purchaseRequest.update({
                 where: { id },
-                data: { notes },
+                data: { notes, priority },
                 select: purchaseRequestDetailSelect,
             });
         });

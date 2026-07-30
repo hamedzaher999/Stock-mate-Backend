@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class OverrideRoleDto {
     @IsUUID()
@@ -6,5 +6,6 @@ export class OverrideRoleDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(500)
     reason?: string;
 }

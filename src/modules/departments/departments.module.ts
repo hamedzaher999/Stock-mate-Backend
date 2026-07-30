@@ -3,12 +3,14 @@ import { DepartmentsController } from './departments.controller';
 import { DepartmentsService } from './departments.service';
 import { DepartmentsRepository } from './departments.repository';
 import { DepartmentsCacheService } from './departments-cache.service';
+import { UserScopeService } from '../rbac/user-scope.service';
 @Module({
     controllers: [DepartmentsController],
     providers: [
         DepartmentsService,
         DepartmentsRepository,
         DepartmentsCacheService,
+        UserScopeService,
     ],
     exports: [DepartmentsRepository, DepartmentsCacheService],
 })

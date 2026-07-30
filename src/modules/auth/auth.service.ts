@@ -61,7 +61,7 @@ export class AuthService {
             email: dto.email,
         });
         if (!user || user.status !== 'active') {
-            throw new UnauthorizedException('Invalid credentials.');
+            throw new UnauthorizedException('Invalid or expired code.');
         }
 
         const isValid = await this.otpService.verifyOtp(user.id, dto.code);

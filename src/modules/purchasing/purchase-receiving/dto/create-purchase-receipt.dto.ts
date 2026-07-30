@@ -8,14 +8,11 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
-
-enum BatchTypeDto {
-    batch = 'batch',
-    final_batch = 'final_batch',
-}
+import { BatchTypeDto } from '../../../../common/enums/batch-type.enum';
 
 class ReceiptItemDto {
     @IsUUID()
@@ -26,6 +23,7 @@ class ReceiptItemDto {
     quantity!: number;
 
     @IsString()
+    @MaxLength(150)
     batchNumber!: string;
 
     @IsOptional()
@@ -58,6 +56,7 @@ export class CreatePurchaseReceiptDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 
     @IsArray()

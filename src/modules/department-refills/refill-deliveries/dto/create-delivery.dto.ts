@@ -7,11 +7,11 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
 import { BatchType } from '@prisma/client';
-
 class DeliveryItemInputDto {
     @IsUUID()
     refillItemId!: string;
@@ -41,5 +41,6 @@ export class CreateDeliveryDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 }

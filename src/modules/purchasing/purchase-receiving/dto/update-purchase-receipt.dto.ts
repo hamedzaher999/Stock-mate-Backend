@@ -7,10 +7,10 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
-
 class UpdateReceiptItemDto {
     @IsUUID()
     purchaseRequestItemId!: string;
@@ -20,6 +20,7 @@ class UpdateReceiptItemDto {
     quantity!: number;
 
     @IsString()
+    @MaxLength(150)
     batchNumber!: string;
 
     @IsOptional()
@@ -43,6 +44,7 @@ export class UpdatePurchaseReceiptDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 
     @IsOptional()

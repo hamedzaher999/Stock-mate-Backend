@@ -34,9 +34,9 @@ export class UserPermissionsService {
         dto: UpsertUserPermissionDto,
         grantedById: string,
     ) {
-        if (targetUserId === grantedById && dto.effect === 'revoke') {
+        if (targetUserId === grantedById) {
             throw new BadRequestException(
-                'You cannot revoke your own permissions.',
+                'You cannot modify your own permission overrides.',
             );
         }
 
@@ -90,9 +90,9 @@ export class UserPermissionsService {
         dto: PermissionGroupDto,
         requesterId: string,
     ) {
-        if (targetUserId === requesterId && dto.effect === 'revoke') {
+        if (targetUserId === requesterId) {
             throw new BadRequestException(
-                'You cannot revoke your own permissions.',
+                'You cannot modify your own permission overrides.',
             );
         }
 
@@ -139,12 +139,6 @@ export class UserPermissionsService {
         return this.findAllForUser(targetUserId);
     }
 
-    /**
-     * Revokes every permission the user's role would normally grant, and
-     * clears any stray grant overrides too, so the end state is genuinely
-     * zero permissions -- not "zero role permissions but still holding
-     * some unrelated grant".
-     */
     async revokeAllRolePermissions(
         targetUserId: string,
         requesterId: string,
@@ -180,19 +174,18 @@ export class UserPermissionsService {
         return this.findAllForUser(targetUserId);
     }
 
-    /**
-     * Copies another role's permission set onto this user as grant
-     * overrides -- e.g. give a doctor every warehouse-role permission
-     * without granting them one by one. Permissions already covered by
-     * the user's own role are skipped (any stray revoke on them is
-     * cleared instead, so the default takes effect cleanly).
-     */
     async overrideWithRole(
         targetUserId: string,
         sourceRoleId: string,
         requesterId: string,
         reason?: string,
     ) {
+        if (targetUserId === requesterId) {
+            throw new BadRequestException(
+                'You cannot copy role permissions onto your own account.',
+            );
+        }
+
         const target = await this.assertManageableTarget(targetUserId);
 
         const sourceRole = await this.rolesRepository.findById(sourceRoleId);

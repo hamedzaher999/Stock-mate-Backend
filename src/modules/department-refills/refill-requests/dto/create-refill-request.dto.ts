@@ -8,11 +8,11 @@ import {
     IsPositive,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
 import { RefillRequestPriority, RefillRequestType } from '@prisma/client';
-
 class RefillRequestItemInputDto {
     @IsUUID()
     variantId!: string;
@@ -37,6 +37,7 @@ export class CreateRefillRequestDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 
     @IsArray()

@@ -46,6 +46,7 @@ export class PurchaseRequestsService {
                 skip: (page - 1) * limit,
                 take: limit,
                 status: dto.status,
+                priority: dto.priority,
                 requestedById: ownerScope ?? undefined,
             },
         );
@@ -77,7 +78,6 @@ export class PurchaseRequestsService {
 
         return pr;
     }
-
     async create(dto: CreatePurchaseRequestDto, requestedById: string) {
         const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
         await this.assertVariantsActive(variantIds);
@@ -85,6 +85,7 @@ export class PurchaseRequestsService {
         return this.purchaseRequestsRepository.create({
             requestNumber: generateRequestNumber('PR'),
             requestedById,
+            priority: dto.priority,
             notes: dto.notes,
             items: dto.items,
         });
@@ -125,6 +126,7 @@ export class PurchaseRequestsService {
         return this.purchaseRequestsRepository.replaceItems(
             id,
             dto.notes,
+            dto.priority,
             dto.items,
         );
     }

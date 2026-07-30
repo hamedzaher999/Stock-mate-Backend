@@ -46,11 +46,23 @@ export class RefillRequestsService {
         const departmentScope =
             await this.resolveDepartmentScope(requestingUserId);
 
+        if (
+            departmentScope &&
+            dto.departmentId &&
+            dto.departmentId !== departmentScope
+        ) {
+            throw new ForbiddenException(
+                'You can only view refill requests from your own department.',
+            );
+        }
+
         const { items, total } = await this.refillRequestsRepository.findMany({
             skip: (page - 1) * limit,
             take: limit,
             status: dto.status,
-            departmentId: departmentScope ?? undefined,
+            departmentId: departmentScope ?? dto.departmentId,
+            priority: dto.priority,
+            requestType: dto.requestType,
         });
 
         return {

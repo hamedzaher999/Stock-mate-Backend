@@ -1,4 +1,10 @@
-import { IsDateString, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+    IsDateString,
+    IsOptional,
+    IsString,
+    IsUUID,
+    MaxLength,
+} from 'class-validator';
 
 export class CreateStockCountSessionDto {
     @IsUUID()
@@ -9,5 +15,6 @@ export class CreateStockCountSessionDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(500)
     notes?: string;
 }

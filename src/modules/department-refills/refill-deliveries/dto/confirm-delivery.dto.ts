@@ -6,10 +6,10 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
-
 class ConfirmedItemDto {
     @IsUUID()
     deliveryItemId!: string;
@@ -29,5 +29,6 @@ export class ConfirmDeliveryDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 }

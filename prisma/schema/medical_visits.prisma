@@ -21,6 +21,9 @@ model MedicalVisit {
   department  Department       @relation(fields: [departmentId], references: [id])
   queueEntry  DepartmentQueue? @relation(fields: [queueEntryId], references: [id])
   prescriptions Prescription[]
-  
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([departmentId, status])
   @@map("medical_visits")
 }

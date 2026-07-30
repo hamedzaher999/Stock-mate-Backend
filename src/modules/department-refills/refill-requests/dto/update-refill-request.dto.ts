@@ -6,10 +6,10 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
     ValidateNested,
 } from 'class-validator';
-
 class RefillItemInputDto {
     @IsUUID()
     variantId!: string;
@@ -30,5 +30,6 @@ export class UpdateRefillRequestDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 }

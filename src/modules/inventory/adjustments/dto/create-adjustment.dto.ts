@@ -5,10 +5,10 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
     Min,
 } from 'class-validator';
 import { AdjustmentType } from '@prisma/client';
-
 export class CreateAdjustmentDto {
     @IsUUID()
     variantId!: string;
@@ -33,5 +33,6 @@ export class CreateAdjustmentDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 }

@@ -17,6 +17,9 @@ model InventoryTransaction {
   department  Department     @relation(fields: [departmentId], references: [id])
   performedBy User           @relation(fields: [performedById], references: [id])
 
+  @@index([departmentId, transactionDate])
+  @@index([variantId, transactionDate])
+  @@index([batchId])
   @@map("inventory_transactions")
 }
 
@@ -38,5 +41,7 @@ model InventoryAdjustment {
   batch      Batch          @relation(fields: [batchId], references: [id])
   reportedBy User           @relation(fields: [reportedById], references: [id])
 
+  @@index([departmentId, createdAt])
+  @@index([variantId])
   @@map("inventory_adjustments")
 }

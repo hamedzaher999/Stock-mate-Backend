@@ -17,6 +17,7 @@ export class DispenseQueueService {
         const { items, total } = await this.dispenseQueueRepository.findMany({
             skip: (page - 1) * limit,
             take: limit,
+            status: dto.status,
         });
 
         return {

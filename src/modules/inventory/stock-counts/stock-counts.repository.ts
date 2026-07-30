@@ -203,14 +203,19 @@ export class StockCountsRepository {
                 let balanceAfter: number;
 
                 if (variance > 0) {
-                    const updatedStock = await tx.batchStock.update({
+                    const updatedStock = await tx.batchStock.upsert({
                         where: {
                             batchId_departmentId: {
                                 batchId: item.batchId,
                                 departmentId: session.departmentId,
                             },
                         },
-                        data: { quantity: { increment: quantity } },
+                        update: { quantity: { increment: quantity } },
+                        create: {
+                            batchId: item.batchId,
+                            departmentId: session.departmentId,
+                            quantity,
+                        },
                     });
                     balanceAfter = Number(updatedStock.quantity);
                 } else {

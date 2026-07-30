@@ -9,6 +9,7 @@ import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DispensingRepository, CycleResolution } from './dispensing.repository';
 import { computeCycleEnd } from '../../../common/utils/recurrence.util';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 const CLOSED_CYCLE_STATUSES = ['delivered', 'missed', 'cancelled'];
 
 @Injectable()
@@ -17,7 +18,6 @@ export class DispensingService {
         private readonly dispensingRepository: DispensingRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
     ) {}
-
     async dispense(dto: DispensePrescriptionDto, dispensedById: string) {
         const prescription =
             await this.dispensingRepository.findPrescriptionForDispense(
@@ -147,6 +147,9 @@ export class DispensingService {
                 throw new BadRequestException(
                     'Insufficient Pharmacy stock to dispense the requested quantity.',
                 );
+            }
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
             }
             throw error;
         }

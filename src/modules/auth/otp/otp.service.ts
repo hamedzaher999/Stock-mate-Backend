@@ -4,8 +4,8 @@ import { OtpRepository } from './otp.repository';
 import { OtpChannel } from '@prisma/client';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcrypt';
-// import { EmailOtpSender } from './senders/email-otp.sender';
-// import { SmsOtpSender } from './senders/sms-otp.sender';
+import { EmailOtpSender } from './senders/resend-email-otp.sender';
+import { SmsOtpSender } from './senders/sms-otp.sender';
 
 const OTP_TTL_MINUTES = 5;
 const SALT_ROUNDS = 10;
@@ -19,8 +19,8 @@ export class OtpService {
 
     constructor(
         private readonly otpRepository: OtpRepository,
-        // private readonly emailSender: EmailOtpSender,
-        // private readonly smsSender: SmsOtpSender,
+        private readonly emailSender: EmailOtpSender,
+        private readonly smsSender: SmsOtpSender,
         private readonly configService: ConfigService,
     ) {
         this.codeLength = this.configService.get<number>('OTP_LENGTH') ?? 6;
@@ -63,13 +63,15 @@ export class OtpService {
             expiresAt,
         });
 
-        // const sender =
-        //   channel === OtpChannel.email ? this.emailSender : this.smsSender;
-        // const result = await sender.send(destination, code);
+        const sender =
+            channel === OtpChannel.email ? this.emailSender : this.smsSender;
+        const result = await sender.send(destination, code);
 
-        // if (!result.success) {
-        //   this.logger.warn(`OTP delivery failed for ${destination} via ${channel}`);
-        // }
+        if (!result.success) {
+            this.logger.warn(
+                `OTP delivery failed for ${destination} via ${channel}`,
+            );
+        }
         //  TODO:DELETE CODE FROM RESPONSE
         return { expiresAt, code };
     }

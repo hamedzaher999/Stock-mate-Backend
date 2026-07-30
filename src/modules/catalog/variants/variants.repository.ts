@@ -93,7 +93,7 @@ export class VariantsRepository {
     productExists(id: string) {
         return this.prisma.product.findUnique({
             where: { id },
-            select: { id: true },
+            select: { id: true, isActive: true },
         });
     }
 

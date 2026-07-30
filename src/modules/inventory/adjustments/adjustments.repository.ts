@@ -127,14 +127,19 @@ export class AdjustmentsRepository {
             let balanceAfter: number;
 
             if (isIncreasing) {
-                const updatedStock = await tx.batchStock.update({
+                const updatedStock = await tx.batchStock.upsert({
                     where: {
                         batchId_departmentId: {
                             batchId: params.batchId,
                             departmentId: params.departmentId,
                         },
                     },
-                    data: { quantity: { increment: params.quantity } },
+                    update: { quantity: { increment: params.quantity } },
+                    create: {
+                        batchId: params.batchId,
+                        departmentId: params.departmentId,
+                        quantity: params.quantity,
+                    },
                 });
                 balanceAfter = Number(updatedStock.quantity);
             } else {

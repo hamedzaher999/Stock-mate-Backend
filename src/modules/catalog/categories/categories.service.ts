@@ -8,7 +8,6 @@ import { CategoriesRepository } from './categories.repository';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CatalogCacheService } from '../catalog-cache.service';
-
 @Injectable()
 export class CategoriesService {
     constructor(
@@ -60,6 +59,9 @@ export class CategoriesService {
                     'A category cannot be its own parent.',
                 );
             }
+
+            await this.assertNoCycle(id, dto.parentCategoryId);
+
             const parent = await this.findById(dto.parentCategoryId);
             if (dto.name && parent.name === dto.name) {
                 throw new BadRequestException(
@@ -104,5 +106,24 @@ export class CategoriesService {
 
         await this.categoriesRepository.delete(id);
         await this.catalogCacheService.invalidateCategories();
+    }
+
+    private async assertNoCycle(categoryId: string, proposedParentId: string) {
+        const categories = await this.catalogCacheService.getCategories();
+        const byId = new Map(categories.map((c) => [c.id, c]));
+
+        let current = byId.get(proposedParentId);
+        const visited = new Set<string>();
+
+        while (current?.parentCategoryId) {
+            if (current.parentCategoryId === categoryId) {
+                throw new BadRequestException(
+                    'This change would create a circular category hierarchy.',
+                );
+            }
+            if (visited.has(current.id)) break; // safety net against pre-existing bad data
+            visited.add(current.id);
+            current = byId.get(current.parentCategoryId);
+        }
     }
 }

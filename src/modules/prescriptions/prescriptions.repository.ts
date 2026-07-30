@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, PrescriptionStatus } from '@prisma/client';
+import { Prisma, PrescriptionStatus, CycleStatus } from '@prisma/client';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { DispenseQueueRepository } from '../pharmacy/dispense-queue/dispense-queue.repository';
 import { variantMinimalSelect } from '../../common/selects/variant.select';
@@ -27,6 +27,13 @@ const prescriptionDetailSelect = {
     updatedAt: true,
     patient: { select: { id: true, fullName: true } },
     doctor: { select: { id: true, fullName: true } },
+    visit: {
+        select: {
+            id: true,
+            departmentId: true,
+            department: { select: { id: true, name: true } },
+        },
+    },
     items: {
         select: {
             id: true,
@@ -38,6 +45,17 @@ const prescriptionDetailSelect = {
             dispensedQuantity: true,
             variant: { select: variantMinimalSelect },
         },
+    },
+    cycleLog: {
+        select: {
+            id: true,
+            cycleNumber: true,
+            periodStart: true,
+            periodEnd: true,
+            resolvedStatus: true,
+            resolvedAt: true,
+        },
+        orderBy: { cycleNumber: 'asc' },
     },
 } satisfies Prisma.PrescriptionSelect;
 
@@ -65,12 +83,18 @@ export class PrescriptionsRepository {
         take: number;
         patientId?: string;
         doctorId?: string;
+        departmentId?: string;
         status?: PrescriptionStatus;
+        cycleStatus?: CycleStatus;
     }) {
         const where: Prisma.PrescriptionWhereInput = {
             patientId: params.patientId,
             doctorId: params.doctorId,
             status: params.status,
+            currentCycleStatus: params.cycleStatus,
+            ...(params.departmentId && {
+                visit: { departmentId: params.departmentId },
+            }),
         };
 
         const [items, total] = await this.prisma.$transaction([

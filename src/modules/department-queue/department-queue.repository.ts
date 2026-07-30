@@ -127,11 +127,7 @@ export class DepartmentQueueRepository {
             .catch((error) => {
                 if (
                     error instanceof Prisma.PrismaClientKnownRequestError &&
-                    error.code === 'P2010' &&
-                    typeof error.meta?.message === 'string' &&
-                    error.meta.message.includes(
-                        'department_queues_active_patient_unique',
-                    )
+                    error.code === 'P2002'
                 ) {
                     throw new ConflictException(
                         'This patient already has an active queue entry in this department.',

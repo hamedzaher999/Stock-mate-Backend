@@ -1,6 +1,5 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PermissionEffect } from '@prisma/client';
-
 export class UpsertUserPermissionDto {
     @IsString()
     permissionCode!: string;
@@ -10,5 +9,6 @@ export class UpsertUserPermissionDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(500)
     reason?: string;
 }

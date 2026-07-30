@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, RequestStatus, ScheduleApprovalPolicy } from '@prisma/client';
+import {
+    Prisma,
+    RefillRequestPriority,
+    RefillRequestType,
+    RequestStatus,
+    ScheduleApprovalPolicy,
+} from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
 import {
@@ -113,10 +119,14 @@ export class RefillRequestsRepository {
         take: number;
         status?: RequestStatus;
         departmentId?: string;
+        priority?: RefillRequestPriority;
+        requestType?: RefillRequestType;
     }) {
         const where: Prisma.DepartmentRefillRequestWhereInput = {
             status: params.status,
             departmentId: params.departmentId,
+            priority: params.priority,
+            requestType: params.requestType,
         };
 
         const [items, total] = await this.prisma.$transaction([

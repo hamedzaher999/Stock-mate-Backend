@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CycleStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 
 type TxClient = Prisma.TransactionClient;
@@ -81,19 +81,24 @@ export class DispenseQueueRepository {
             where: { prescriptionId },
         });
     }
+    async findMany(params: {
+        skip: number;
+        take: number;
+        status?: CycleStatus;
+    }) {
+        const where: Prisma.PharmacyDispenseQueueWhereInput = {
+            status: params.status,
+        };
 
-    // --- Read-side, used by pharmacy staff. Ordinary PrismaService reads
-    // --- (no tx needed) since these are outside any write transaction.
-
-    async findMany(params: { skip: number; take: number }) {
         const [items, total] = await this.prisma.$transaction([
             this.prisma.pharmacyDispenseQueue.findMany({
+                where,
                 select: queueEntrySelect,
                 skip: params.skip,
                 take: params.take,
                 orderBy: { readySince: 'asc' },
             }),
-            this.prisma.pharmacyDispenseQueue.count(),
+            this.prisma.pharmacyDispenseQueue.count({ where }),
         ]);
         return { items, total };
     }

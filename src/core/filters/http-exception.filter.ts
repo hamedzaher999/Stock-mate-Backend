@@ -4,6 +4,7 @@ import {
     ExceptionFilter,
     HttpException,
     HttpStatus,
+    Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiResponse } from '../interfaces/api-response.interface';
@@ -34,11 +35,22 @@ const PRISMA_ERROR_MAP: Record<
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+    private readonly logger = new Logger(HttpExceptionFilter.name);
+
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
 
         const { status, message } = this.resolve(exception);
+
+        if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+            this.logger.error(
+                'Unhandled exception reached the global filter.',
+                exception instanceof Error
+                    ? exception.stack
+                    : String(exception),
+            );
+        }
 
         const body: ApiResponse<null> = {
             success: false,

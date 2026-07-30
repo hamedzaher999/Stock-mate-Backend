@@ -6,9 +6,9 @@ import {
     IsUUID,
     ValidateNested,
     ArrayMinSize,
+    MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-
 class DispenseItemInputDto {
     @IsUUID()
     prescriptionItemId!: string;
@@ -29,5 +29,6 @@ export class DispensePrescriptionDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(500)
     notes?: string;
 }

@@ -4,12 +4,9 @@ import {
     IsOptional,
     IsString,
     IsUUID,
+    MaxLength,
 } from 'class-validator';
-
-enum BatchTypeDto {
-    batch = 'batch',
-    final_batch = 'final_batch',
-}
+import { BatchTypeDto } from '../../../../common/enums/batch-type.enum';
 
 export class CreatePurchaseReceiptFormDto {
     @IsUUID()
@@ -27,6 +24,7 @@ export class CreatePurchaseReceiptFormDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(1000)
     notes?: string;
 
     @IsString()

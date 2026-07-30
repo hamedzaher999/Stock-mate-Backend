@@ -8,6 +8,7 @@ import {
     allocateFefo,
     InsufficientStockError,
 } from '../../../common/utils/fefo.util';
+import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 interface FefoCandidateRow {
     batchId: string;
     variantId: string;
@@ -123,6 +124,23 @@ export class DispensingRepository {
 
     dispense(params: DispenseParams) {
         return this.prisma.$transaction(async (tx) => {
+            const claimed = await tx.prescription.updateMany({
+                where: {
+                    id: params.prescriptionId,
+                    status: 'active',
+                    currentCycleNumber: params.cycleNumber,
+                    currentCycleStatus: {
+                        notIn: ['delivered', 'missed', 'cancelled'],
+                    },
+                },
+                data: { updatedAt: new Date() },
+            });
+            if (claimed.count === 0) {
+                throw new AlreadyProcessedError(
+                    'This prescription cycle is no longer open for dispensing -- it may have been cancelled, renewed, or already resolved by another request.',
+                );
+            }
+
             const dispense = await tx.prescriptionDispense.create({
                 data: {
                     prescriptionId: params.prescriptionId,
@@ -218,7 +236,6 @@ export class DispensingRepository {
             });
         });
     }
-
     private async resolveCycle(
         tx: Prisma.TransactionClient,
         params: DispenseParams,

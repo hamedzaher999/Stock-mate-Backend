@@ -31,7 +31,9 @@ export class PrescriptionsService {
             take: limit,
             patientId: dto.patientId,
             doctorId: dto.doctorId,
+            departmentId: dto.departmentId,
             status: dto.status,
+            cycleStatus: dto.cycleStatus,
         });
 
         return {
