@@ -181,7 +181,8 @@ export class StockSettingsService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
         return scope.departmentId;
     }
 
@@ -189,13 +190,8 @@ export class StockSettingsService {
         requestingUserId: string,
         targetDepartmentId: string,
     ) {
-        const scope =
-            await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
-
-        if (scope.isSuperAdmin) return;
-
-        if (scope.departmentId !== targetDepartmentId) {
+        const scope = await this.resolveDepartmentScope(requestingUserId);
+        if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException(
                 'You can only manage stock settings for your own department.',
             );
