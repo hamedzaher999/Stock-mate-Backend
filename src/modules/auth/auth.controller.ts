@@ -86,7 +86,7 @@ export class AuthController {
 
         const result = await this.authService.refresh(refreshToken);
 
-        if (cookieToken) {
+        if (result.platform === SessionPlatform.web) {
             this.setAuthCookies(res, result);
             return {
                 message: 'Session refreshed.',

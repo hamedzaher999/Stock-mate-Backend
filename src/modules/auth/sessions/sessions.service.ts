@@ -107,6 +107,7 @@ export class SessionsService {
             accessExpiresAt,
             refreshExpiresAt,
             user: session.user,
+            platform: session.platform,
         };
     }
 

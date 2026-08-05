@@ -70,7 +70,7 @@ export class BatchesService {
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null;
+        if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null; // ❌ same missing check
         return scope.departmentId;
     }
 }
