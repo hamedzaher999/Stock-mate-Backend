@@ -91,14 +91,22 @@ export class UserPermissionsController {
     async remove(
         @Param('userId') userId: string,
         @Param('permissionCode') permissionCode: string,
+        @CurrentUser() user: AuthenticatedUser,
     ) {
-        await this.userPermissionsService.remove(userId, permissionCode);
+        await this.userPermissionsService.remove(
+            userId,
+            permissionCode,
+            user.sub,
+        );
         return { message: 'Permission override removed.', data: null };
     }
 
     @Delete()
-    async reset(@Param('userId') userId: string) {
-        await this.userPermissionsService.resetToDefault(userId);
+    async reset(
+        @Param('userId') userId: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        await this.userPermissionsService.resetToDefault(userId, user.sub);
         return { message: 'Permissions reset to role defaults.', data: null };
     }
 }

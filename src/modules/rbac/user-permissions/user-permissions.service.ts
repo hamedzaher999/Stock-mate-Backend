@@ -60,7 +60,17 @@ export class UserPermissionsService {
         return result;
     }
 
-    async remove(targetUserId: string, permissionCode: string) {
+    async remove(
+        targetUserId: string,
+        permissionCode: string,
+        requestingUserId: string,
+    ) {
+        if (targetUserId === requestingUserId) {
+            throw new BadRequestException(
+                'You cannot modify your own permission overrides.',
+            );
+        }
+
         await this.assertManageableTarget(targetUserId);
 
         const [permission] = await this.permissionsRepository.findByCodes([
@@ -77,7 +87,13 @@ export class UserPermissionsService {
         return { removed: true };
     }
 
-    async resetToDefault(targetUserId: string) {
+    async resetToDefault(targetUserId: string, requestingUserId: string) {
+        if (targetUserId === requestingUserId) {
+            throw new BadRequestException(
+                'You cannot reset your own permission overrides.',
+            );
+        }
+
         await this.assertManageableTarget(targetUserId);
 
         await this.userPermissionsRepository.deleteAllForUser(targetUserId);

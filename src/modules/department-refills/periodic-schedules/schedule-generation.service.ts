@@ -38,49 +38,74 @@ export class ScheduleGenerationService {
         for (const schedule of due) {
             const isAutoApproved = schedule.approvalPolicy === 'auto_approved';
 
-            const requestId = await this.prisma.$transaction(async (tx) => {
-                const request = await tx.departmentRefillRequest.create({
-                    data: {
-                        requestNumber: generateRequestNumber('DRF'),
-                        departmentId: schedule.departmentId,
-                        requestedById: schedule.createdById,
-                        priority: schedule.originRequest.priority,
-                        requestType: schedule.requestType,
-                        frequencyInterval: schedule.frequencyInterval,
-                        periodicScheduleId: schedule.id,
-                        status: isAutoApproved
-                            ? 'pending_manager_approval'
-                            : 'pending_hospital_approval',
-                        hospitalApprovedById: isAutoApproved
-                            ? schedule.approvedById
-                            : undefined,
-                        hospitalApprovedAt: isAutoApproved
-                            ? new Date()
-                            : undefined,
-                        items: {
-                            create: schedule.originRequest.items.map((i) => ({
-                                variantId: i.variantId,
-                                requestedQuantity: Number(i.approvedQuantity),
-                            })),
+            const unit = requestTypeToFrequencyUnit(
+                schedule.requestType as 'daily' | 'weekly' | 'monthly',
+            );
+            const nextRunDate = computeCycleEnd(
+                schedule.nextRunDate,
+                unit,
+                schedule.frequencyInterval,
+            );
+
+            let requestId: string | null;
+            try {
+                requestId = await this.prisma.$transaction(async (tx) => {
+                    const claimed = await tx.periodicRefillSchedule.updateMany({
+                        where: {
+                            id: schedule.id,
+                            status: 'active',
+                            nextRunDate: { lte: asOf },
                         },
-                    },
-                });
+                        data: { nextRunDate, lastGeneratedAt: new Date() },
+                    });
+                    if (claimed.count === 0) {
+                        return null;
+                    }
 
-                const unit = requestTypeToFrequencyUnit(
-                    schedule.requestType as 'daily' | 'weekly' | 'monthly',
-                );
-                const nextRunDate = computeCycleEnd(
-                    schedule.nextRunDate,
-                    unit,
-                    schedule.frequencyInterval,
-                );
-                await tx.periodicRefillSchedule.update({
-                    where: { id: schedule.id },
-                    data: { nextRunDate, lastGeneratedAt: new Date() },
-                });
+                    const request = await tx.departmentRefillRequest.create({
+                        data: {
+                            requestNumber: generateRequestNumber('DRF'),
+                            departmentId: schedule.departmentId,
+                            requestedById: schedule.createdById,
+                            priority: schedule.originRequest.priority,
+                            requestType: schedule.requestType,
+                            frequencyInterval: schedule.frequencyInterval,
+                            periodicScheduleId: schedule.id,
+                            status: isAutoApproved
+                                ? 'pending_manager_approval'
+                                : 'pending_hospital_approval',
+                            hospitalApprovedById: isAutoApproved
+                                ? schedule.approvedById
+                                : undefined,
+                            hospitalApprovedAt: isAutoApproved
+                                ? new Date()
+                                : undefined,
+                            items: {
+                                create: schedule.originRequest.items.map(
+                                    (i) => ({
+                                        variantId: i.variantId,
+                                        requestedQuantity: Number(
+                                            i.approvedQuantity,
+                                        ),
+                                    }),
+                                ),
+                            },
+                        },
+                    });
 
-                return request.id;
-            });
+                    return request.id;
+                });
+            } catch (error) {
+                this.logger.error(
+                    `Failed to generate refill request from schedule ${schedule.id} -- skipping and continuing with remaining schedules.`,
+                    error instanceof Error ? error.stack : String(error),
+                );
+                continue;
+            }
+
+            if (!requestId) {
+                continue;
+            }
 
             generated.push(requestId);
             this.logger.log(
