@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { FrequencyUnit, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { InventoryLedgerService } from '../../inventory/transactions/inventory-ledger.service';
 import { DispenseQueueRepository } from '../dispense-queue/dispense-queue.repository';
@@ -8,13 +8,19 @@ import {
     allocateFefo,
     InsufficientStockError,
 } from '../../../common/utils/fefo.util';
-import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import {
+    AlreadyProcessedError,
+    CycleAllowanceExceededError,
+} from '../../../common/utils/concurrency.util';
+import { computeCycleEnd } from '../../../common/utils/recurrence.util';
+
 interface FefoCandidateRow {
     batchId: string;
     variantId: string;
     quantity: number;
     expirationDate: Date | null;
 }
+
 const dispenseDetailSelect = {
     id: true,
     prescriptionId: true,
@@ -37,16 +43,12 @@ const dispenseDetailSelect = {
     },
 } satisfies Prisma.PrescriptionDispenseSelect;
 
-export type CycleResolution =
-    | { type: 'partial' }
-    | { type: 'resolved_final'; resolvedAt: Date }
-    | {
-          type: 'resolved_advance';
-          resolvedAt: Date;
-          nextCycleNumber: number;
-          nextCycleStart: Date;
-          nextCycleEnd: Date;
-      };
+interface DispenseRequestedItem {
+    prescriptionItemId: string;
+    variantId: string;
+    prescribedQuantity: number;
+    quantity: number;
+}
 
 interface DispenseParams {
     prescriptionId: string;
@@ -55,12 +57,13 @@ interface DispenseParams {
     cycleNumber: number;
     dispensedById: string;
     notes?: string;
-    lines: {
-        prescriptionItemId: string;
-        variantId: string;
-        quantity: number;
-    }[];
-    cycleResolution: CycleResolution;
+    allItems: { prescriptionItemId: string; prescribedQuantity: number }[];
+    requestedItems: DispenseRequestedItem[];
+    isOneTime: boolean;
+    isFinalCycle: boolean;
+    frequencyUnit?: FrequencyUnit;
+    frequencyInterval?: number;
+    nextCycleStart?: Date;
     patientSnapshot: {
         nationalId: string | null;
         familyBookNumber: string | null;
@@ -115,6 +118,25 @@ export class DispensingRepository {
             where: { dispense: { prescriptionId, cycleNumber } },
             _sum: { quantity: true },
         });
+        return this.toQuantityMap(rows);
+    }
+
+    private async sumDispensedForCycleTx(
+        tx: Prisma.TransactionClient,
+        prescriptionId: string,
+        cycleNumber: number,
+    ) {
+        const rows = await tx.prescriptionDispenseItem.groupBy({
+            by: ['prescriptionItemId'],
+            where: { dispense: { prescriptionId, cycleNumber } },
+            _sum: { quantity: true },
+        });
+        return this.toQuantityMap(rows);
+    }
+
+    private toQuantityMap(
+        rows: { prescriptionItemId: string; _sum: { quantity: unknown } }[],
+    ): Map<string, number> {
         const map = new Map<string, number>();
         for (const row of rows) {
             map.set(row.prescriptionItemId, Number(row._sum.quantity ?? 0));
@@ -141,6 +163,45 @@ export class DispensingRepository {
                 );
             }
 
+            const dispensedSoFar = await this.sumDispensedForCycleTx(
+                tx,
+                params.prescriptionId,
+                params.cycleNumber,
+            );
+
+            const lines: {
+                prescriptionItemId: string;
+                variantId: string;
+                quantity: number;
+            }[] = [];
+
+            for (const requested of params.requestedItems) {
+                const already =
+                    dispensedSoFar.get(requested.prescriptionItemId) ?? 0;
+                const remaining = requested.prescribedQuantity - already;
+                if (requested.quantity > remaining) {
+                    throw new CycleAllowanceExceededError(
+                        requested.prescriptionItemId,
+                        remaining,
+                    );
+                }
+                lines.push({
+                    prescriptionItemId: requested.prescriptionItemId,
+                    variantId: requested.variantId,
+                    quantity: requested.quantity,
+                });
+            }
+
+            const willBeFullyDelivered = params.allItems.every((item) => {
+                const already =
+                    dispensedSoFar.get(item.prescriptionItemId) ?? 0;
+                const thisDispense =
+                    lines.find(
+                        (l) => l.prescriptionItemId === item.prescriptionItemId,
+                    )?.quantity ?? 0;
+                return already + thisDispense >= item.prescribedQuantity;
+            });
+
             const dispense = await tx.prescriptionDispense.create({
                 data: {
                     prescriptionId: params.prescriptionId,
@@ -150,23 +211,21 @@ export class DispensingRepository {
                 },
             });
 
-            const variantIds = [
-                ...new Set(params.lines.map((l) => l.variantId)),
-            ];
+            const variantIds = [...new Set(lines.map((l) => l.variantId))];
 
             const candidates = await tx.$queryRaw<FefoCandidateRow[]>`
-            SELECT
-                b.id AS "batchId",
-                b.variant_id AS "variantId",
-                bs.quantity::float AS "quantity",
-                b.expiration_date AS "expirationDate"
-            FROM batch_stock bs
-            JOIN batches b ON b.id = bs.batch_id
-            WHERE bs.department_id = ${params.departmentId}::uuid
-              AND b.variant_id = ANY(${variantIds}::uuid[])
-              AND bs.quantity > 0
-            FOR UPDATE OF bs
-        `;
+                SELECT
+                    b.id AS "batchId",
+                    b.variant_id AS "variantId",
+                    bs.quantity::float AS "quantity",
+                    b.expiration_date AS "expirationDate"
+                FROM batch_stock bs
+                JOIN batches b ON b.id = bs.batch_id
+                WHERE bs.department_id = ${params.departmentId}::uuid
+                  AND b.variant_id = ANY(${variantIds}::uuid[])
+                  AND bs.quantity > 0
+                FOR UPDATE OF bs
+            `;
 
             const byVariant = new Map<string, FefoCandidateRow[]>();
             for (const row of candidates) {
@@ -175,7 +234,7 @@ export class DispensingRepository {
                 byVariant.set(row.variantId, list);
             }
 
-            for (const line of params.lines) {
+            for (const line of lines) {
                 const rows = byVariant.get(line.variantId) ?? [];
                 const allocations = allocateFefo(
                     rows.map((r) => ({
@@ -198,13 +257,13 @@ export class DispensingRepository {
                     });
 
                     const updated = await tx.$queryRaw<{ quantity: number }[]>`
-                    UPDATE batch_stock
-                    SET quantity = quantity - ${alloc.quantity}
-                    WHERE batch_id = ${alloc.batchId}::uuid
-                      AND department_id = ${params.departmentId}::uuid
-                      AND quantity >= ${alloc.quantity}
-                    RETURNING quantity::float AS "quantity"
-                `;
+                        UPDATE batch_stock
+                        SET quantity = quantity - ${alloc.quantity}
+                        WHERE batch_id = ${alloc.batchId}::uuid
+                          AND department_id = ${params.departmentId}::uuid
+                          AND quantity >= ${alloc.quantity}
+                        RETURNING quantity::float AS "quantity"
+                    `;
                     if (updated.length === 0) {
                         throw new InsufficientStockError(alloc.quantity);
                     }
@@ -228,7 +287,17 @@ export class DispensingRepository {
                 });
             }
 
-            await this.resolveCycle(tx, params);
+            await this.resolveCycle(tx, {
+                prescriptionId: params.prescriptionId,
+                patientId: params.patientId,
+                cycleNumber: params.cycleNumber,
+                willBeFullyDelivered,
+                isFinalCycle: params.isFinalCycle,
+                frequencyUnit: params.frequencyUnit,
+                frequencyInterval: params.frequencyInterval,
+                nextCycleStart: params.nextCycleStart,
+                patientSnapshot: params.patientSnapshot,
+            });
 
             return tx.prescriptionDispense.findUniqueOrThrow({
                 where: { id: dispense.id },
@@ -236,13 +305,26 @@ export class DispensingRepository {
             });
         });
     }
+
     private async resolveCycle(
         tx: Prisma.TransactionClient,
-        params: DispenseParams,
+        params: {
+            prescriptionId: string;
+            patientId: string;
+            cycleNumber: number;
+            willBeFullyDelivered: boolean;
+            isFinalCycle: boolean;
+            frequencyUnit?: FrequencyUnit;
+            frequencyInterval?: number;
+            nextCycleStart?: Date;
+            patientSnapshot: {
+                nationalId: string | null;
+                familyBookNumber: string | null;
+                fullName: string;
+            };
+        },
     ) {
-        const { cycleResolution } = params;
-
-        if (cycleResolution.type === 'partial') {
+        if (!params.willBeFullyDelivered) {
             await tx.prescription.update({
                 where: { id: params.prescriptionId },
                 data: { currentCycleStatus: 'partially_delivered' },
@@ -254,6 +336,7 @@ export class DispensingRepository {
             return;
         }
 
+        const resolvedAt = new Date();
         const current = await tx.prescription.findUniqueOrThrow({
             where: { id: params.prescriptionId },
             select: { currentCycleStart: true, currentCycleEnd: true },
@@ -266,11 +349,11 @@ export class DispensingRepository {
                 periodStart: current.currentCycleStart,
                 periodEnd: current.currentCycleEnd,
                 resolvedStatus: 'delivered',
-                resolvedAt: cycleResolution.resolvedAt,
+                resolvedAt,
             },
         });
 
-        if (cycleResolution.type === 'resolved_final') {
+        if (params.isFinalCycle) {
             await tx.prescription.update({
                 where: { id: params.prescriptionId },
                 data: { status: 'completed', currentCycleStatus: 'delivered' },
@@ -282,12 +365,20 @@ export class DispensingRepository {
             return;
         }
 
+        const nextCycleNumber = params.cycleNumber + 1;
+        const nextCycleStart = params.nextCycleStart ?? current.currentCycleEnd;
+        const nextCycleEnd = computeCycleEnd(
+            nextCycleStart,
+            params.frequencyUnit,
+            params.frequencyInterval,
+        );
+
         await tx.prescription.update({
             where: { id: params.prescriptionId },
             data: {
-                currentCycleNumber: cycleResolution.nextCycleNumber,
-                currentCycleStart: cycleResolution.nextCycleStart,
-                currentCycleEnd: cycleResolution.nextCycleEnd,
+                currentCycleNumber: nextCycleNumber,
+                currentCycleStart: nextCycleStart,
+                currentCycleEnd: nextCycleEnd,
                 currentCycleStatus: 'ready',
             },
         });
@@ -303,8 +394,8 @@ export class DispensingRepository {
             nationalId: params.patientSnapshot.nationalId,
             familyBookNumber: params.patientSnapshot.familyBookNumber,
             patientName: params.patientSnapshot.fullName,
-            cycleNumber: cycleResolution.nextCycleNumber,
-            readySince: cycleResolution.resolvedAt,
+            cycleNumber: nextCycleNumber,
+            readySince: resolvedAt,
             items: items.map((i) => ({
                 variantId: i.variantId,
                 prescribedQuantity: Number(i.prescribedQuantity),

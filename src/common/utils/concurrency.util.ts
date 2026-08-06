@@ -5,3 +5,14 @@ export class AlreadyProcessedError extends Error {
         super(message);
     }
 }
+
+export class CycleAllowanceExceededError extends Error {
+    constructor(
+        public readonly prescriptionItemId: string,
+        public readonly remaining: number,
+    ) {
+        super(
+            `Dispensed quantity exceeds what remains for this cycle (remaining: ${remaining}).`,
+        );
+    }
+}

@@ -6,10 +6,12 @@ import {
 } from '@nestjs/common';
 import { DispensePrescriptionDto } from './dto/dispense-prescription.dto';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
-import { DispensingRepository, CycleResolution } from './dispensing.repository';
-import { computeCycleEnd } from '../../../common/utils/recurrence.util';
+import { DispensingRepository } from './dispensing.repository';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
-import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import {
+    AlreadyProcessedError,
+    CycleAllowanceExceededError,
+} from '../../../common/utils/concurrency.util';
 const CLOSED_CYCLE_STATUSES = ['delivered', 'missed', 'cancelled'];
 
 @Injectable()
@@ -18,6 +20,7 @@ export class DispensingService {
         private readonly dispensingRepository: DispensingRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
     ) {}
+
     async dispense(dto: DispensePrescriptionDto, dispensedById: string) {
         const prescription =
             await this.dispensingRepository.findPrescriptionForDispense(
@@ -50,9 +53,10 @@ export class DispensingService {
                 prescription.currentCycleNumber,
             );
 
-        const lines: {
+        const requestedItems: {
             prescriptionItemId: string;
             variantId: string;
+            prescribedQuantity: number;
             quantity: number;
         }[] = [];
 
@@ -75,56 +79,20 @@ export class DispensingService {
                 );
             }
 
-            lines.push({
+            requestedItems.push({
                 prescriptionItemId: item.id,
                 variantId: item.variantId,
+                prescribedQuantity: Number(item.prescribedQuantity),
                 quantity: inputItem.quantity,
             });
         }
 
-        const willBeFullyDelivered = prescription.items.every((item) => {
-            const already = dispensedSoFar.get(item.id) ?? 0;
-            const thisDispense =
-                lines.find((l) => l.prescriptionItemId === item.id)?.quantity ??
-                0;
-            return already + thisDispense >= Number(item.prescribedQuantity);
-        });
-
-        let cycleResolution: CycleResolution;
-
-        if (!willBeFullyDelivered) {
-            cycleResolution = { type: 'partial' };
-        } else {
-            const isOneTime =
-                !prescription.frequencyUnit || !prescription.frequencyInterval;
-            const isFinalCycle =
-                isOneTime ||
-                (prescription.totalCycles !== null &&
-                    prescription.currentCycleNumber >=
-                        prescription.totalCycles);
-
-            if (isFinalCycle) {
-                cycleResolution = {
-                    type: 'resolved_final',
-                    resolvedAt: new Date(),
-                };
-            } else {
-                const nextCycleNumber = prescription.currentCycleNumber + 1;
-                const nextCycleStart = new Date(prescription.currentCycleEnd);
-                const nextCycleEnd = computeCycleEnd(
-                    nextCycleStart,
-                    prescription.frequencyUnit,
-                    prescription.frequencyInterval,
-                );
-                cycleResolution = {
-                    type: 'resolved_advance',
-                    resolvedAt: new Date(),
-                    nextCycleNumber,
-                    nextCycleStart,
-                    nextCycleEnd,
-                };
-            }
-        }
+        const isOneTime =
+            !prescription.frequencyUnit || !prescription.frequencyInterval;
+        const isFinalCycle =
+            isOneTime ||
+            (prescription.totalCycles !== null &&
+                prescription.currentCycleNumber >= prescription.totalCycles);
 
         try {
             return await this.dispensingRepository.dispense({
@@ -134,8 +102,16 @@ export class DispensingService {
                 cycleNumber: prescription.currentCycleNumber,
                 dispensedById,
                 notes: dto.notes,
-                lines,
-                cycleResolution,
+                allItems: prescription.items.map((i) => ({
+                    prescriptionItemId: i.id,
+                    prescribedQuantity: Number(i.prescribedQuantity),
+                })),
+                requestedItems,
+                isOneTime,
+                isFinalCycle,
+                frequencyUnit: prescription.frequencyUnit ?? undefined,
+                frequencyInterval: prescription.frequencyInterval ?? undefined,
+                nextCycleStart: new Date(prescription.currentCycleEnd),
                 patientSnapshot: {
                     nationalId: prescription.patient.nationalId,
                     familyBookNumber: prescription.patient.familyBookNumber,
@@ -150,6 +126,11 @@ export class DispensingService {
             }
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(error.message);
+            }
+            if (error instanceof CycleAllowanceExceededError) {
+                throw new ConflictException(
+                    'The remaining allowance for this cycle changed before this request completed (likely a concurrent dispense) -- please refresh and try again.',
+                );
             }
             throw error;
         }

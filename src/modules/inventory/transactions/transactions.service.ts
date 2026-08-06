@@ -9,6 +9,7 @@ import { PaginatedResult } from '../../../core/interfaces/paginated-result.inter
 import { UserScopeService } from '../../rbac/user-scope.service';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
+
 @Injectable()
 export class TransactionsService {
     constructor(
@@ -24,16 +25,26 @@ export class TransactionsService {
         const limit = dto.limit ?? 20;
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
-        if (scope && dto.departmentId && dto.departmentId !== scope) {
-            throw new ForbiddenException(
-                'You can only view transactions for your own department.',
-            );
+
+        if (!scope.unrestricted) {
+            if (!scope.departmentId) {
+                return { items: [], total: 0, page, limit, totalPages: 0 };
+            }
+            if (dto.departmentId && dto.departmentId !== scope.departmentId) {
+                throw new ForbiddenException(
+                    'You can only view transactions for your own department.',
+                );
+            }
         }
+
+        const departmentId = scope.unrestricted
+            ? dto.departmentId
+            : (scope.departmentId ?? undefined);
 
         const { items, total } = await this.transactionsRepository.findMany({
             skip: (page - 1) * limit,
             take: limit,
-            departmentId: dto.departmentId ?? scope ?? undefined,
+            departmentId,
             variantId: dto.variantId,
             batchId: dto.batchId,
             transactionType: dto.transactionType,
@@ -50,13 +61,14 @@ export class TransactionsService {
 
     private async resolveDepartmentScope(
         requestingUserId: string,
-    ): Promise<string | null> {
+    ): Promise<{ unrestricted: boolean; departmentId: string | null }> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
         if (!scope) throw new BadRequestException('Requesting user not found.');
 
-        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
-            return null;
-        return scope.departmentId;
+        const unrestricted =
+            scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName);
+
+        return { unrestricted, departmentId: scope.departmentId };
     }
 }
