@@ -12,7 +12,10 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { WAREHOUSE_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    WAREHOUSE_MANAGER_ROLE_NAME,
+} from '../../../common/constants/roles.constants';
 import { CreateRefillRequestDto } from './dto/create-refill-request.dto';
 import { UpdateRefillRequestDto } from './dto/update-refill-request.dto';
 import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
@@ -20,7 +23,10 @@ import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 
-const UNRESTRICTED_ROLES = [WAREHOUSE_MANAGER_ROLE_NAME];
+const UNRESTRICTED_ROLES = [
+    WAREHOUSE_MANAGER_ROLE_NAME,
+    HOSPITAL_MANAGER_ROLE_NAME,
+];
 const CANCELLABLE_STATUSES = [
     'draft',
     'pending_hospital_approval',

@@ -11,7 +11,10 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { generateRequestNumber } from '../../../common/utils/request-number-generator.util';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
-import { PURCHASING_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    PURCHASING_MANAGER_ROLE_NAME,
+} from '../../../common/constants/roles.constants';
 import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto';
 import { UpdatePurchaseRequestDto } from './dto/update-purchase-request.dto';
 import { ApprovePurchaseRequestDto } from './dto/approve-purchase-request.dto';
@@ -23,7 +26,10 @@ const CANCELLABLE_STATUSES = [
     'pending_hospital_approval',
     'pending_manager_approval',
 ];
-const UNRESTRICTED_ROLES = [PURCHASING_MANAGER_ROLE_NAME];
+const UNRESTRICTED_ROLES = [
+    PURCHASING_MANAGER_ROLE_NAME,
+    HOSPITAL_MANAGER_ROLE_NAME,
+];
 @Injectable()
 export class PurchaseRequestsService {
     constructor(
