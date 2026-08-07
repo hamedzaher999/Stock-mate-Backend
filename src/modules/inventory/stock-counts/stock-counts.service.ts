@@ -16,6 +16,7 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
@@ -87,12 +88,29 @@ export class StockCountsService {
 
         await this.assertDepartmentScope(initiatedById, dto.departmentId);
 
-        return this.stockCountsRepository.createSession({
-            departmentId: dto.departmentId,
-            initiatedById,
-            countDate: new Date(dto.countDate),
-            notes: dto.notes,
-        });
+        const existingDraft =
+            await this.stockCountsRepository.findActiveDraftForDepartment(
+                dto.departmentId,
+            );
+        if (existingDraft) {
+            throw new ConflictException(
+                `This department already has a draft stock count in progress (started ${existingDraft.createdAt.toISOString()}). Complete or cancel it before starting a new one.`,
+            );
+        }
+
+        try {
+            return await this.stockCountsRepository.createSession({
+                departmentId: dto.departmentId,
+                initiatedById,
+                countDate: new Date(dto.countDate),
+                notes: dto.notes,
+            });
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
+            }
+            throw error;
+        }
     }
 
     async addItem(
@@ -191,6 +209,24 @@ export class StockCountsService {
                 throw new ConflictException(
                     'Cannot complete this stock count -- live stock has changed since counting and is now insufficient to apply a shrinkage adjustment for one or more items. Please review current stock levels first.',
                 );
+            }
+            throw error;
+        }
+    }
+
+    async cancel(sessionId: string, requestingUserId: string) {
+        const session = await this.findById(sessionId, requestingUserId);
+        if (session.status !== 'draft') {
+            throw new ConflictException(
+                'Only a draft stock count can be cancelled -- a completed count is a permanent record.',
+            );
+        }
+
+        try {
+            await this.stockCountsRepository.deleteDraft(sessionId);
+        } catch (error) {
+            if (error instanceof AlreadyProcessedError) {
+                throw new ConflictException(error.message);
             }
             throw error;
         }

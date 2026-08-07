@@ -5,6 +5,7 @@ import { variantInventorySelect } from '../../../common/selects/variant.select';
 import { InventoryLedgerService } from '../transactions/inventory-ledger.service';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+
 const sessionDetailSelect = {
     id: true,
     departmentId: true,
@@ -100,15 +101,60 @@ export class StockCountsRepository {
         });
     }
 
-    createSession(data: {
+    findActiveDraftForDepartment(departmentId: string) {
+        return this.prisma.stockCountSession.findFirst({
+            where: { departmentId, status: 'draft' },
+            select: { id: true, countDate: true, createdAt: true },
+        });
+    }
+
+    async createSession(data: {
         departmentId: string;
         initiatedById: string;
         countDate: Date;
         notes?: string;
     }) {
-        return this.prisma.stockCountSession.create({
-            data,
-            select: sessionDetailSelect,
+        return this.prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('stock_count_session:' || ${data.departmentId}))`;
+
+            const existingDraft = await tx.stockCountSession.findFirst({
+                where: { departmentId: data.departmentId, status: 'draft' },
+                select: { id: true },
+            });
+            if (existingDraft) {
+                throw new AlreadyProcessedError(
+                    'This department already has a draft stock count in progress -- complete or cancel it before starting a new one.',
+                );
+            }
+
+            return tx.stockCountSession.create({
+                data,
+                select: sessionDetailSelect,
+            });
+        });
+    }
+
+    async deleteDraft(id: string) {
+        return this.prisma.$transaction(async (tx) => {
+            const locked = await tx.$queryRaw<{ status: string }[]>`
+                SELECT status::text AS status
+                FROM stock_count_sessions
+                WHERE id = ${id}::uuid
+                FOR UPDATE
+            `;
+            if (locked.length === 0) {
+                throw new AlreadyProcessedError(
+                    'This stock count no longer exists.',
+                );
+            }
+            if (locked[0].status !== 'draft') {
+                throw new AlreadyProcessedError(
+                    'This stock count is no longer a draft -- it may have already been completed.',
+                );
+            }
+
+            await tx.stockCountItem.deleteMany({ where: { sessionId: id } });
+            await tx.stockCountSession.delete({ where: { id } });
         });
     }
 

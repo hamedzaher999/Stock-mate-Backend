@@ -12,6 +12,10 @@ export class ListDepartmentsDto extends PaginationDto {
     isActive?: string;
 
     @IsOptional()
+    @IsBooleanString()
+    hasManager?: string;
+
+    @IsOptional()
     @IsString()
     search?: string;
 }

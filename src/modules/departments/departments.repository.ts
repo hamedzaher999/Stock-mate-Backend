@@ -30,11 +30,15 @@ export class DepartmentsRepository {
         take: number;
         type?: DepartmentType;
         isActive?: boolean;
+        hasManager?: boolean;
         search?: string;
     }) {
         const where: Prisma.DepartmentWhereInput = {
             type: params.type,
             isActive: params.isActive,
+            ...(params.hasManager !== undefined && {
+                managerId: params.hasManager ? { not: null } : null,
+            }),
             ...(params.search && {
                 name: { contains: params.search, mode: 'insensitive' },
             }),

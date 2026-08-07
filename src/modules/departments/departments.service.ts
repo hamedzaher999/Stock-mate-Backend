@@ -109,6 +109,10 @@ export class DepartmentsService {
                 dto.isActive === undefined
                     ? undefined
                     : dto.isActive === 'true',
+            hasManager:
+                dto.hasManager === undefined
+                    ? undefined
+                    : dto.hasManager === 'true',
             search: dto.search,
         });
 

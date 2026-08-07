@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     Patch,
@@ -16,6 +17,7 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
+// src/modules/inventory/stock-counts/stock-counts.controller.ts
 
 @Controller('inventory/stock-counts')
 @RequirePermissions(PERMISSIONS.PERFORM_STOCK_COUNT)
@@ -82,5 +84,14 @@ export class StockCountsController {
     ) {
         const data = await this.stockCountsService.complete(id, user.sub);
         return { message: 'Stock count completed.', data };
+    }
+
+    @Delete(':id')
+    async cancel(
+        @Param('id') id: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        await this.stockCountsService.cancel(id, user.sub);
+        return { message: 'Draft stock count discarded.', data: null };
     }
 }
