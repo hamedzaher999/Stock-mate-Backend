@@ -15,6 +15,8 @@ interface LiveStockRow {
     categoryId: string | null;
     categoryName: string | null;
     totalQuantity: number;
+    minimumStock: number | null;
+    maximumStock: number | null;
     batches: {
         batchId: string;
         batchNumber: string;
@@ -59,6 +61,8 @@ export class DepartmentInventoryRepository {
                 c.id                             AS "categoryId",
                 c.name                           AS "categoryName",
                 SUM(bs.quantity)::float          AS "totalQuantity",
+                dss.minimum_stock::float         AS "minimumStock",
+                dss.maximum_stock::float         AS "maximumStock",
                 json_agg(
                     json_build_object(
                         'batchId', b.id,
@@ -78,11 +82,16 @@ export class DepartmentInventoryRepository {
             JOIN units u ON u.id = pv.unit_id
             JOIN products p ON p.id = pv.product_id
             LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN department_stock_settings dss
+                ON dss.variant_id = pvd.variant_id
+               AND dss.department_id = ${departmentId}::uuid
+               AND dss.is_active = true
             GROUP BY
                 pvd.variant_id, pvd.total_count, pv.variant_name, pv.sku,
                 u.id, u.name, u.abbreviation,
                 p.id, p.name, p.material_type,
-                c.id, c.name
+                c.id, c.name,
+                dss.minimum_stock, dss.maximum_stock
             ORDER BY pvd.variant_id;
         `;
 
@@ -107,6 +116,8 @@ export class DepartmentInventoryRepository {
                     : null,
             },
             totalQuantity: r.totalQuantity,
+            minimumStock: r.minimumStock,
+            maximumStock: r.maximumStock,
             batches: r.batches,
         }));
 
