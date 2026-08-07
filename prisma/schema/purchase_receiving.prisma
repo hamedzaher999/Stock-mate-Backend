@@ -8,17 +8,30 @@ model PurchaseReceipt {
   status             PurchaseReceiptStatus @default(pending_confirmation)
   confirmedById      String?               @map("confirmed_by") @db.Uuid
   confirmedAt        DateTime?             @map("confirmed_at")
-  receiptImageKey    String                @map("receipt_image_key")
   notes              String?
   createdAt          DateTime              @default(now()) @map("created_at")
 
-  purchaseRequest PurchaseRequest      @relation(fields: [purchaseRequestId], references: [id])
-  supplier        Supplier             @relation(fields: [supplierId], references: [id])
-  receivedBy      User                 @relation("PurchaseReceiptReceivedBy", fields: [receivedById], references: [id])
-  confirmedBy     User?                @relation("PurchaseReceiptConfirmedBy", fields: [confirmedById], references: [id])
+  purchaseRequest PurchaseRequest       @relation(fields: [purchaseRequestId], references: [id])
+  supplier        Supplier              @relation(fields: [supplierId], references: [id])
+  receivedBy      User                  @relation("PurchaseReceiptReceivedBy", fields: [receivedById], references: [id])
+  confirmedBy     User?                 @relation("PurchaseReceiptConfirmedBy", fields: [confirmedById], references: [id])
   items           PurchaseReceiptItem[]
+  images          PurchaseReceiptImage[]
 
   @@map("purchase_receipts")
+}
+
+model PurchaseReceiptImage {
+  id                String   @id @default(uuid()) @db.Uuid
+  purchaseReceiptId String   @map("purchase_receipt_id") @db.Uuid
+  imageKey          String   @map("image_key")
+  sortOrder         Int      @default(0) @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  purchaseReceipt PurchaseReceipt @relation(fields: [purchaseReceiptId], references: [id])
+
+  @@index([purchaseReceiptId, sortOrder])
+  @@map("purchase_receipt_images")
 }
 
 model PurchaseReceiptItem {

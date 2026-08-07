@@ -53,4 +53,9 @@ export class UpdatePurchaseReceiptDto {
     @ValidateNested({ each: true })
     @Type(() => UpdateReceiptItemDto)
     items?: UpdateReceiptItemDto[];
+
+    @IsOptional()
+    @IsArray()
+    @IsUUID('4', { each: true })
+    removeImageIds?: string[];
 }

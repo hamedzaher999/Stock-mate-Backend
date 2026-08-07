@@ -8,10 +8,10 @@ import {
     Patch,
     Post,
     Query,
-    UploadedFile,
+    UploadedFiles,
     UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { PurchaseReceivingService } from './purchase-receiving.service';
 import { RequirePermissions } from '../../../core/decorators/require-permissions.decorator';
@@ -19,10 +19,10 @@ import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { ConfirmPurchaseReceiptDto } from './dto/confirm-purchase-receipt.dto';
-import { UpdatePurchaseReceiptDto } from './dto/update-purchase-receipt.dto';
 import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
 import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
-
+import { UpdatePurchaseReceiptFormDto } from './dto/update-purchase-receipt-form.dto';
+const PURCHASE_RECEIPT_UPLOAD_HARD_CEILING = 30;
 @Controller('purchasing/receipts')
 export class PurchaseReceivingController {
     constructor(
@@ -43,24 +43,28 @@ export class PurchaseReceivingController {
         return { message: 'Success', data };
     }
 
-    @Get(':id/image-url')
+    @Get(':id/images')
     @RequirePermissions(PERMISSIONS.VIEW_PURCHASING_HISTORY)
-    async getImageUrl(@Param('id') id: string) {
-        const data = await this.purchaseReceivingService.getImageUrl(id);
+    async getImages(@Param('id') id: string) {
+        const data = await this.purchaseReceivingService.getImageUrls(id);
         return { message: 'Success', data };
     }
 
     @Post()
     @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
     @UseInterceptors(
-        FileInterceptor('receiptImage', {
-            storage: multer.memoryStorage(),
-            limits: { fileSize: 5 * 1024 * 1024 },
-        }),
+        FilesInterceptor(
+            'receiptImages',
+            PURCHASE_RECEIPT_UPLOAD_HARD_CEILING,
+            {
+                storage: multer.memoryStorage(),
+                limits: { fileSize: 5 * 1024 * 1024 },
+            },
+        ),
     )
     async create(
         @Body() rawBody: CreatePurchaseReceiptFormDto,
-        @UploadedFile(
+        @UploadedFiles(
             new ParseFilePipeBuilder()
                 .addFileTypeValidator({
                     fileType: /^image\/(jpeg|jpg|png|webp)$/,
@@ -70,18 +74,18 @@ export class PurchaseReceivingController {
                     fileIsRequired: true,
                     exceptionFactory: () =>
                         new Error(
-                            'A receipt image is required to create a purchase receipt.',
+                            'At least one receipt image is required, and each file must be a valid image.',
                         ),
                 }),
         )
-        receiptImage: Express.Multer.File,
+        receiptImages: Express.Multer.File[],
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const dto = await this.purchaseReceivingService.parseCreateDto(rawBody);
         const data = await this.purchaseReceivingService.create(
             dto,
             user.sub,
-            receiptImage,
+            receiptImages,
         );
         return {
             message:
@@ -110,11 +114,33 @@ export class PurchaseReceivingController {
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
+    @UseInterceptors(
+        FilesInterceptor('newImages', PURCHASE_RECEIPT_UPLOAD_HARD_CEILING, {
+            storage: multer.memoryStorage(),
+            limits: { fileSize: 5 * 1024 * 1024 },
+        }),
+    )
     async update(
         @Param('id') id: string,
-        @Body() dto: UpdatePurchaseReceiptDto,
+        @Body() rawBody: UpdatePurchaseReceiptFormDto,
+        @UploadedFiles(
+            new ParseFilePipeBuilder()
+                .addFileTypeValidator({
+                    fileType: /^image\/(jpeg|jpg|png|webp)$/,
+                })
+                .build({
+                    errorHttpStatusCode: HttpStatus.BAD_REQUEST,
+                    fileIsRequired: false,
+                }),
+        )
+        newImages: Express.Multer.File[] = [],
     ) {
-        const data = await this.purchaseReceivingService.update(id, dto);
+        const dto = await this.purchaseReceivingService.parseUpdateDto(rawBody);
+        const data = await this.purchaseReceivingService.update(
+            id,
+            dto,
+            newImages,
+        );
         return { message: 'Purchase receipt updated.', data };
     }
 

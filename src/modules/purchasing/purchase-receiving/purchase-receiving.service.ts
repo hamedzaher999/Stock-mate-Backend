@@ -15,6 +15,7 @@ import { DepartmentsCacheService } from '../../departments/departments-cache.ser
 import {
     type IStorageService,
     STORAGE_SERVICE,
+    UploadedImage,
 } from '../../../core/storage/storage.interface';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { NOTIFICATION_TYPES } from '../../../common/constants/notification-types.constants';
@@ -25,6 +26,8 @@ import { ListPurchaseReceiptsDto } from './dto/list-purchase-receipts.dto';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form.dto';
 import { detectImageMimeType } from '../../../common/utils/image-signature.util';
+import { ConfigService } from '@nestjs/config';
+import { UpdatePurchaseReceiptFormDto } from './dto/update-purchase-receipt-form.dto';
 
 const RECEIVABLE_REQUEST_STATUSES = ['preparing', 'partially_complete'];
 
@@ -35,6 +38,7 @@ export class PurchaseReceivingService {
         private readonly prisma: PrismaService,
         private readonly notificationsService: NotificationsService,
         private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly configService: ConfigService,
         @Inject(STORAGE_SERVICE)
         private readonly storageService: IStorageService,
     ) {}
@@ -68,12 +72,23 @@ export class PurchaseReceivingService {
         return receipt;
     }
 
-    async getImageUrl(id: string) {
-        const receipt = await this.purchaseReceivingRepository.findImageKey(id);
-        if (!receipt)
-            throw new NotFoundException('Purchase receipt not found.');
+    async getImageUrls(id: string) {
+        await this.findById(id);
+        const images = await this.purchaseReceivingRepository.findImageKeys(id);
 
-        return this.storageService.getSignedUrl(receipt.receiptImageKey);
+        return Promise.all(
+            images.map(async (image) => {
+                const signed = await this.storageService.getSignedUrl(
+                    image.imageKey,
+                );
+                return {
+                    id: image.id,
+                    sortOrder: image.sortOrder,
+                    url: signed.url,
+                    expiresAt: signed.expiresAt,
+                };
+            }),
+        );
     }
 
     async parseCreateDto(
@@ -119,14 +134,30 @@ export class PurchaseReceivingService {
     async create(
         dto: CreatePurchaseReceiptDto,
         receivedById: string,
-        receiptImage: Express.Multer.File,
+        receiptImages: Express.Multer.File[],
     ) {
-        const detectedMimeType = detectImageMimeType(receiptImage.buffer);
-        if (!detectedMimeType) {
+        if (!receiptImages || receiptImages.length === 0) {
             throw new BadRequestException(
-                'The uploaded file is not a valid JPEG, PNG, or WEBP image.',
+                'At least one receipt image is required.',
             );
         }
+
+        const maxImages =
+            this.configService.get<number>('PURCHASE_RECEIPT_MAX_IMAGES') ?? 10;
+        if (receiptImages.length > maxImages) {
+            throw new BadRequestException(
+                `A purchase receipt can have at most ${maxImages} images.`,
+            );
+        }
+
+        for (const file of receiptImages) {
+            if (!detectImageMimeType(file.buffer)) {
+                throw new BadRequestException(
+                    'One or more uploaded files are not a valid JPEG, PNG, or WEBP image.',
+                );
+            }
+        }
+
         const request =
             await this.purchaseReceivingRepository.findRequestForReceiving(
                 dto.purchaseRequestId,
@@ -195,12 +226,9 @@ export class PurchaseReceivingService {
             };
         });
 
-        const uploaded = await this.storageService.uploadImage(
-            receiptImage.buffer,
-            {
-                folder: `purchase-receipts/${dto.purchaseRequestId}`,
-                contentType: detectedMimeType,
-            },
+        const uploaded = await this.uploadImages(
+            receiptImages,
+            `purchase-receipts/${dto.purchaseRequestId}`,
         );
 
         try {
@@ -212,14 +240,13 @@ export class PurchaseReceivingService {
                 type: dto.type ?? 'batch',
                 notes: dto.notes,
                 lines,
-                receiptImageKey: uploaded.key,
+                imageKeys: uploaded.map((u) => u.key),
             });
         } catch (error) {
-            await this.storageService.deleteImage(uploaded.key);
+            await this.rollbackUploads(uploaded);
             throw error;
         }
     }
-
     async confirm(
         id: string,
         dto: ConfirmPurchaseReceiptDto,
@@ -348,11 +375,53 @@ export class PurchaseReceivingService {
         return result;
     }
 
-    async update(id: string, dto: UpdatePurchaseReceiptDto) {
+    async update(
+        id: string,
+        dto: UpdatePurchaseReceiptDto,
+        newImages: Express.Multer.File[] = [],
+    ) {
         const receipt = await this.findById(id);
         if (receipt.status !== 'pending_confirmation') {
             throw new ConflictException(
                 'Only a receipt awaiting confirmation can be edited.',
+            );
+        }
+
+        const existingImages =
+            await this.purchaseReceivingRepository.findImageKeys(id);
+
+        const removeIds = dto.removeImageIds ?? [];
+        if (removeIds.length > 0) {
+            const existingIds = new Set(existingImages.map((i) => i.id));
+            const invalid = removeIds.filter((rid) => !existingIds.has(rid));
+            if (invalid.length > 0) {
+                throw new BadRequestException(
+                    'One or more images to remove do not belong to this receipt.',
+                );
+            }
+        }
+
+        for (const file of newImages) {
+            if (!detectImageMimeType(file.buffer)) {
+                throw new BadRequestException(
+                    'One or more uploaded files are not a valid JPEG, PNG, or WEBP image.',
+                );
+            }
+        }
+
+        const remainingCount =
+            existingImages.length - removeIds.length + newImages.length;
+        if (remainingCount < 1) {
+            throw new BadRequestException(
+                'A purchase receipt must have at least one image -- to replace the last remaining image, submit the removal and the new image in the same request.',
+            );
+        }
+
+        const maxImages =
+            this.configService.get<number>('PURCHASE_RECEIPT_MAX_IMAGES') ?? 10;
+        if (remainingCount > maxImages) {
+            throw new BadRequestException(
+                `A purchase receipt can have at most ${maxImages} images.`,
             );
         }
 
@@ -425,13 +494,54 @@ export class PurchaseReceivingService {
             });
         }
 
-        return this.purchaseReceivingRepository.replaceItems(id, {
-            receivingDate: dto.receivingDate
-                ? new Date(dto.receivingDate)
-                : undefined,
-            notes: dto.notes,
-            items: lines,
-        });
+        const uploaded =
+            newImages.length > 0
+                ? await this.uploadImages(
+                      newImages,
+                      `purchase-receipts/${receipt.purchaseRequestId}`,
+                  )
+                : [];
+
+        const nextSortOrderStart =
+            existingImages.length > 0
+                ? Math.max(...existingImages.map((i) => i.sortOrder)) + 1
+                : 0;
+
+        let updated: Awaited<
+            ReturnType<
+                typeof this.purchaseReceivingRepository.replaceItemsAndImages
+            >
+        >;
+        try {
+            updated =
+                await this.purchaseReceivingRepository.replaceItemsAndImages(
+                    id,
+                    {
+                        receivingDate: dto.receivingDate
+                            ? new Date(dto.receivingDate)
+                            : undefined,
+                        notes: dto.notes,
+                        items: lines,
+                        removeImageIds: removeIds,
+                        newImageKeys: uploaded.map((u) => u.key),
+                        nextSortOrderStart,
+                    },
+                );
+        } catch (error) {
+            await this.rollbackUploads(uploaded);
+            throw error;
+        }
+
+        if (removeIds.length > 0) {
+            const removedKeys = existingImages
+                .filter((i) => removeIds.includes(i.id))
+                .map((i) => i.imageKey);
+            await Promise.all(
+                removedKeys.map((key) => this.storageService.deleteImage(key)),
+            );
+        }
+
+        return updated;
     }
 
     async cancel(id: string) {
@@ -442,12 +552,97 @@ export class PurchaseReceivingService {
             );
         }
 
-        const imageRecord =
-            await this.purchaseReceivingRepository.findImageKey(id);
-        if (imageRecord) {
-            await this.storageService.deleteImage(imageRecord.receiptImageKey);
-        }
+        const images = await this.purchaseReceivingRepository.findImageKeys(id);
+        await Promise.all(
+            images.map((image) =>
+                this.storageService.deleteImage(image.imageKey),
+            ),
+        );
 
         return this.purchaseReceivingRepository.cancel(id);
+    }
+    private async uploadImages(
+        files: Express.Multer.File[],
+        folder: string,
+    ): Promise<UploadedImage[]> {
+        const uploaded: UploadedImage[] = [];
+        try {
+            for (const file of files) {
+                const image = await this.storageService.uploadImage(
+                    file.buffer,
+                    {
+                        folder,
+                        contentType: file.mimetype,
+                    },
+                );
+                uploaded.push(image);
+            }
+            return uploaded;
+        } catch (error) {
+            await this.rollbackUploads(uploaded);
+            throw error;
+        }
+    }
+
+    private async rollbackUploads(uploaded: UploadedImage[]): Promise<void> {
+        await Promise.all(
+            uploaded.map((image) => this.storageService.deleteImage(image.key)),
+        );
+    }
+    async parseUpdateDto(
+        raw: UpdatePurchaseReceiptFormDto,
+    ): Promise<UpdatePurchaseReceiptDto> {
+        let parsedItems: unknown;
+        if (raw.items !== undefined) {
+            try {
+                parsedItems = JSON.parse(raw.items);
+            } catch {
+                throw new BadRequestException(
+                    '"items" must be a valid JSON-encoded array.',
+                );
+            }
+            if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+                throw new BadRequestException(
+                    '"items" must be a non-empty array.',
+                );
+            }
+        }
+
+        let parsedRemoveImageIds: unknown;
+        if (raw.removeImageIds !== undefined) {
+            try {
+                parsedRemoveImageIds = JSON.parse(raw.removeImageIds);
+            } catch {
+                throw new BadRequestException(
+                    '"removeImageIds" must be a valid JSON-encoded array.',
+                );
+            }
+            if (!Array.isArray(parsedRemoveImageIds)) {
+                throw new BadRequestException(
+                    '"removeImageIds" must be an array.',
+                );
+            }
+        }
+
+        const dto = plainToInstance(UpdatePurchaseReceiptDto, {
+            receivingDate: raw.receivingDate,
+            notes: raw.notes,
+            items: parsedItems,
+            removeImageIds: parsedRemoveImageIds,
+        });
+
+        const errors = await validate(dto);
+        if (errors.length > 0) {
+            const messages = errors.flatMap((error) =>
+                Object.values(error.constraints ?? {}),
+            );
+            throw new BadRequestException(
+                messages.length > 0
+                    ? messages
+                    : 'Invalid purchase receipt payload.',
+            );
+        }
+
+        return dto;
     }
 }

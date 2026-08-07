@@ -23,6 +23,10 @@ const purchaseReceiptDetailSelect = {
     receivedBy: { select: { id: true, fullName: true } },
     confirmedBy: { select: { id: true, fullName: true } },
     supplier: { select: { id: true, name: true } },
+    images: {
+        select: { id: true, sortOrder: true, createdAt: true },
+        orderBy: { sortOrder: 'asc' },
+    },
     items: {
         select: {
             id: true,
@@ -91,10 +95,11 @@ export class PurchaseReceivingRepository {
         });
     }
 
-    findImageKey(id: string) {
-        return this.prisma.purchaseReceipt.findUnique({
-            where: { id },
-            select: { id: true, receiptImageKey: true },
+    findImageKeys(id: string) {
+        return this.prisma.purchaseReceiptImage.findMany({
+            where: { purchaseReceiptId: id },
+            select: { id: true, imageKey: true, sortOrder: true },
+            orderBy: { sortOrder: 'asc' },
         });
     }
 
@@ -137,7 +142,7 @@ export class PurchaseReceivingRepository {
         receivingDate: Date;
         type: BatchType;
         notes?: string;
-        receiptImageKey: string;
+        imageKeys: string[];
         lines: {
             purchaseRequestItemId: string;
             variantId: string;
@@ -158,7 +163,12 @@ export class PurchaseReceivingRepository {
                 type: params.type,
                 notes: params.notes,
                 status: 'pending_confirmation',
-                receiptImageKey: params.receiptImageKey,
+                images: {
+                    create: params.imageKeys.map((imageKey, index) => ({
+                        imageKey,
+                        sortOrder: index,
+                    })),
+                },
                 items: {
                     create: params.lines.map((line) => ({
                         purchaseRequestItemId: line.purchaseRequestItemId,
@@ -179,7 +189,6 @@ export class PurchaseReceivingRepository {
             select: purchaseReceiptDetailSelect,
         });
     }
-
     confirmReceipt(params: {
         receiptId: string;
         purchaseRequestId: string;
@@ -322,7 +331,7 @@ export class PurchaseReceivingRepository {
         });
     }
 
-    async replaceItems(
+    async replaceItemsAndImages(
         id: string,
         data: {
             receivingDate?: Date;
@@ -337,9 +346,31 @@ export class PurchaseReceivingRepository {
                 expirationDate?: Date;
                 purchasePrice?: number;
             }[];
+            removeImageIds?: string[];
+            newImageKeys?: string[];
+            nextSortOrderStart: number;
         },
     ) {
         return this.prisma.$transaction(async (tx) => {
+            if (data.removeImageIds && data.removeImageIds.length > 0) {
+                await tx.purchaseReceiptImage.deleteMany({
+                    where: {
+                        id: { in: data.removeImageIds },
+                        purchaseReceiptId: id,
+                    },
+                });
+            }
+
+            if (data.newImageKeys && data.newImageKeys.length > 0) {
+                await tx.purchaseReceiptImage.createMany({
+                    data: data.newImageKeys.map((imageKey, index) => ({
+                        purchaseReceiptId: id,
+                        imageKey,
+                        sortOrder: data.nextSortOrderStart + index,
+                    })),
+                });
+            }
+
             if (data.items) {
                 await tx.purchaseReceiptItem.deleteMany({
                     where: { purchaseReceiptId: id },
