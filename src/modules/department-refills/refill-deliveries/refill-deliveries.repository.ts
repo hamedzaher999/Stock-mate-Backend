@@ -58,9 +58,13 @@ export class RefillDeliveriesRepository {
         skip: number;
         take: number;
         refillRequestId?: string;
+        departmentId?: string;
     }) {
         const where: Prisma.DepartmentRefillDeliveryWhereInput = {
             refillRequestId: params.refillRequestId,
+            ...(params.departmentId && {
+                refillRequest: { departmentId: params.departmentId },
+            }),
         };
 
         const [items, total] = await this.prisma.$transaction([
@@ -77,6 +81,13 @@ export class RefillDeliveriesRepository {
         return { items, total };
     }
 
+    async findDepartmentIdForDelivery(id: string): Promise<string | null> {
+        const delivery = await this.prisma.departmentRefillDelivery.findUnique({
+            where: { id },
+            select: { refillRequest: { select: { departmentId: true } } },
+        });
+        return delivery?.refillRequest.departmentId ?? null;
+    }
     findById(id: string) {
         return this.prisma.departmentRefillDelivery.findUnique({
             where: { id },

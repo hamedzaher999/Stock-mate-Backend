@@ -18,6 +18,7 @@ import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
 import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 import { Throttle } from '@nestjs/throttler';
+import { RequireAnyPermissions } from '../../../core/decorators/require-any-permissions.decorator';
 @Controller('department-refills/requests')
 export class RefillRequestsController {
     constructor(
@@ -25,7 +26,11 @@ export class RefillRequestsController {
     ) {}
 
     @Get()
-    @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
+    @RequireAnyPermissions(
+        PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST,
+        PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL,
+        PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER,
+    )
     async findAll(
         @Query() query: ListRefillRequestsDto,
         @CurrentUser() user: AuthenticatedUser,
@@ -35,7 +40,11 @@ export class RefillRequestsController {
     }
 
     @Get(':id/items/:itemId')
-    @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
+    @RequireAnyPermissions(
+        PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST,
+        PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL,
+        PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER,
+    )
     async findItem(
         @Param('id') id: string,
         @Param('itemId') itemId: string,
@@ -50,7 +59,11 @@ export class RefillRequestsController {
     }
 
     @Get(':id')
-    @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
+    @RequireAnyPermissions(
+        PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST,
+        PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_HOSPITAL,
+        PERMISSIONS.APPROVE_DEPARTMENT_REFILL_REQUEST_MANAGER,
+    )
     async findOne(
         @Param('id') id: string,
         @CurrentUser() user: AuthenticatedUser,
@@ -61,7 +74,6 @@ export class RefillRequestsController {
         );
         return { message: 'Success', data };
     }
-
     @Post()
     @RequirePermissions(PERMISSIONS.CREATE_DEPARTMENT_REFILL_REQUEST)
     async create(

@@ -17,10 +17,16 @@ import { ConfirmDeliveryDto } from './dto/confirm-delivery.dto';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 import { UserScopeService } from '../../rbac/user-scope.service';
-import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import {
+    HOSPITAL_MANAGER_ROLE_NAME,
+    WAREHOUSE_MANAGER_ROLE_NAME,
+} from '../../../common/constants/roles.constants';
 
 const SHIPPABLE_STATUSES = ['preparing', 'partially_complete'];
-
+const UNRESTRICTED_ROLES = [
+    WAREHOUSE_MANAGER_ROLE_NAME,
+    HOSPITAL_MANAGER_ROLE_NAME,
+];
 @Injectable()
 export class RefillDeliveriesService {
     constructor(
@@ -31,15 +37,21 @@ export class RefillDeliveriesService {
         private readonly userScopeService: UserScopeService,
     ) {}
 
-    async list(dto: ListDeliveriesDto): Promise<PaginatedResult<unknown>> {
+    async list(
+        dto: ListDeliveriesDto,
+        requestingUserId: string,
+    ): Promise<PaginatedResult<unknown>> {
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
+
+        const scope = await this.resolveDepartmentScope(requestingUserId);
 
         const { items, total } = await this.refillDeliveriesRepository.findMany(
             {
                 skip: (page - 1) * limit,
                 take: limit,
                 refillRequestId: dto.refillRequestId,
+                departmentId: scope ?? undefined,
             },
         );
 
@@ -52,10 +64,36 @@ export class RefillDeliveriesService {
         };
     }
 
-    async findById(id: string) {
+    async findById(id: string, requestingUserId: string) {
         const delivery = await this.refillDeliveriesRepository.findById(id);
         if (!delivery) throw new NotFoundException('Delivery not found.');
+
+        const scope = await this.resolveDepartmentScope(requestingUserId);
+        if (scope) {
+            const departmentId =
+                await this.refillDeliveriesRepository.findDepartmentIdForDelivery(
+                    id,
+                );
+            if (departmentId !== scope) {
+                throw new ForbiddenException(
+                    'You can only view deliveries for your own department.',
+                );
+            }
+        }
+
         return delivery;
+    }
+
+    private async resolveDepartmentScope(
+        requestingUserId: string,
+    ): Promise<string | null> {
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        if (!scope) throw new BadRequestException('Requesting user not found.');
+
+        if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
+            return null;
+        return scope.departmentId;
     }
 
     async create(dto: CreateDeliveryDto, deliveredById: string) {
@@ -149,7 +187,9 @@ export class RefillDeliveriesService {
         dto: ConfirmDeliveryDto,
         confirmingUserId: string,
     ) {
-        const delivery = await this.findById(deliveryId);
+        const delivery =
+            await this.refillDeliveriesRepository.findById(deliveryId);
+        if (!delivery) throw new NotFoundException('Delivery not found.');
         if (delivery.confirmedAt)
             throw new ConflictException(
                 'This delivery has already been confirmed.',

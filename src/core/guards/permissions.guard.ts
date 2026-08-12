@@ -5,6 +5,7 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { REQUIRE_PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
 import { PermissionsResolverService } from '../../modules/rbac/permissions-resolver.service';
 import { AuthenticatedUser } from '../interfaces/authenticated-request.interface';
+import { REQUIRE_ANY_PERMISSIONS_KEY } from '../decorators/require-any-permissions.decorator';
 
 interface RequestWithUser extends Request {
     user?: AuthenticatedUser;
@@ -28,8 +29,17 @@ export class PermissionsGuard implements CanActivate {
             REQUIRE_PERMISSIONS_KEY,
             [context.getHandler(), context.getClass()],
         );
-        if (!requiredPermissions || requiredPermissions.length === 0)
-            return true;
+        const anyOfPermissions = this.reflector.getAllAndOverride<string[]>(
+            REQUIRE_ANY_PERMISSIONS_KEY,
+            [context.getHandler(), context.getClass()],
+        );
+
+        const hasAllRequirement =
+            !!requiredPermissions && requiredPermissions.length > 0;
+        const hasAnyRequirement =
+            !!anyOfPermissions && anyOfPermissions.length > 0;
+
+        if (!hasAllRequirement && !hasAnyRequirement) return true;
 
         const request = context.switchToHttp().getRequest<RequestWithUser>();
         const user = request.user;
@@ -37,8 +47,21 @@ export class PermissionsGuard implements CanActivate {
 
         const effectivePermissions =
             await this.permissionsResolver.getEffectivePermissions(user.sub);
-        return requiredPermissions.every((code) =>
-            effectivePermissions.has(code),
-        );
+
+        if (
+            hasAllRequirement &&
+            !requiredPermissions.every((code) => effectivePermissions.has(code))
+        ) {
+            return false;
+        }
+
+        if (
+            hasAnyRequirement &&
+            !anyOfPermissions.some((code) => effectivePermissions.has(code))
+        ) {
+            return false;
+        }
+
+        return true;
     }
 }
