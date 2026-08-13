@@ -25,4 +25,6 @@ export const validationSchema = Joi.object({
     CLOUDINARY_API_SECRET: Joi.string().required(),
     CLOUDINARY_AUTH_TOKEN_KEY: Joi.string().optional().allow(''),
     PURCHASE_RECEIPT_MAX_IMAGES: Joi.number().min(1).max(30).default(10),
+    CHATBOT_INTERNAL_SECRET: Joi.string().min(32).required(),
+    CHATBOT_SERVICE_URL: Joi.string().uri().required(),
 });

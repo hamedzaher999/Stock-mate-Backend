@@ -29,9 +29,15 @@ import { PrescriptionsModule } from './modules/prescriptions/prescriptions.modul
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { StorageModule } from './core/storage/storage.module';
 import { FirebaseAdminModule } from './core/firebase/firebase-admin.module';
+import chatbotConfig from './config/chatbot.config';
+import { ChatbotProxyModule } from './modules/chatbot-proxy/chatbot-proxy.module';
 @Module({
     imports: [
-        ConfigModule.forRoot({ isGlobal: true, validationSchema }),
+        ConfigModule.forRoot({
+            isGlobal: true,
+            validationSchema,
+            load: [chatbotConfig],
+        }),
         ScheduleModule.forRoot(),
         ThrottlerModule.forRoot([
             {
@@ -60,6 +66,7 @@ import { FirebaseAdminModule } from './core/firebase/firebase-admin.module';
         DepartmentQueueModule,
         MedicalVisitsModule,
         PrescriptionsModule,
+        ChatbotProxyModule,
     ],
     controllers: [AppController],
     providers: [
