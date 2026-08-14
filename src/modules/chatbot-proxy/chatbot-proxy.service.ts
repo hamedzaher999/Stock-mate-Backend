@@ -58,15 +58,21 @@ export class ChatbotProxyService {
                     'Chatbot service is unreachable.',
                     axiosError.stack,
                 );
+
                 throw new ServiceUnavailableException(
                     'The assistant is temporarily unavailable. Please try again shortly.',
                 );
             }
 
             this.logger.error(
-                `Chatbot service returned an error: ${axiosError.message}`,
+                `Chatbot service returned an error: ${
+                    axiosError.message
+                } | status=${axiosError.response?.status} | data=${JSON.stringify(
+                    axiosError.response?.data,
+                )}`,
                 axiosError.stack,
             );
+
             throw new BadGatewayException(
                 'The assistant could not process this request.',
             );
