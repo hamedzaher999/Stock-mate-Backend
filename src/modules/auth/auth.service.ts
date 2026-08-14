@@ -105,6 +105,17 @@ export class AuthService {
         return this.sessionsService.revokeAllForUser(userId);
     }
 
+    listMySessions(userId: string, currentSessionId: string) {
+        return this.sessionsService.listActiveSessions(
+            userId,
+            currentSessionId,
+        );
+    }
+
+    revokeMySession(sessionId: string, userId: string) {
+        return this.sessionsService.revokeSessionForUser(sessionId, userId);
+    }
+
     private resolveChannel(dto: RequestOtpDto): OtpChannel {
         if (dto.channel) return dto.channel;
         return dto.email ? OtpChannel.email : OtpChannel.phone;

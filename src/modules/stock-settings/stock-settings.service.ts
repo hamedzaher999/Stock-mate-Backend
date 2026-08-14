@@ -14,6 +14,7 @@ import { PaginatedResult } from '../../core/interfaces/paginated-result.interfac
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../common/constants/roles.constants';
 import { DepartmentsCacheService } from '../departments/departments-cache.service';
 import { UserScopeService } from '../rbac/user-scope.service';
+import { Prisma } from '@prisma/client';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
@@ -72,18 +73,7 @@ export class StockSettingsService {
     }
 
     async create(dto: CreateStockSettingDto, requestingUserId: string) {
-        this.assertValidRange(dto.minimumStock, dto.maximumStock);
         await this.assertDepartmentScope(requestingUserId, dto.departmentId);
-
-        const variant = await this.stockSettingsRepository.variantExists(
-            dto.variantId,
-        );
-        if (!variant) throw new BadRequestException('Variant does not exist.');
-        if (!variant.isActive || !variant.product.isActive) {
-            throw new BadRequestException(
-                'Cannot configure stock settings for an inactive variant.',
-            );
-        }
 
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
@@ -96,26 +86,120 @@ export class StockSettingsService {
             );
         }
 
-        const existing =
-            await this.stockSettingsRepository.findByVariantAndDepartment(
-                dto.variantId,
-                dto.departmentId,
-            );
-        if (existing)
-            throw new ConflictException(
-                'This variant is already configured for this department.',
-            );
+        const results: {
+            variantId: string;
+            success: boolean;
+            data?: unknown;
+            error?: string;
+        }[] = [];
 
-        return this.stockSettingsRepository.create({
-            variantId: dto.variantId,
-            departmentId: dto.departmentId,
-            storageLocation: dto.storageLocation,
-            minimumStock: dto.minimumStock,
-            maximumStock: dto.maximumStock,
-            createdById: requestingUserId,
+        const seenVariantIds = new Set<string>();
+        const dedupedItems = dto.items.filter((item) => {
+            if (seenVariantIds.has(item.variantId)) {
+                results.push({
+                    variantId: item.variantId,
+                    success: false,
+                    error: 'Duplicate variantId in this request -- only the first occurrence was processed.',
+                });
+                return false;
+            }
+            seenVariantIds.add(item.variantId);
+            return true;
         });
+
+        const variantIds = dedupedItems.map((i) => i.variantId);
+        const [variants, existingSettings] = await Promise.all([
+            this.stockSettingsRepository.findVariantsExistence(variantIds),
+            this.stockSettingsRepository.findExistingForVariantsInDepartment(
+                variantIds,
+                dto.departmentId,
+            ),
+        ]);
+        const variantById = new Map(variants.map((v) => [v.id, v]));
+        const existingVariantIds = new Set(
+            existingSettings.map((s) => s.variantId),
+        );
+
+        for (const item of dedupedItems) {
+            try {
+                this.assertValidRange(item.minimumStock, item.maximumStock);
+
+                const variant = variantById.get(item.variantId);
+                if (!variant) {
+                    throw new BadRequestException('Variant does not exist.');
+                }
+                if (!variant.isActive || !variant.product.isActive) {
+                    throw new BadRequestException(
+                        'Cannot configure stock settings for an inactive variant.',
+                    );
+                }
+                if (existingVariantIds.has(item.variantId)) {
+                    throw new ConflictException(
+                        'This variant is already configured for this department.',
+                    );
+                }
+
+                const created = await this.stockSettingsRepository.create({
+                    variantId: item.variantId,
+                    departmentId: dto.departmentId,
+                    storageLocation: item.storageLocation,
+                    minimumStock: item.minimumStock,
+                    maximumStock: item.maximumStock,
+                    createdById: requestingUserId,
+                });
+
+                results.push({
+                    variantId: item.variantId,
+                    success: true,
+                    data: created,
+                });
+            } catch (error) {
+                results.push({
+                    variantId: item.variantId,
+                    success: false,
+                    error: this.extractErrorMessage(error),
+                });
+            }
+        }
+
+        const createdCount = results.filter((r) => r.success).length;
+        const failedCount = results.filter((r) => !r.success).length;
+
+        if (createdCount === 0) {
+            throw new BadRequestException({
+                message: 'All stock setting items failed to create.',
+                results,
+            });
+        }
+
+        return { created: createdCount, failed: failedCount, results };
     }
 
+    private extractErrorMessage(error: unknown): string {
+        if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2002'
+        ) {
+            return 'This variant is already configured for this department.';
+        }
+        if (
+            error instanceof BadRequestException ||
+            error instanceof ConflictException
+        ) {
+            const response = error.getResponse();
+            if (
+                typeof response === 'object' &&
+                response !== null &&
+                'message' in response
+            ) {
+                const msg = (response as { message: string | string[] })
+                    .message;
+                return Array.isArray(msg) ? msg.join(', ') : msg;
+            }
+            return error.message;
+        }
+        return 'Failed to create stock setting.';
+    }
     async update(
         id: string,
         dto: UpdateStockSettingDto,

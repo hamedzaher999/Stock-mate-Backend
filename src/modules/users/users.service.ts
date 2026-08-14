@@ -242,4 +242,18 @@ export class UsersService {
 
         return this.usersRepository.update(userId, dto);
     }
+    async listSessionsForUser(userId: string) {
+        await this.findById(userId);
+        return this.sessionsService.listActiveSessions(userId);
+    }
+
+    async revokeSessionForUser(userId: string, sessionId: string) {
+        await this.findById(userId);
+        await this.sessionsService.revokeSessionForUser(sessionId, userId);
+    }
+
+    async revokeAllSessionsForUser(userId: string) {
+        await this.findById(userId);
+        return this.sessionsService.revokeAllForUser(userId);
+    }
 }

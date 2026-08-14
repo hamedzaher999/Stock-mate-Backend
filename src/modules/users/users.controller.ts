@@ -1,7 +1,10 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
+    HttpCode,
+    HttpStatus,
     Param,
     Patch,
     Post,
@@ -17,7 +20,6 @@ import { RequirePermissions } from '../../core/decorators/require-permissions.de
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
-
 @Controller('users')
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
@@ -77,5 +79,30 @@ export class UsersController {
     ) {
         const data = await this.usersService.updateStatus(id, dto, user.sub);
         return { message: `User marked as ${dto.status}.`, data };
+    }
+
+    @Get(':id/sessions')
+    @RequirePermissions(PERMISSIONS.MANAGE_ACCOUNTS)
+    async findSessions(@Param('id') id: string) {
+        const data = await this.usersService.listSessionsForUser(id);
+        return { message: 'Success', data };
+    }
+
+    @Delete(':id/sessions/:sessionId')
+    @RequirePermissions(PERMISSIONS.MANAGE_ACCOUNTS)
+    async revokeSession(
+        @Param('id') id: string,
+        @Param('sessionId') sessionId: string,
+    ) {
+        await this.usersService.revokeSessionForUser(id, sessionId);
+        return { message: 'Session revoked.', data: null };
+    }
+
+    @Post(':id/sessions/revoke-all')
+    @HttpCode(HttpStatus.OK)
+    @RequirePermissions(PERMISSIONS.MANAGE_ACCOUNTS)
+    async revokeAllSessions(@Param('id') id: string) {
+        await this.usersService.revokeAllSessionsForUser(id);
+        return { message: 'All sessions revoked for this user.', data: null };
     }
 }

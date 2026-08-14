@@ -1,12 +1,18 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
-
-export class CreateStockSettingDto {
+import {
+    ArrayMaxSize,
+    ArrayMinSize,
+    IsArray,
+    IsNumber,
+    IsOptional,
+    IsString,
+    IsUUID,
+    Min,
+    ValidateNested,
+} from 'class-validator';
+class StockSettingItemDto {
     @IsUUID()
     variantId!: string;
-
-    @IsUUID()
-    departmentId!: string;
 
     @IsOptional()
     @IsString()
@@ -23,4 +29,16 @@ export class CreateStockSettingDto {
     @IsNumber()
     @Min(0)
     maximumStock?: number;
+}
+
+export class CreateStockSettingDto {
+    @IsUUID()
+    departmentId!: string;
+
+    @IsArray()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(200)
+    @ValidateNested({ each: true })
+    @Type(() => StockSettingItemDto)
+    items!: StockSettingItemDto[];
 }

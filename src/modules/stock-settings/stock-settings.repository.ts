@@ -71,6 +71,27 @@ export class StockSettingsRepository {
         });
     }
 
+    findVariantsExistence(ids: string[]) {
+        return this.prisma.productVariant.findMany({
+            where: { id: { in: ids } },
+            select: {
+                id: true,
+                isActive: true,
+                product: { select: { isActive: true } },
+            },
+        });
+    }
+
+    findExistingForVariantsInDepartment(
+        variantIds: string[],
+        departmentId: string,
+    ) {
+        return this.prisma.departmentStockSetting.findMany({
+            where: { departmentId, variantId: { in: variantIds } },
+            select: { variantId: true },
+        });
+    }
+
     create(data: {
         variantId: string;
         departmentId: string;
@@ -111,6 +132,7 @@ export class StockSettingsRepository {
     delete(id: string) {
         return this.prisma.departmentStockSetting.delete({ where: { id } });
     }
+
     findActiveThresholdSettings() {
         return this.prisma.departmentStockSetting.findMany({
             where: {

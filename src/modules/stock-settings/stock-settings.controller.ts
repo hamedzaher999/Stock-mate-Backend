@@ -48,7 +48,10 @@ export class StockSettingsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.stockSettingsService.create(dto, user.sub);
-        return { message: 'Stock setting created.', data };
+        return {
+            message: `${data.created} stock setting(s) created, ${data.failed} failed.`,
+            data,
+        };
     }
 
     @Patch(':id')

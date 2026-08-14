@@ -1,9 +1,11 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     HttpCode,
     HttpStatus,
+    Param,
     Post,
     Req,
     Res,
@@ -18,7 +20,6 @@ import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { SessionPlatform } from '@prisma/client';
 import type { RequestWithCookies } from '../../core/interfaces/request-with-cookies.interface';
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
-
 const ACCESS_COOKIE = 'access_token';
 const REFRESH_COOKIE = 'refresh_token';
 
@@ -111,6 +112,26 @@ export class AuthController {
     async me(@CurrentUser() user: AuthenticatedUser) {
         const data = await this.authService.me(user.sub);
         return { message: 'Success', data };
+    }
+
+    @Get('sessions')
+    @HttpCode(HttpStatus.OK)
+    async listSessions(@CurrentUser() user: AuthenticatedUser) {
+        const data = await this.authService.listMySessions(
+            user.sub,
+            user.sessionId,
+        );
+        return { message: 'Success', data };
+    }
+
+    @Delete('sessions/:sessionId')
+    @HttpCode(HttpStatus.OK)
+    async revokeSession(
+        @Param('sessionId') sessionId: string,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        await this.authService.revokeMySession(sessionId, user.sub);
+        return { message: 'Session revoked.', data: null };
     }
 
     @Post('logout')

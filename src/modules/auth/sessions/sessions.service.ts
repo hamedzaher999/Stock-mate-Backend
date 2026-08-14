@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { SessionsRepository } from './sessions.repository';
 import { SessionPlatform } from '@prisma/client';
@@ -117,5 +117,29 @@ export class SessionsService {
 
     revokeAllForUser(userId: string) {
         return this.sessionsRepository.revokeAllForUser(userId);
+    }
+
+    async listActiveSessions(userId: string, currentSessionId?: string) {
+        const sessions =
+            await this.sessionsRepository.findActiveForUser(userId);
+        return sessions.map((s) => ({
+            ...s,
+            isCurrent: s.id === currentSessionId,
+        }));
+    }
+
+    async revokeSessionForUser(
+        sessionId: string,
+        userId: string,
+    ): Promise<void> {
+        const revoked = await this.sessionsRepository.revokeOwnedByUser(
+            sessionId,
+            userId,
+        );
+        if (!revoked) {
+            throw new NotFoundException(
+                'Session not found, or it does not belong to this account.',
+            );
+        }
     }
 }

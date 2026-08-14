@@ -99,7 +99,6 @@ export class RefillRequestsService {
 
         return request;
     }
-
     async create(dto: CreateRefillRequestDto, requestedById: string) {
         const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
         await this.assertVariantsActive(variantIds);
@@ -143,6 +142,11 @@ export class RefillRequestsService {
             );
         }
 
+        await this.assertVariantsConfiguredForDepartment(
+            requesterScope.departmentId,
+            variantIds,
+        );
+
         return this.refillRequestsRepository.create({
             requestNumber: generateRequestNumber('DRF'),
             departmentId: requesterScope.departmentId,
@@ -155,7 +159,6 @@ export class RefillRequestsService {
             items: dto.items,
         });
     }
-
     async update(
         id: string,
         dto: UpdateRefillRequestDto,
@@ -176,6 +179,10 @@ export class RefillRequestsService {
         if (dto.items) {
             const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
             await this.assertVariantsActive(variantIds);
+            await this.assertVariantsConfiguredForDepartment(
+                request.departmentId,
+                variantIds,
+            );
         }
 
         return this.refillRequestsRepository.replaceItems(
@@ -488,6 +495,24 @@ export class RefillRequestsService {
                 throw new ConflictException(error.message);
             }
             throw error;
+        }
+    }
+    private async assertVariantsConfiguredForDepartment(
+        departmentId: string,
+        variantIds: string[],
+    ) {
+        const configuredIds =
+            await this.refillRequestsRepository.findConfiguredVariantIds(
+                departmentId,
+                variantIds,
+            );
+        const configuredSet = new Set(configuredIds);
+        const unconfigured = variantIds.filter((id) => !configuredSet.has(id));
+
+        if (unconfigured.length > 0) {
+            throw new BadRequestException(
+                `The following variant(s) are not configured as active stock items for this department: ${unconfigured.join(', ')}.`,
+            );
         }
     }
 }

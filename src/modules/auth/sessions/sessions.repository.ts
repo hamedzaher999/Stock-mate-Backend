@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { SessionPlatform } from '@prisma/client';
-
 @Injectable()
 export class SessionsRepository {
     constructor(private readonly prisma: PrismaService) {}
@@ -70,5 +69,33 @@ export class SessionsRepository {
             where: { id, revokedAt: null, accessExpiresAt: { gt: new Date() } },
             select: { id: true },
         });
+    }
+
+    findActiveForUser(userId: string) {
+        return this.prisma.session.findMany({
+            where: {
+                userId,
+                revokedAt: null,
+                accessExpiresAt: { gt: new Date() },
+            },
+            select: {
+                id: true,
+                platform: true,
+                deviceInfo: true,
+                ipAddress: true,
+                createdAt: true,
+                accessExpiresAt: true,
+                refreshExpiresAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async revokeOwnedByUser(id: string, userId: string): Promise<boolean> {
+        const result = await this.prisma.session.updateMany({
+            where: { id, userId, revokedAt: null },
+            data: { revokedAt: new Date() },
+        });
+        return result.count > 0;
     }
 }
