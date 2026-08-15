@@ -155,4 +155,53 @@ export class DepartmentsRepository {
             select: { id: true, name: true, type: true },
         });
     }
+
+    async reassignManager(params: { departmentId: string; managerId: string }) {
+        return this.prisma.$transaction(async (tx) => {
+            const previousDepartment = await tx.department.findFirst({
+                where: { managerId: params.managerId },
+                select: { id: true, type: true },
+            });
+
+            if (
+                previousDepartment &&
+                previousDepartment.id !== params.departmentId
+            ) {
+                await tx.department.update({
+                    where: { id: previousDepartment.id },
+                    data: { managerId: null },
+                });
+            }
+
+            const updated = await tx.department.update({
+                where: { id: params.departmentId },
+                data: { managerId: params.managerId },
+                select: departmentSelect,
+            });
+
+            await tx.user.update({
+                where: { id: params.managerId },
+                data: { departmentId: params.departmentId },
+            });
+
+            return {
+                updated,
+                clearedDepartmentId: previousDepartment?.id ?? null,
+                clearedDepartmentType: previousDepartment?.type ?? null,
+            };
+        });
+    }
+    findCurrentManagedDepartment(userId: string) {
+        return this.prisma.department.findFirst({
+            where: { managerId: userId },
+            select: { id: true, type: true },
+        });
+    }
+
+    clearManager(departmentId: string) {
+        return this.prisma.department.update({
+            where: { id: departmentId },
+            data: { managerId: null },
+        });
+    }
 }

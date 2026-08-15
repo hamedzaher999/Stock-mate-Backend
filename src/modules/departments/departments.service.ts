@@ -167,6 +167,20 @@ export class DepartmentsService {
         }
 
         if (dto.managerId) {
+            const staleDepartment =
+                await this.departmentsRepository.findCurrentManagedDepartment(
+                    dto.managerId,
+                );
+            if (staleDepartment && staleDepartment.id !== department.id) {
+                await this.departmentsRepository.clearManager(
+                    staleDepartment.id,
+                );
+                await this.departmentsCacheService.invalidate(
+                    staleDepartment.id,
+                    staleDepartment.type,
+                );
+            }
+
             await this.departmentsRepository.setUserDepartment(
                 dto.managerId,
                 department.id,
@@ -181,7 +195,6 @@ export class DepartmentsService {
 
         return department;
     }
-
     async update(id: string, dto: UpdateDepartmentDto) {
         const existing = await this.findById(id);
 
@@ -234,6 +247,18 @@ export class DepartmentsService {
 
         await this.assertValidManagerCandidate(dto.managerId);
 
+        const staleDepartment =
+            await this.departmentsRepository.findCurrentManagedDepartment(
+                dto.managerId,
+            );
+        if (staleDepartment && staleDepartment.id !== id) {
+            await this.departmentsRepository.clearManager(staleDepartment.id);
+            await this.departmentsCacheService.invalidate(
+                staleDepartment.id,
+                staleDepartment.type,
+            );
+        }
+
         const updated = await this.departmentsRepository.setManager(
             id,
             dto.managerId,
@@ -243,6 +268,8 @@ export class DepartmentsService {
         if (previousManagerId && previousManagerId !== dto.managerId) {
             await this.userScopeService.invalidate(previousManagerId);
         }
+        await this.departmentsCacheService.invalidate(id, department.type);
+
         return updated;
     }
 
