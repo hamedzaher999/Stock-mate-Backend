@@ -31,6 +31,7 @@ import { StorageModule } from './core/storage/storage.module';
 import { FirebaseAdminModule } from './core/firebase/firebase-admin.module';
 import chatbotConfig from './config/chatbot.config';
 import { ChatbotProxyModule } from './modules/chatbot-proxy/chatbot-proxy.module';
+import { ReportsModule } from './modules/reports/reports.module';
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -67,6 +68,7 @@ import { ChatbotProxyModule } from './modules/chatbot-proxy/chatbot-proxy.module
         MedicalVisitsModule,
         PrescriptionsModule,
         ChatbotProxyModule,
+        ReportsModule,
     ],
     controllers: [AppController],
     providers: [

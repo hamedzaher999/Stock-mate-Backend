@@ -25,5 +25,7 @@ model MedicalVisit {
   @@index([patientId])
   @@index([doctorId])
   @@index([departmentId, status])
+  @@index([departmentId, visitDate])
+  @@index([visitDate])
   @@map("medical_visits")
 }
