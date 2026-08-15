@@ -17,6 +17,11 @@ import {
 } from '../common/report-date-range.util';
 import { ReportGroupBy } from '../../../common/enums/report-group-by.enum';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
+import {
+    ADJUSTMENT_TYPE_LABELS_AR,
+    REFERENCE_TYPE_LABELS_AR,
+    translateEnum,
+} from '../common/report-labels';
 
 const MAX_EXPORT_ROWS = 50_000;
 
@@ -78,7 +83,6 @@ export class AdjustmentsReportService {
             groupBy: filters.groupBy,
         };
     }
-
     async exportExcel(
         dto: ListAdjustmentsReportDto,
         requestingUserId: string,
@@ -106,26 +110,28 @@ export class AdjustmentsReportService {
 
         return this.excelExportService.buildWorkbook([
             {
-                name: 'Summary',
+                name: 'الملخص',
+                rightToLeft: true,
                 columns: [
-                    { header: 'Metric', key: 'metric', width: 32 },
-                    { header: 'Value', key: 'value', width: 20 },
+                    { header: 'المؤشر', key: 'metric', width: 32 },
+                    { header: 'القيمة', key: 'value', width: 20 },
                 ],
                 rows: this.summaryToRows(summary, filters.from, filters.to),
             },
             {
-                name: 'By Department',
+                name: 'حسب القسم',
+                rightToLeft: true,
                 columns: [
-                    { header: 'Department', key: 'department', width: 24 },
-                    { header: 'Adjustments', key: 'count', width: 14 },
+                    { header: 'القسم', key: 'department', width: 24 },
+                    { header: 'عدد التسويات', key: 'count', width: 14 },
                     {
-                        header: 'Quantity Increased',
+                        header: 'الكمية المضافة',
                         key: 'quantityIncreased',
                         width: 18,
                         numFmt: '#,##0.00',
                     },
                     {
-                        header: 'Quantity Decreased',
+                        header: 'الكمية المخصومة',
                         key: 'quantityDecreased',
                         width: 18,
                         numFmt: '#,##0.00',
@@ -139,27 +145,31 @@ export class AdjustmentsReportService {
                 })),
             },
             {
-                name: 'Adjustments',
+                name: 'التسويات',
+                rightToLeft: true,
                 columns: [
-                    { header: 'Date', key: 'date', width: 20 },
-                    { header: 'Type', key: 'type', width: 18 },
-                    { header: 'Department', key: 'department', width: 22 },
-                    { header: 'Variant', key: 'variant', width: 28 },
-                    { header: 'SKU', key: 'sku', width: 16 },
-                    { header: 'Batch', key: 'batch', width: 16 },
+                    { header: 'التاريخ', key: 'date', width: 20 },
+                    { header: 'نوع التسوية', key: 'type', width: 18 },
+                    { header: 'القسم', key: 'department', width: 22 },
+                    { header: 'الصنف', key: 'variant', width: 28 },
+                    { header: 'رمز الصنف', key: 'sku', width: 16 },
+                    { header: 'الدفعة', key: 'batch', width: 16 },
                     {
-                        header: 'Quantity',
+                        header: 'الكمية',
                         key: 'quantity',
                         width: 14,
                         numFmt: '#,##0.00',
                     },
-                    { header: 'Reported By', key: 'reportedBy', width: 22 },
-                    { header: 'Reference', key: 'reference', width: 26 },
-                    { header: 'Notes', key: 'notes', width: 32 },
+                    { header: 'أُبلغ بواسطة', key: 'reportedBy', width: 22 },
+                    { header: 'المرجع', key: 'reference', width: 30 },
+                    { header: 'ملاحظات', key: 'notes', width: 32 },
                 ],
                 rows: rows.map((r) => ({
                     date: r.createdAt,
-                    type: r.adjustmentType,
+                    type: translateEnum(
+                        ADJUSTMENT_TYPE_LABELS_AR,
+                        r.adjustmentType,
+                    ),
                     department: r.department.name,
                     variant: r.variant.variantName,
                     sku: r.variant.sku,
@@ -167,7 +177,7 @@ export class AdjustmentsReportService {
                     quantity: Number(r.quantity),
                     reportedBy: r.reportedBy.fullName,
                     reference: r.referenceType
-                        ? `${r.referenceType}:${r.referenceId ?? ''}`
+                        ? `${translateEnum(REFERENCE_TYPE_LABELS_AR, r.referenceType)}: ${r.referenceId ?? ''}`
                         : '',
                     notes: r.notes ?? '',
                 })),
@@ -175,6 +185,27 @@ export class AdjustmentsReportService {
         ]);
     }
 
+    private summaryToRows(
+        summary: AdjustmentsReportSummary,
+        from: Date,
+        to: Date,
+    ) {
+        const rows: { metric: string; value: string | number }[] = [
+            { metric: 'من تاريخ', value: from.toISOString().slice(0, 10) },
+            { metric: 'إلى تاريخ', value: to.toISOString().slice(0, 10) },
+            { metric: 'إجمالي عدد التسويات', value: summary.totalAdjustments },
+            { metric: 'إجمالي الكمية', value: summary.totalQuantity },
+        ];
+        for (const t of summary.byAdjustmentType) {
+            const label = translateEnum(
+                ADJUSTMENT_TYPE_LABELS_AR,
+                t.adjustmentType,
+            );
+            rows.push({ metric: `${label} - العدد`, value: t.count });
+            rows.push({ metric: `${label} - الكمية`, value: t.totalQuantity });
+        }
+        return rows;
+    }
     private async buildFilters(
         dto: ListAdjustmentsReportDto,
         requestingUserId: string,
@@ -209,29 +240,5 @@ export class AdjustmentsReportService {
             variantId: dto.variantId,
             groupBy,
         };
-    }
-
-    private summaryToRows(
-        summary: AdjustmentsReportSummary,
-        from: Date,
-        to: Date,
-    ) {
-        const rows: { metric: string; value: string | number }[] = [
-            { metric: 'From', value: from.toISOString().slice(0, 10) },
-            { metric: 'To', value: to.toISOString().slice(0, 10) },
-            { metric: 'Total Adjustments', value: summary.totalAdjustments },
-            { metric: 'Total Quantity', value: summary.totalQuantity },
-        ];
-        for (const t of summary.byAdjustmentType) {
-            rows.push({
-                metric: `${t.adjustmentType} -- count`,
-                value: t.count,
-            });
-            rows.push({
-                metric: `${t.adjustmentType} -- quantity`,
-                value: t.totalQuantity,
-            });
-        }
-        return rows;
     }
 }

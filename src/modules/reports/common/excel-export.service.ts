@@ -12,6 +12,7 @@ export interface ExcelSheetDef {
     name: string;
     columns: ExcelColumnDef[];
     rows: Record<string, unknown>[];
+    rightToLeft?: boolean;
 }
 
 @Injectable()
@@ -23,17 +24,31 @@ export class ExcelExportService {
 
         for (const sheetDef of sheets) {
             const sheet = workbook.addWorksheet(sheetDef.name, {
-                views: [{ state: 'frozen', ySplit: 1 }],
+                views: [
+                    {
+                        state: 'frozen',
+                        ySplit: 1,
+                        rightToLeft: sheetDef.rightToLeft ?? false,
+                    },
+                ],
             });
 
             sheet.columns = sheetDef.columns.map((c) => ({
                 header: c.header,
                 key: c.key,
                 width: c.width ?? 18,
-                style: c.numFmt ? { numFmt: c.numFmt } : undefined,
+                style: {
+                    numFmt: c.numFmt,
+                    alignment: sheetDef.rightToLeft
+                        ? { horizontal: 'right' }
+                        : undefined,
+                },
             }));
 
             sheet.getRow(1).font = { bold: true };
+            if (sheetDef.rightToLeft) {
+                sheet.getRow(1).alignment = { horizontal: 'right' };
+            }
             if (sheetDef.columns.length > 0) {
                 sheet.autoFilter = {
                     from: { row: 1, column: 1 },

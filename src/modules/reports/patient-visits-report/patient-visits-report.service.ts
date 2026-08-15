@@ -17,6 +17,7 @@ import {
 } from '../common/report-date-range.util';
 import { ReportGroupBy } from '../../../common/enums/report-group-by.enum';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
+import { translateEnum, VISIT_STATUS_LABELS_AR } from '../common/report-labels';
 
 const MAX_EXPORT_ROWS = 50_000;
 
@@ -94,22 +95,24 @@ export class PatientVisitsReportService {
 
         return this.excelExportService.buildWorkbook([
             {
-                name: 'Summary',
+                name: 'الملخص',
+                rightToLeft: true,
                 columns: [
-                    { header: 'Metric', key: 'metric', width: 32 },
-                    { header: 'Value', key: 'value', width: 20 },
+                    { header: 'المؤشر', key: 'metric', width: 32 },
+                    { header: 'القيمة', key: 'value', width: 20 },
                 ],
                 rows: this.summaryToRows(summary, filters.from, filters.to),
             },
             {
-                name: 'By Department',
+                name: 'حسب القسم',
+                rightToLeft: true,
                 columns: [
-                    { header: 'Department', key: 'department', width: 24 },
-                    { header: 'Visit Count', key: 'visitCount', width: 16 },
+                    { header: 'القسم', key: 'department', width: 24 },
+                    { header: 'عدد الزيارات', key: 'visitCount', width: 16 },
                     {
-                        header: 'Unique Patients',
+                        header: 'عدد المرضى الفريد',
                         key: 'uniquePatientCount',
-                        width: 18,
+                        width: 20,
                     },
                 ],
                 rows: byDepartment.map((d) => ({
@@ -119,15 +122,16 @@ export class PatientVisitsReportService {
                 })),
             },
             {
-                name: 'Visits',
+                name: 'الزيارات',
+                rightToLeft: true,
                 columns: [
-                    { header: 'Date', key: 'date', width: 20 },
-                    { header: 'Patient', key: 'patient', width: 24 },
-                    { header: 'National ID', key: 'nationalId', width: 16 },
-                    { header: 'Department', key: 'department', width: 22 },
-                    { header: 'Doctor', key: 'doctor', width: 22 },
-                    { header: 'Status', key: 'status', width: 14 },
-                    { header: 'Cancel Reason', key: 'cancelReason', width: 32 },
+                    { header: 'التاريخ', key: 'date', width: 20 },
+                    { header: 'المريض', key: 'patient', width: 24 },
+                    { header: 'الرقم الوطني', key: 'nationalId', width: 16 },
+                    { header: 'القسم', key: 'department', width: 22 },
+                    { header: 'الطبيب', key: 'doctor', width: 22 },
+                    { header: 'الحالة', key: 'status', width: 14 },
+                    { header: 'سبب الإلغاء', key: 'cancelReason', width: 32 },
                 ],
                 rows: rows.map((r) => ({
                     date: r.visitDate,
@@ -135,11 +139,25 @@ export class PatientVisitsReportService {
                     nationalId: r.patient.nationalId ?? '',
                     department: r.department.name,
                     doctor: r.doctor.fullName,
-                    status: r.status,
+                    status: translateEnum(VISIT_STATUS_LABELS_AR, r.status),
                     cancelReason: r.cancelReason ?? '',
                 })),
             },
         ]);
+    }
+
+    private summaryToRows(summary: PatientVisitsSummary, from: Date, to: Date) {
+        const rows: { metric: string; value: string | number }[] = [
+            { metric: 'من تاريخ', value: from.toISOString().slice(0, 10) },
+            { metric: 'إلى تاريخ', value: to.toISOString().slice(0, 10) },
+            { metric: 'إجمالي عدد الزيارات', value: summary.totalVisits },
+            { metric: 'عدد المرضى الفريد', value: summary.uniquePatients },
+        ];
+        for (const s of summary.byStatus) {
+            const label = translateEnum(VISIT_STATUS_LABELS_AR, s.status);
+            rows.push({ metric: `${label} - العدد`, value: s.count });
+        }
+        return rows;
     }
 
     private async buildFilters(
@@ -170,18 +188,5 @@ export class PatientVisitsReportService {
         const groupBy = pickDefaultGroupBy(from, to, dto.groupBy);
 
         return { where, from, to, departmentId, groupBy };
-    }
-
-    private summaryToRows(summary: PatientVisitsSummary, from: Date, to: Date) {
-        const rows: { metric: string; value: string | number }[] = [
-            { metric: 'From', value: from.toISOString().slice(0, 10) },
-            { metric: 'To', value: to.toISOString().slice(0, 10) },
-            { metric: 'Total Visits', value: summary.totalVisits },
-            { metric: 'Unique Patients', value: summary.uniquePatients },
-        ];
-        for (const s of summary.byStatus) {
-            rows.push({ metric: `${s.status} -- count`, value: s.count });
-        }
-        return rows;
     }
 }
