@@ -39,6 +39,10 @@ export class UsersService {
             roleId: dto.roleId,
             status: dto.status,
             search: dto.search,
+            availableAsManager:
+                dto.availableAsManager === undefined
+                    ? undefined
+                    : dto.availableAsManager === 'true',
         });
 
         return {

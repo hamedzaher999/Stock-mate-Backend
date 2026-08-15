@@ -1,7 +1,12 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+    IsBooleanString,
+    IsEnum,
+    IsOptional,
+    IsString,
+    IsUUID,
+} from 'class-validator';
 import { UserStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
-
 export class ListUsersDto extends PaginationDto {
     @IsOptional()
     @IsUUID()
@@ -18,4 +23,8 @@ export class ListUsersDto extends PaginationDto {
     @IsOptional()
     @IsString()
     search?: string;
+
+    @IsOptional()
+    @IsBooleanString()
+    availableAsManager?: string;
 }

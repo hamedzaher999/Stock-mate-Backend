@@ -28,11 +28,15 @@ export class UsersRepository {
         roleId?: string;
         status?: UserStatus;
         search?: string;
+        availableAsManager?: boolean;
     }) {
         const where: Prisma.UserWhereInput = {
             departmentId: params.departmentId,
             roleId: params.roleId,
             status: params.status,
+            ...(params.availableAsManager && {
+                managedDepartment: null,
+            }),
             ...(params.search && {
                 OR: [
                     {
