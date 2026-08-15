@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    ArrayUnique,
     IsArray,
     IsNumber,
     IsOptional,
@@ -24,6 +25,7 @@ export class UpdateRefillRequestDto {
     @IsOptional()
     @IsArray()
     @ArrayMinSize(1)
+    @ArrayUnique((entry: RefillItemInputDto) => entry.variantId)
     @ValidateNested({ each: true })
     @Type(() => RefillItemInputDto)
     items?: RefillItemInputDto[];

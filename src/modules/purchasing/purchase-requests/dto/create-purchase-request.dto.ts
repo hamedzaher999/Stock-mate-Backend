@@ -2,6 +2,7 @@ import { RefillRequestPriority } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    ArrayUnique,
     IsArray,
     IsEnum,
     IsNumber,
@@ -30,7 +31,6 @@ class PurchaseRequestItemDto {
     @MaxLength(500)
     notes?: string;
 }
-
 export class CreatePurchaseRequestDto {
     @IsOptional()
     @IsEnum(RefillRequestPriority)
@@ -38,6 +38,7 @@ export class CreatePurchaseRequestDto {
 
     @IsArray()
     @ArrayMinSize(1)
+    @ArrayUnique((entry: PurchaseRequestItemDto) => entry.variantId)
     @ValidateNested({ each: true })
     @Type(() => PurchaseRequestItemDto)
     items!: PurchaseRequestItemDto[];

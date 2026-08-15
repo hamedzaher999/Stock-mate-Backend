@@ -1,4 +1,5 @@
 import {
+    ArrayUnique,
     IsArray,
     IsDateString,
     IsEnum,
@@ -33,7 +34,6 @@ class RenewItemDto {
     @Min(1)
     durationDays?: number;
 }
-
 export class RenewPrescriptionDto {
     @IsUUID()
     visitId!: string;
@@ -56,6 +56,7 @@ export class RenewPrescriptionDto {
     startDate!: string;
 
     @IsArray()
+    @ArrayUnique((entry: RenewItemDto) => entry.variantId)
     @ValidateNested({ each: true })
     @Type(() => RenewItemDto)
     items!: RenewItemDto[];

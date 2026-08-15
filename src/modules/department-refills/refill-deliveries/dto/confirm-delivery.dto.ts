@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    ArrayUnique,
     IsArray,
     IsNumber,
     IsOptional,
@@ -23,6 +24,7 @@ class ConfirmedItemDto {
 export class ConfirmDeliveryDto {
     @IsArray()
     @ArrayMinSize(1)
+    @ArrayUnique((entry: ConfirmedItemDto) => entry.deliveryItemId)
     @ValidateNested({ each: true })
     @Type(() => ConfirmedItemDto)
     items!: ConfirmedItemDto[];

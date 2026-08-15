@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    ArrayUnique,
     IsArray,
     IsEnum,
     IsInt,
@@ -20,7 +21,6 @@ class RefillRequestItemInputDto {
     @IsPositive()
     requestedQuantity!: number;
 }
-
 export class CreateRefillRequestDto {
     @IsOptional()
     @IsEnum(RefillRequestPriority)
@@ -42,6 +42,7 @@ export class CreateRefillRequestDto {
 
     @IsArray()
     @ArrayMinSize(1)
+    @ArrayUnique((entry: RefillRequestItemInputDto) => entry.variantId)
     @ValidateNested({ each: true })
     @Type(() => RefillRequestItemInputDto)
     items!: RefillRequestItemInputDto[];

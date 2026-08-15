@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    ArrayUnique,
     IsArray,
     IsEnum,
     IsNumber,
@@ -24,6 +25,7 @@ class ApprovedItemDto {
 export class ApproveRefillRequestDto {
     @IsArray()
     @ArrayMinSize(1)
+    @ArrayUnique((entry: ApprovedItemDto) => entry.refillItemId)
     @ValidateNested({ each: true })
     @Type(() => ApprovedItemDto)
     items!: ApprovedItemDto[];

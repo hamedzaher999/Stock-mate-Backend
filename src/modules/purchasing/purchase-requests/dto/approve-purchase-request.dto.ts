@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
     ArrayMinSize,
+    ArrayUnique,
     IsArray,
     IsNumber,
     IsUUID,
@@ -16,10 +17,10 @@ class ApprovedItemDto {
     @Min(0)
     approvedQuantity!: number;
 }
-
 export class ApprovePurchaseRequestDto {
     @IsArray()
     @ArrayMinSize(1)
+    @ArrayUnique((entry: ApprovedItemDto) => entry.purchaseRequestItemId)
     @ValidateNested({ each: true })
     @Type(() => ApprovedItemDto)
     items!: ApprovedItemDto[];

@@ -1,4 +1,5 @@
 import {
+    ArrayUnique,
     IsArray,
     IsDateString,
     IsEnum,
@@ -53,6 +54,7 @@ class PrescriptionInputDto {
     startDate!: string;
 
     @IsArray()
+    @ArrayUnique((entry: PrescriptionItemInputDto) => entry.variantId)
     @ValidateNested({ each: true })
     @Type(() => PrescriptionItemInputDto)
     items!: PrescriptionItemInputDto[];
