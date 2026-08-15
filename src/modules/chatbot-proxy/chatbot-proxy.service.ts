@@ -9,7 +9,6 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { SendMessageDto } from './dto/send-message.dto';
-
 export interface ChatbotReply {
     answer: string;
     hadContext: boolean;
@@ -42,7 +41,7 @@ export class ChatbotProxyService {
                     },
                     {
                         headers: { 'x-internal-secret': secret },
-                        timeout: 20_000,
+                        timeout: 45_000,
                     },
                 ),
             );
@@ -52,10 +51,11 @@ export class ChatbotProxyService {
 
             if (
                 axiosError.code === 'ECONNREFUSED' ||
-                axiosError.code === 'ETIMEDOUT'
+                axiosError.code === 'ETIMEDOUT' ||
+                axiosError.code === 'ECONNABORTED'
             ) {
                 this.logger.error(
-                    'Chatbot service is unreachable.',
+                    `Chatbot service unreachable/timed out (${axiosError.code}) for user=${requestingUserId}.`,
                     axiosError.stack,
                 );
 
@@ -69,7 +69,7 @@ export class ChatbotProxyService {
                     axiosError.message
                 } | status=${axiosError.response?.status} | data=${JSON.stringify(
                     axiosError.response?.data,
-                )}`,
+                )} | user=${requestingUserId}`,
                 axiosError.stack,
             );
 
