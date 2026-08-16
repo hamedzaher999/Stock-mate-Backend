@@ -16,12 +16,16 @@ import { DepartmentsCacheService } from './departments-cache.service';
 import { UserScopeService } from '../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 import {
+    DISPOSAL_MANAGER_ROLE_NAME,
     HOSPITAL_MANAGER_ROLE_NAME,
     RECEPTION_STAFF_ROLE_NAME,
     WAREHOUSE_MANAGER_ROLE_NAME,
 } from '../../common/constants/roles.constants';
-
-const SINGLETON_TYPES: DepartmentType[] = ['central_warehouse', 'pharmacy'];
+const SINGLETON_TYPES: DepartmentType[] = [
+    'central_warehouse',
+    'pharmacy',
+    'disposal_warehouse',
+];
 const SELECTABLE_CONTEXTS: Record<
     string,
     { unrestrictedRoles: string[]; where: Prisma.DepartmentWhereInput }
@@ -45,6 +49,14 @@ const SELECTABLE_CONTEXTS: Record<
     'periodic-schedules': {
         unrestrictedRoles: [WAREHOUSE_MANAGER_ROLE_NAME],
         where: { isActive: true, type: { not: 'central_warehouse' } },
+    },
+    disposal: {
+        unrestrictedRoles: [DISPOSAL_MANAGER_ROLE_NAME],
+        where: {
+            isActive: true,
+            tracksInventory: true,
+            type: { not: 'disposal_warehouse' },
+        },
     },
 };
 @Injectable()

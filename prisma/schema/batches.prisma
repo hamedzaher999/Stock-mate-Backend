@@ -9,7 +9,7 @@ model Batch {
   manufacturingDate     DateTime? @map("manufacturing_date") @db.Date
   expirationDate        DateTime? @map("expiration_date") @db.Date
   receivingDate         DateTime  @map("receiving_date") @db.Date
-  createdById           String    @map("created_by") @db.Uuid
+  createdById            String    @map("created_by") @db.Uuid
   createdAt             DateTime  @default(now()) @map("created_at")
 
   purchaseReceiptItem PurchaseReceiptItem? @relation(fields: [purchaseReceiptItemId], references: [id])
@@ -22,10 +22,10 @@ model Batch {
   inventoryAdjustments  InventoryAdjustment[]
   stockCountItems StockCountItem[]
   prescriptionDispenseItems PrescriptionDispenseItem[]
-  
+  disposalTransferItems DisposalTransferItem[]
+
   @@map("batches")
 }
-
 model BatchStock {
   id           String    @id @default(uuid()) @db.Uuid
   batchId      String    @map("batch_id") @db.Uuid

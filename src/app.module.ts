@@ -32,6 +32,7 @@ import { FirebaseAdminModule } from './core/firebase/firebase-admin.module';
 import chatbotConfig from './config/chatbot.config';
 import { ChatbotProxyModule } from './modules/chatbot-proxy/chatbot-proxy.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { DisposalModule } from './modules/disposal/disposal.module';
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -69,6 +70,7 @@ import { ReportsModule } from './modules/reports/reports.module';
         PrescriptionsModule,
         ChatbotProxyModule,
         ReportsModule,
+        DisposalModule,
     ],
     controllers: [AppController],
     providers: [

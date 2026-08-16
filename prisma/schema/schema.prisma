@@ -18,6 +18,7 @@ enum DepartmentType {
   central_warehouse
   pharmacy
   standard
+  disposal_warehouse
 
   @@map("department_type")
 }
@@ -77,6 +78,8 @@ enum TransactionType {
   adjustment_expired
   adjustment_shrinkage
   adjustment_found
+  disposal_transfer_out
+  disposal_transfer_in
 
   @@map("transaction_type")
 }
@@ -97,10 +100,24 @@ enum ReferenceType {
   prescription_dispense
   adjustment
   stock_count
+  disposal_transfer
 
   @@map("reference_type")
 }
+enum DisposalItemSource {
+  adjustment
+  near_expiry
 
+  @@map("disposal_item_source")
+}
+
+enum DisposalTransferStatus {
+  initiated
+  confirmed
+  cancelled
+
+  @@map("disposal_transfer_status")
+}
 enum StockCountStatus {
   draft
   completed

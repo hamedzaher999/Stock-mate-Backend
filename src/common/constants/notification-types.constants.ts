@@ -8,6 +8,8 @@ export const NOTIFICATION_TYPES = {
     PURCHASE_REQUEST_STATUS_CHANGED: 'purchase_request_status_changed',
     BATCH_EXPIRATION_ALERT: 'batch_expiration_alert',
     AI_INSIGHT: 'ai_insight',
+    DISPOSAL_TRANSFER_INITIATED: 'disposal_transfer_initiated',
+    DISPOSAL_TRANSFER_CANCELLED: 'disposal_transfer_cancelled',
 } as const;
 
 export type NotificationTypeCode =

@@ -1,0 +1,42 @@
+model DisposalTransfer {
+  id            String                  @id @default(uuid()) @db.Uuid
+  departmentId  String                  @map("department_id") @db.Uuid
+  status        DisposalTransferStatus  @default(initiated)
+  initiatedById String                  @map("initiated_by") @db.Uuid
+  initiatedAt   DateTime                @default(now()) @map("initiated_at")
+  confirmedById String?                 @map("confirmed_by") @db.Uuid
+  confirmedAt   DateTime?               @map("confirmed_at")
+  cancelledById String?                 @map("cancelled_by") @db.Uuid
+  cancelledAt   DateTime?               @map("cancelled_at")
+  cancelReason  String?                 @map("cancel_reason")
+  notes         String?
+
+  department  Department             @relation(fields: [departmentId], references: [id])
+  initiatedBy User                   @relation("DisposalInitiatedBy", fields: [initiatedById], references: [id])
+  confirmedBy User?                  @relation("DisposalConfirmedBy", fields: [confirmedById], references: [id])
+  cancelledBy User?                  @relation("DisposalCancelledBy", fields: [cancelledById], references: [id])
+  items       DisposalTransferItem[]
+
+  @@index([departmentId, status])
+  @@map("disposal_transfers")
+}
+
+model DisposalTransferItem {
+  id                  String              @id @default(uuid()) @db.Uuid
+  transferId          String              @map("transfer_id") @db.Uuid
+  sourceType          DisposalItemSource  @map("source_type")
+  adjustmentId        String?             @map("adjustment_id") @db.Uuid
+  variantId           String              @map("variant_id") @db.Uuid
+  batchId             String              @map("batch_id") @db.Uuid
+  shippedQuantity     Decimal             @map("shipped_quantity")
+  confirmedQuantity   Decimal?            @map("confirmed_quantity")
+  quantityDiscrepancy Decimal             @default(0) @map("quantity_discrepancy")
+
+  transfer   DisposalTransfer     @relation(fields: [transferId], references: [id])
+  adjustment InventoryAdjustment? @relation(fields: [adjustmentId], references: [id])
+  variant    ProductVariant       @relation(fields: [variantId], references: [id])
+  batch      Batch                @relation(fields: [batchId], references: [id])
+
+  @@index([adjustmentId])
+  @@map("disposal_transfer_items")
+}

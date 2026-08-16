@@ -40,6 +40,7 @@ model InventoryAdjustment {
   department Department     @relation(fields: [departmentId], references: [id])
   batch      Batch          @relation(fields: [batchId], references: [id])
   reportedBy User           @relation(fields: [reportedById], references: [id])
+  disposalTransferItems DisposalTransferItem[]
 
   @@index([departmentId, createdAt])
   @@index([variantId])

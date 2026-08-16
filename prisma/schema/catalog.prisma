@@ -31,15 +31,16 @@ enum MaterialType {
 }
 
 model Product {
-  id           String       @id @default(uuid()) @db.Uuid
-  name         String
-  categoryId   String?      @map("category_id") @db.Uuid
-  materialType MaterialType @map("material_type")
-  description  String?
-  isActive     Boolean      @default(true) @map("is_active")
-  createdById  String       @map("created_by") @db.Uuid
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime?    @updatedAt @map("updated_at")
+  id                     String       @id @default(uuid()) @db.Uuid
+  name                   String
+  categoryId             String?      @map("category_id") @db.Uuid
+  materialType           MaterialType @map("material_type")
+  description            String?
+  nearExpiryDisposalDays Int?         @map("near_expiry_disposal_days")
+  isActive               Boolean      @default(true) @map("is_active")
+  createdById            String       @map("created_by") @db.Uuid
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime?    @updatedAt @map("updated_at")
 
   category  Category?        @relation(fields: [categoryId], references: [id])
   createdBy User             @relation(fields: [createdById], references: [id])
@@ -73,6 +74,7 @@ model ProductVariant {
   stockCountItems StockCountItem[]
   prescriptionItems PrescriptionItem[]
   prescriptionDispenseItems PrescriptionDispenseItem[]
+  disposalTransferItems DisposalTransferItem[]
   @@map("product_variants")
 }
 
