@@ -50,7 +50,7 @@ export class DepartmentQueueController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.departmentQueueService.create(dto, user.sub);
-        return { message: 'Patient added to the queue.', data };
+        return { message: 'تمت إضافة المريض إلى قائمة الانتظار.', data };
     }
 
     @Patch(':id/release')
@@ -64,7 +64,7 @@ export class DepartmentQueueController {
             dto,
             user.sub,
         );
-        return { message: 'Patient released back to the waiting queue.', data };
+        return { message: 'تمت إعادة المريض إلى قائمة الانتظار.', data };
     }
 
     @Patch(':id/remove')
@@ -79,6 +79,6 @@ export class DepartmentQueueController {
             dto,
             user.sub,
         );
-        return { message: 'Patient removed from the queue.', data };
+        return { message: 'تمت إزالة المريض من قائمة الانتظار.', data };
     }
 }

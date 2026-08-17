@@ -15,21 +15,17 @@ const PRISMA_ERROR_MAP: Record<
 > = {
     P2002: {
         status: HttpStatus.CONFLICT,
-        message: (meta) => {
-            const target = (meta as { target?: string[] })?.target;
-            return target
-                ? `A record with this ${target.join(', ')} already exists.`
-                : 'A record with these values already exists.';
-        },
+        message: () =>
+            'يوجد سجل بهذه البيانات مسبقاً. يرجى التحقق من المدخلات.',
     },
     P2003: {
         status: HttpStatus.CONFLICT,
         message: () =>
-            'This record cannot be deleted or changed because other records still depend on it.',
+            'لا يمكن حذف أو تعديل هذا السجل لوجود بيانات أخرى تعتمد عليه.',
     },
     P2025: {
         status: HttpStatus.NOT_FOUND,
-        message: () => 'The requested record was not found.',
+        message: () => 'البيانات المطلوبة غير موجودة.',
     },
 };
 
@@ -83,7 +79,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
         return {
             status: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: 'Internal server error',
+            message: 'حدث خطأ في الخادم. يرجى المحاولة لاحقاً.',
         };
     }
 

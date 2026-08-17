@@ -39,6 +39,6 @@ import { DepartmentsModule } from '../departments/departments.module';
         ConsumptionService,
         ConsumptionRepository,
     ],
-    exports: [InventoryLedgerService],
+    exports: [InventoryLedgerService, DepartmentInventoryService],
 })
 export class InventoryModule {}

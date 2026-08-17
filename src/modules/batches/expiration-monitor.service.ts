@@ -73,10 +73,12 @@ export class ExpirationMonitorService {
                 continue;
             }
 
-            const title = isExpired ? 'Batch expired' : 'Batch expiring soon';
+            const title = isExpired
+                ? 'الدفعة منتهية الصلاحية'
+                : 'الدفعة قريبة من انتهاء الصلاحية';
             const body = isExpired
-                ? `${row.variantName} (${row.sku}), batch ${row.batchNumber} at ${row.departmentName} expired ${Math.abs(daysLeft)} day(s) ago. ${row.quantity} unit(s) still in stock.`
-                : `${row.variantName} (${row.sku}), batch ${row.batchNumber} at ${row.departmentName} has ${daysLeft} day(s) left before expiring. ${row.quantity} unit(s) in stock.`;
+                ? `${row.variantName} (${row.sku})، الدفعة ${row.batchNumber} في ${row.departmentName} انتهت صلاحيتها منذ ${Math.abs(daysLeft)} يوم. ${row.quantity} وحدة لا تزال في المخزون.`
+                : `${row.variantName} (${row.sku})، الدفعة ${row.batchNumber} في ${row.departmentName} متبقي لها ${daysLeft} يوم قبل انتهاء الصلاحية. ${row.quantity} وحدة في المخزون.`;
 
             await this.notificationsService.create({
                 userId: row.departmentManagerId,

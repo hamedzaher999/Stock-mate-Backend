@@ -27,11 +27,9 @@ export class DispensingService {
                 dto.prescriptionId,
             );
         if (!prescription)
-            throw new NotFoundException('Prescription not found.');
+            throw new NotFoundException('الوصفة الطبية غير موجودة.');
         if (prescription.status !== 'active') {
-            throw new ConflictException(
-                'Only an active prescription can be dispensed.',
-            );
+            throw new ConflictException('يمكن صرف الوصفات الطبية النشطة فقط.');
         }
         if (CLOSED_CYCLE_STATUSES.includes(prescription.currentCycleStatus)) {
             throw new ConflictException(
@@ -121,7 +119,7 @@ export class DispensingService {
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(
-                    'Insufficient Pharmacy stock to dispense the requested quantity.',
+                    'مخزون الصيدلية غير كافٍ لصرف الكمية المطلوبة.',
                 );
             }
             if (error instanceof AlreadyProcessedError) {

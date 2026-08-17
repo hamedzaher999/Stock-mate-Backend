@@ -32,14 +32,14 @@ export class TransformResponseInterceptor implements NestInterceptor {
                 if (isShapedResult(result)) {
                     return {
                         success: true,
-                        message: result.message ?? 'Success',
+                        message: result.message ?? 'تمت العملية بنجاح',
                         data: result.data ?? null,
                     };
                 }
 
                 return {
                     success: true,
-                    message: 'Success',
+                    message: 'تمت العملية بنجاح',
                     data: result ?? null,
                 };
             }),

@@ -33,6 +33,8 @@ import chatbotConfig from './config/chatbot.config';
 import { ChatbotProxyModule } from './modules/chatbot-proxy/chatbot-proxy.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DisposalModule } from './modules/disposal/disposal.module';
+import { DestinationsModule } from './modules/destinations/destinations.module';
+import { DisposalSalesModule } from './modules/disposal-sales/disposal-sales.module';
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -71,6 +73,8 @@ import { DisposalModule } from './modules/disposal/disposal.module';
         ChatbotProxyModule,
         ReportsModule,
         DisposalModule,
+        DestinationsModule,
+        DisposalSalesModule,
     ],
     controllers: [AppController],
     providers: [

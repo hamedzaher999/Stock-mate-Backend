@@ -52,13 +52,13 @@ export class PatientsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.patientsService.create(dto, user.sub);
-        return { message: 'Patient registered.', data };
+        return { message: 'تم تسجيل المريض بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.ADD_PATIENT)
     async update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
         const data = await this.patientsService.update(id, dto);
-        return { message: 'Patient record updated.', data };
+        return { message: 'تم تحديث سجل المريض بنجاح.', data };
     }
 }

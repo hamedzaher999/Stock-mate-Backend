@@ -46,7 +46,7 @@ export class MedicalVisitsController {
             dto,
             user.sub,
         );
-        return { message: 'Patient selected for consultation.', data };
+        return { message: 'تم اختيار المريض للاستشارة.', data };
     }
 
     @Post('complete')
@@ -59,7 +59,7 @@ export class MedicalVisitsController {
             dto,
             user.sub,
         );
-        return { message: 'Consultation completed and visit recorded.', data };
+        return { message: 'تمت الاستشارة وتسجيل الزيارة.', data };
     }
     @Post(':id/cancel')
     @Throttle({ default: { limit: 15, ttl: 60000 } })
@@ -69,6 +69,6 @@ export class MedicalVisitsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.medicalVisitsService.cancel(id, dto, user.sub);
-        return { message: 'Visit cancelled.', data };
+        return { message: 'تم إلغاء الزيارة.', data };
     }
 }

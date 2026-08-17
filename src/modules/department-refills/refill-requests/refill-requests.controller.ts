@@ -81,7 +81,7 @@ export class RefillRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillRequestsService.create(dto, user.sub);
-        return { message: 'Refill request created.', data };
+        return { message: 'تم إنشاء طلب التزويد بنجاح.', data };
     }
 
     @Patch(':id')
@@ -92,7 +92,7 @@ export class RefillRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillRequestsService.update(id, dto, user.sub);
-        return { message: 'Refill request updated.', data };
+        return { message: 'تم تحديث طلب التزويد بنجاح.', data };
     }
 
     @Post(':id/submit')
@@ -103,7 +103,7 @@ export class RefillRequestsController {
     ) {
         const data = await this.refillRequestsService.submit(id, user.sub);
         return {
-            message: 'Refill request submitted for hospital approval.',
+            message: 'تم تقديم طلب التزويد لموافقة المستشفى.',
             data,
         };
     }
@@ -120,7 +120,7 @@ export class RefillRequestsController {
             user.sub,
         );
         return {
-            message: 'Approved and forwarded to the warehouse manager.',
+            message: 'تمت الموافقة عليه وإحالته إلى مدير المستودع.',
             data,
         };
     }
@@ -133,7 +133,7 @@ export class RefillRequestsController {
         @Body() dto: RejectRequestDto,
     ) {
         const data = await this.refillRequestsService.hospitalReject(id, dto);
-        return { message: 'Refill request rejected.', data };
+        return { message: 'تم رفض طلب التزويد.', data };
     }
 
     @Post(':id/approve')
@@ -149,7 +149,7 @@ export class RefillRequestsController {
             dto,
             user.sub,
         );
-        return { message: 'Refill request approved.', data };
+        return { message: 'تمت الموافقة على طلب التزويد.', data };
     }
 
     @Post(':id/reject')
@@ -161,7 +161,7 @@ export class RefillRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillRequestsService.reject(id, dto, user.sub);
-        return { message: 'Refill request rejected.', data };
+        return { message: 'تم رفض طلب التزويد.', data };
     }
 
     @Post(':id/complete')
@@ -172,7 +172,7 @@ export class RefillRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillRequestsService.complete(id, user.sub);
-        return { message: 'Refill request marked as complete.', data };
+        return { message: 'تم تعيين طلب التزويد كمكتمل.', data };
     }
 
     @Post(':id/cancel')
@@ -183,6 +183,6 @@ export class RefillRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillRequestsService.cancel(id, user.sub);
-        return { message: 'Refill request cancelled.', data };
+        return { message: 'تم إلغاء طلب التزويد.', data };
     }
 }

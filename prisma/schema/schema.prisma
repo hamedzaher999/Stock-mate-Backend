@@ -80,6 +80,7 @@ enum TransactionType {
   adjustment_found
   disposal_transfer_out
   disposal_transfer_in
+  disposal_sale_out
 
   @@map("transaction_type")
 }
@@ -101,9 +102,11 @@ enum ReferenceType {
   adjustment
   stock_count
   disposal_transfer
+  disposal_sale_request
 
   @@map("reference_type")
 }
+
 enum DisposalItemSource {
   adjustment
   near_expiry
@@ -214,4 +217,14 @@ enum NotificationCategory {
     ai_insight
 
     @@map("notification_category")
+}
+
+enum DisposalSaleRequestStatus {
+  pending_approval
+  awaiting_confirmation
+  rejected
+  completed
+  cancelled
+
+  @@map("disposal_sale_request_status")
 }

@@ -54,7 +54,7 @@ export class VariantsService {
         if (cached) return cached;
 
         const variant = await this.variantsRepository.findById(id);
-        if (!variant) throw new NotFoundException('Variant not found.');
+        if (!variant) throw new NotFoundException('المتغير غير موجود.');
 
         await this.cacheService.set(cacheKey, variant, VARIANT_CACHE_TTL_MS);
         return variant;
@@ -64,7 +64,7 @@ export class VariantsService {
         const product = await this.variantsRepository.productExists(
             dto.productId,
         );
-        if (!product) throw new BadRequestException('Product does not exist.');
+        if (!product) throw new BadRequestException('المنتج غير موجود.');
         if (!product.isActive) {
             throw new BadRequestException(
                 'Cannot create a variant under an inactive product.',
@@ -72,13 +72,11 @@ export class VariantsService {
         }
 
         const unit = await this.variantsRepository.unitExists(dto.unitId);
-        if (!unit) throw new BadRequestException('Unit does not exist.');
+        if (!unit) throw new BadRequestException('الوحدة غير موجودة.');
 
         const existingSku = await this.variantsRepository.findBySku(dto.sku);
         if (existingSku)
-            throw new ConflictException(
-                'A variant with this SKU already exists.',
-            );
+            throw new ConflictException('يوجد متغير بنفس رمز SKU بالفعل.');
 
         return this.variantsRepository.create({
             productId: dto.productId,
@@ -121,14 +119,14 @@ export class VariantsService {
             );
             if (foundSuppliers.length !== dto.suppliers.length) {
                 throw new BadRequestException(
-                    'One or more suppliers do not exist.',
+                    'واحد أو أكثر من الموردين غير موجود.',
                 );
             }
 
             const inactiveSuppliers = foundSuppliers.filter((s) => !s.isActive);
             if (inactiveSuppliers.length > 0) {
                 throw new BadRequestException(
-                    'Cannot link an inactive supplier to a variant.',
+                    'لا يمكن ربط مورد غير نشط بمتغير.',
                 );
             }
 

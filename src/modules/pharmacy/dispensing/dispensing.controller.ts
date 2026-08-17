@@ -19,6 +19,6 @@ export class DispensingController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.dispensingService.dispense(dto, user.sub);
-        return { message: 'Prescription dispensed.', data };
+        return { message: 'تم صرف الوصفة الطبية.', data };
     }
 }

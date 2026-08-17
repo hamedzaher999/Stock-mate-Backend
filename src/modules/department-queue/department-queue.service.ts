@@ -46,7 +46,7 @@ export class DepartmentQueueService {
         }
         if (scope && dto.departmentId && dto.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view the queue for your own department.',
+                'يمكنك فقط عرض قائمة الانتظار لقسمك الخاص.',
             );
         }
 
@@ -92,10 +92,9 @@ export class DepartmentQueueService {
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.isActive)
-            throw new BadRequestException('Department is inactive.');
+            throw new BadRequestException('المريض غير موجود.');
         if (department.type !== QUEUEABLE_DEPARTMENT_TYPE) {
             throw new BadRequestException(
                 'Patients can only be queued at clinical (standard) departments.',
@@ -110,7 +109,7 @@ export class DepartmentQueueService {
         const patient = await this.departmentQueueRepository.patientExists(
             dto.patientId,
         );
-        if (!patient) throw new BadRequestException('Patient does not exist.');
+        if (!patient) throw new BadRequestException('المريض غير موجود.');
 
         const alreadyInQueue =
             await this.departmentQueueRepository.findActiveEntryForPatientInDepartment(
@@ -119,7 +118,7 @@ export class DepartmentQueueService {
             );
         if (alreadyInQueue) {
             throw new ConflictException(
-                'This patient already has an active queue entry in this department.',
+                'هذا المريض لديه بالفعل إدخال نشط في قائمة الانتظار لهذا القسم.',
             );
         }
 
@@ -134,7 +133,7 @@ export class DepartmentQueueService {
         const entry = await this.findById(id, doctorId);
         if (entry.status !== 'waiting') {
             throw new ConflictException(
-                'Only patients currently waiting can be locked for consultation.',
+                'يمكن اختيار المرضى الذين في حالة الانتظار فقط للاستشارة.',
             );
         }
 
@@ -153,7 +152,7 @@ export class DepartmentQueueService {
         } catch (error) {
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(
-                    'This patient is no longer waiting -- someone else may have already selected them.',
+                    'هذا المريض لم يعد في الانتظار -- ربما قام شخص آخر باختياره بالفعل.',
                 );
             }
             throw error;
@@ -168,7 +167,7 @@ export class DepartmentQueueService {
         const entry = await this.findById(id, requestingUserId);
         if (entry.status !== 'in_consultation') {
             throw new ConflictException(
-                'Only a locked (in-consultation) entry can be released.',
+                'يمكن إعادة المريض لقائمة الانتظار إذا كان في حالة استشارة فقط.',
             );
         }
 

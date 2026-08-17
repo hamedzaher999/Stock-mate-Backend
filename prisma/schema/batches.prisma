@@ -23,7 +23,7 @@ model Batch {
   stockCountItems StockCountItem[]
   prescriptionDispenseItems PrescriptionDispenseItem[]
   disposalTransferItems DisposalTransferItem[]
-
+  disposalSaleItems DisposalSaleRequestItem[]
   @@map("batches")
 }
 model BatchStock {

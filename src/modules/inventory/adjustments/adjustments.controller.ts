@@ -29,6 +29,6 @@ export class AdjustmentsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.adjustmentsService.create(dto, user.sub);
-        return { message: 'Adjustment recorded.', data };
+        return { message: 'تم تسجيل التسوية بنجاح.', data };
     }
 }

@@ -54,7 +54,7 @@ export class PurchaseRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.purchaseRequestsService.create(dto, user.sub);
-        return { message: 'Purchase request created.', data };
+        return { message: 'تم إنشاء طلب الشراء بنجاح.', data };
     }
 
     @Patch(':id')
@@ -69,7 +69,7 @@ export class PurchaseRequestsController {
             dto,
             user.sub,
         );
-        return { message: 'Purchase request updated.', data };
+        return { message: 'تم تحديث طلب الشراء بنجاح.', data };
     }
 
     @Post(':id/submit')
@@ -80,7 +80,7 @@ export class PurchaseRequestsController {
     ) {
         const data = await this.purchaseRequestsService.submit(id, user.sub);
         return {
-            message: 'Purchase request submitted for hospital approval.',
+            message: 'تم تقديم طلب الشراء لموافقة المستشفى.',
             data,
         };
     }
@@ -97,7 +97,7 @@ export class PurchaseRequestsController {
             user.sub,
         );
         return {
-            message: 'Approved and forwarded to the purchasing manager.',
+            message: 'تمت الموافقة عليه وإحالته إلى مدير المشتريات.',
             data,
         };
     }
@@ -110,7 +110,7 @@ export class PurchaseRequestsController {
         @Body() dto: RejectRequestDto,
     ) {
         const data = await this.purchaseRequestsService.hospitalReject(id, dto);
-        return { message: 'Purchase request rejected.', data };
+        return { message: 'تم رفض طلب الشراء.', data };
     }
 
     @Post(':id/approve')
@@ -126,7 +126,7 @@ export class PurchaseRequestsController {
             dto,
             user.sub,
         );
-        return { message: 'Purchase request approved.', data };
+        return { message: 'تمت الموافقة على طلب الشراء.', data };
     }
 
     @Post(':id/reject')
@@ -142,7 +142,7 @@ export class PurchaseRequestsController {
             dto,
             user.sub,
         );
-        return { message: 'Purchase request rejected.', data };
+        return { message: 'تم رفض طلب الشراء.', data };
     }
 
     @Post(':id/complete')
@@ -153,7 +153,7 @@ export class PurchaseRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.purchaseRequestsService.complete(id, user.sub);
-        return { message: 'Purchase request marked as complete.', data };
+        return { message: 'تم تعيين طلب الشراء كمكتمل.', data };
     }
 
     @Post(':id/cancel')
@@ -164,6 +164,6 @@ export class PurchaseRequestsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.purchaseRequestsService.cancel(id, user.sub);
-        return { message: 'Purchase request cancelled.', data };
+        return { message: 'تم إلغاء طلب الشراء.', data };
     }
 }

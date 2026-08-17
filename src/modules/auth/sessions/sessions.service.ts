@@ -138,7 +138,7 @@ export class SessionsService {
         );
         if (!revoked) {
             throw new NotFoundException(
-                'Session not found, or it does not belong to this account.',
+                'الجلسة غير موجودة، أو أنها لا تنتمي إلى هذا الحساب.',
             );
         }
     }

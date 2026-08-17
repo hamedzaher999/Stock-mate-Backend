@@ -49,14 +49,14 @@ export class DepartmentsController {
     @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENTS)
     async create(@Body() dto: CreateDepartmentDto) {
         const data = await this.departmentsService.create(dto);
-        return { message: 'Department created.', data };
+        return { message: 'تم إنشاء القسم بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENTS)
     async update(@Param('id') id: string, @Body() dto: UpdateDepartmentDto) {
         const data = await this.departmentsService.update(id, dto);
-        return { message: 'Department updated.', data };
+        return { message: 'تم تحديث القسم بنجاح.', data };
     }
 
     @Patch(':id/status')
@@ -67,7 +67,7 @@ export class DepartmentsController {
     ) {
         const data = await this.departmentsService.updateStatus(id, dto);
         return {
-            message: `Department marked as ${dto.isActive ? 'active' : 'inactive'}.`,
+            message: `تم تعيين القسم كـ ${dto.isActive ? 'نشط' : 'غير نشط'}.`,
             data,
         };
     }
@@ -79,6 +79,6 @@ export class DepartmentsController {
         @Body() dto: AssignManagerDto,
     ) {
         const data = await this.departmentsService.assignManager(id, dto);
-        return { message: 'Department manager updated.', data };
+        return { message: 'تم تحديث مدير القسم بنجاح.', data };
     }
 }

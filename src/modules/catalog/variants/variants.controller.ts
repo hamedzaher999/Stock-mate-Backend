@@ -42,14 +42,14 @@ export class VariantsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.variantsService.create(dto, user.sub);
-        return { message: 'Variant created.', data };
+        return { message: 'تم إنشاء المتغير بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_MATERIALS)
     async update(@Param('id') id: string, @Body() dto: UpdateVariantDto) {
         const data = await this.variantsService.update(id, dto);
-        return { message: 'Variant updated.', data };
+        return { message: 'تم تحديث المتغير بنجاح.', data };
     }
 
     @Patch(':id/status')
@@ -60,7 +60,7 @@ export class VariantsController {
     ) {
         const data = await this.variantsService.updateStatus(id, dto);
         return {
-            message: `Variant marked as ${dto.isActive ? 'active' : 'inactive'}.`,
+            message: `تم تعيين المتغير كـ ${dto.isActive ? 'نشط' : 'غير نشط'}.`,
             data,
         };
     }
@@ -72,6 +72,6 @@ export class VariantsController {
         @Body() dto: SetVariantSuppliersDto,
     ) {
         const data = await this.variantsService.setSuppliers(id, dto);
-        return { message: 'Variant suppliers updated.', data };
+        return { message: 'تم تحديث موردي المتغير بنجاح.', data };
     }
 }

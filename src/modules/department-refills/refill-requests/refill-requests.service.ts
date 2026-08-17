@@ -82,7 +82,7 @@ export class RefillRequestsService {
 
     private async findById(id: string) {
         const request = await this.refillRequestsRepository.findById(id);
-        if (!request) throw new NotFoundException('Refill request not found.');
+        if (!request) throw new NotFoundException('طلب التزويد غير موجود.');
         return request;
     }
 
@@ -220,9 +220,7 @@ export class RefillRequestsService {
     async hospitalApprove(id: string, approverId: string) {
         const request = await this.findById(id);
         if (request.status !== 'pending_hospital_approval') {
-            throw new ConflictException(
-                'This request is not awaiting hospital approval.',
-            );
+            throw new ConflictException('هذا الطلب لا ينتظر موافقة المستشفى.');
         }
 
         const updated = await this.runGuarded(() =>
@@ -243,9 +241,7 @@ export class RefillRequestsService {
     async hospitalReject(id: string, dto: RejectRequestDto) {
         const request = await this.findById(id);
         if (request.status !== 'pending_hospital_approval') {
-            throw new ConflictException(
-                'This request is not awaiting hospital approval.',
-            );
+            throw new ConflictException('هذا الطلب لا ينتظر موافقة المستشفى.');
         }
 
         const updated = await this.runGuarded(() =>
@@ -269,9 +265,7 @@ export class RefillRequestsService {
     ) {
         const request = await this.findById(id);
         if (request.status !== 'pending_manager_approval') {
-            throw new ConflictException(
-                'This request is not awaiting manager approval.',
-            );
+            throw new ConflictException('هذا الطلب لا ينتظر موافقة المستشفى.');
         }
 
         const itemIds = new Set(request.items.map((i) => i.id));
@@ -415,7 +409,7 @@ export class RefillRequestsService {
         }
         if (request.requestedById !== requestingUserId) {
             throw new ForbiddenException(
-                'You can only cancel refill requests you created.',
+                'يمكنك فقط إلغاء طلبات التزويد التي قمت بإنشائها.',
             );
         }
 

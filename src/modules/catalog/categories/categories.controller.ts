@@ -33,20 +33,20 @@ export class CategoriesController {
     @RequirePermissions(PERMISSIONS.MANAGE_CATEGORIES)
     async create(@Body() dto: CreateCategoryDto) {
         const data = await this.categoriesService.create(dto);
-        return { message: 'Category created.', data };
+        return { message: 'تم إنشاء الفئة بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_CATEGORIES)
     async update(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
         const data = await this.categoriesService.update(id, dto);
-        return { message: 'Category updated.', data };
+        return { message: 'تم تحديث الفئة بنجاح.', data };
     }
 
     @Delete(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_CATEGORIES)
     async remove(@Param('id') id: string) {
         await this.categoriesService.delete(id);
-        return { message: 'Category deleted.', data: null };
+        return { message: 'تم حذف الفئة بنجاح.', data: null };
     }
 }

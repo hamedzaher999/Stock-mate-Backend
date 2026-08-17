@@ -43,13 +43,13 @@ export class NotificationsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.notificationsService.markRead(id, user.sub);
-        return { message: 'Notification marked as read.', data };
+        return { message: 'تم تعيين الإشعار كمقروء.', data };
     }
 
     @Patch('read-all')
     async markAllRead(@CurrentUser() user: AuthenticatedUser) {
         await this.notificationsService.markAllRead(user.sub);
-        return { message: 'All notifications marked as read.', data: null };
+        return { message: 'تم تعيين جميع الإشعارات كمقروءة.', data: null };
     }
 
     @Post('device-tokens')
@@ -58,7 +58,7 @@ export class NotificationsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.deviceTokensService.register(dto, user.sub);
-        return { message: 'Device registered for push notifications.', data };
+        return { message: 'تم تسجيل الجهاز للإشعارات الفورية.', data };
     }
 
     @Delete('device-tokens/:fcmToken')
@@ -67,6 +67,6 @@ export class NotificationsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         await this.deviceTokensService.unregister(fcmToken, user.sub);
-        return { message: 'Device unregistered.', data: null };
+        return { message: 'تم إلغاء تسجيل الجهاز.', data: null };
     }
 }

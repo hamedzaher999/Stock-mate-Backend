@@ -68,7 +68,7 @@ export class PurchaseRequestsService {
 
     private async findById(id: string) {
         const pr = await this.purchaseRequestsRepository.findById(id);
-        if (!pr) throw new NotFoundException('Purchase request not found.');
+        if (!pr) throw new NotFoundException('طلب الشراء غير موجود.');
         return pr;
     }
 
@@ -78,7 +78,7 @@ export class PurchaseRequestsService {
         const ownerScope = await this.resolveOwnerScope(requestingUserId);
         if (ownerScope && pr.requestedById !== ownerScope) {
             throw new ForbiddenException(
-                'You can only view purchase requests you created.',
+                'يمكنك فقط عرض طلبات الشراء التي قمت بإنشائها.',
             );
         }
 
@@ -144,9 +144,7 @@ export class PurchaseRequestsService {
                 'Only draft purchase requests can be submitted.',
             );
         if (pr.items.length === 0)
-            throw new BadRequestException(
-                'Cannot submit a purchase request with no items.',
-            );
+            throw new BadRequestException('لا يمكن تقديم طلب شراء بدون عناصر.');
 
         const ownerScope = await this.resolveOwnerScope(requestingUserId);
         if (ownerScope && pr.requestedById !== ownerScope) {

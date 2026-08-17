@@ -54,6 +54,9 @@ export const PERMISSIONS = {
     MANAGE_PERIODIC_REFILL_SCHEDULES: 'manage_periodic_refill_schedules',
     VIEW_DISPOSAL: 'view_disposal',
     MANAGE_DISPOSAL_TRANSFERS: 'manage_disposal_transfers',
+    MANAGE_DESTINATIONS: 'manage_destinations',
+    CREATE_DISPOSAL_SALE_REQUEST: 'create_disposal_sale_request',
+    APPROVE_DISPOSAL_SALE_REQUEST: 'approve_disposal_sale_request',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

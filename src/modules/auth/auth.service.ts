@@ -26,7 +26,9 @@ export class AuthService {
             email: dto.email,
         });
         if (!user || user.status !== 'active') {
-            return { message: 'If this account exists, an OTP has been sent.' };
+            return {
+                message: 'إذا كان هذا الحساب موجوداً، فقد تم إرسال رمز التحقق.',
+            };
         }
 
         const channel = this.resolveChannel(dto);
@@ -35,7 +37,7 @@ export class AuthService {
 
         if (!destination) {
             throw new BadRequestException(
-                'No destination available for the selected channel.',
+                'لا توجد وجهة متاحة لإرسال الرمز (هاتف أو بريد).',
             );
         }
 
@@ -47,7 +49,7 @@ export class AuthService {
                 : { code: r.code };
 
         return {
-            message: 'If this account exists, an OTP has been sent.',
+            message: 'إذا كان هذا الحساب موجوداً، فقد تم إرسال رمز التحقق.',
             data,
         };
     }
@@ -61,12 +63,16 @@ export class AuthService {
             email: dto.email,
         });
         if (!user || user.status !== 'active') {
-            throw new UnauthorizedException('Invalid or expired code.');
+            throw new UnauthorizedException(
+                'رمز التحقق غير صالح أو منتهي الصلاحية.',
+            );
         }
 
         const isValid = await this.otpService.verifyOtp(user.id, dto.code);
         if (!isValid) {
-            throw new UnauthorizedException('Invalid or expired code.');
+            throw new UnauthorizedException(
+                'رمز التحقق غير صالح أو منتهي الصلاحية.',
+            );
         }
 
         const session = await this.sessionsService.createSession({
@@ -85,7 +91,7 @@ export class AuthService {
         const result = await this.sessionsService.refreshSession(refreshToken);
         if (!result) {
             throw new UnauthorizedException(
-                'Invalid or expired refresh token.',
+                'رمز التحديث غير صالح أو منتهي الصلاحية.',
             );
         }
 
@@ -123,7 +129,7 @@ export class AuthService {
 
     private async buildUserPayload(userId: string) {
         const user = await this.authRepository.findUserWithRoleById(userId);
-        if (!user) throw new UnauthorizedException('Account not found.');
+        if (!user) throw new UnauthorizedException('الحساب غير موجود.');
 
         const permissionsSet =
             await this.permissionsResolver.getEffectivePermissions(userId);

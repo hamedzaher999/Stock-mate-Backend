@@ -42,7 +42,7 @@ export class OtpService {
                     (RESEND_COOLDOWN_MS - elapsedMs) / 1000,
                 );
                 throw new HttpException(
-                    `Please wait ${retryAfterSeconds}s before requesting another code.`,
+                    `يرجى الانتظار ${retryAfterSeconds} ثانية قبل طلب رمز آخر.`,
                     HttpStatus.TOO_MANY_REQUESTS,
                 );
             }

@@ -77,8 +77,8 @@ export class StockThresholdSchedulerService {
                         userId: setting.department.managerId,
                         type: NOTIFICATION_TYPES.STOCK_BELOW_MINIMUM,
                         category: 'inventory',
-                        title: 'Stock below minimum',
-                        body: `${setting.variant.variantName} (${setting.variant.sku}) at ${setting.department.name} is at ${currentQuantity}, below the minimum of ${Number(setting.minimumStock)}.`,
+                        title: 'المخزون أقل من الحد الأدنى',
+                        body: `${setting.variant.variantName} (${setting.variant.sku}) في ${setting.department.name} عند ${currentQuantity}، وهو أقل من الحد الأدنى ${Number(setting.minimumStock)}.`,
                         data: {
                             variantId: setting.variantId,
                             departmentId: setting.departmentId,
@@ -107,8 +107,8 @@ export class StockThresholdSchedulerService {
                         userId: setting.department.managerId,
                         type: NOTIFICATION_TYPES.STOCK_ABOVE_MAXIMUM,
                         category: 'inventory',
-                        title: 'Stock above maximum',
-                        body: `${setting.variant.variantName} (${setting.variant.sku}) at ${setting.department.name} is at ${currentQuantity}, above the maximum of ${Number(setting.maximumStock)}.`,
+                        title: 'المخزون أعلى من الحد الأقصى',
+                        body: `${setting.variant.variantName} (${setting.variant.sku}) في ${setting.department.name} عند ${currentQuantity}، وهو أعلى من الحد الأقصى ${Number(setting.maximumStock)}.`,
                         data: {
                             variantId: setting.variantId,
                             departmentId: setting.departmentId,

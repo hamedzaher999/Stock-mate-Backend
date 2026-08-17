@@ -62,7 +62,7 @@ export class StockSettingsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.stockSettingsService.update(id, dto, user.sub);
-        return { message: 'Stock setting updated.', data };
+        return { message: 'تم تحديث إعداد المخزون بنجاح.', data };
     }
 
     @Patch(':id/status')
@@ -78,7 +78,7 @@ export class StockSettingsController {
             user.sub,
         );
         return {
-            message: `Stock setting marked as ${dto.isActive ? 'active' : 'inactive'}.`,
+            message: `تم تعيين إعداد المخزون كـ ${dto.isActive ? 'نشط' : 'غير نشط'}.`,
             data,
         };
     }
@@ -90,6 +90,6 @@ export class StockSettingsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         await this.stockSettingsService.delete(id, user.sub);
-        return { message: 'Stock setting deleted.', data: null };
+        return { message: 'تم حذف إعداد المخزون بنجاح.', data: null };
     }
 }

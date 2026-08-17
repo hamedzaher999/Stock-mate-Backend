@@ -59,8 +59,8 @@ export class QueueWaitSchedulerService {
                 userId: entry.addedById,
                 type: NOTIFICATION_TYPES.QUEUE_WAIT_EXCEEDED,
                 category: 'queue',
-                title: 'Patient waiting too long',
-                body: `${entry.patient.fullName} has been waiting in the ${entry.department.name} queue for over ${waitedHours} hour(s).`,
+                title: 'المريض ينتظر لفترة طويلة',
+                body: `${entry.patient.fullName} كان ينتظر في قائمة انتظار ${entry.department.name} لأكثر من ${waitedHours} ساعة.`,
                 data: {
                     queueEntryId: entry.id,
                     departmentId: entry.departmentId,

@@ -139,16 +139,14 @@ export class DepartmentsService {
 
     async findById(id: string) {
         const department = await this.departmentsRepository.findById(id);
-        if (!department) throw new NotFoundException('Department not found.');
+        if (!department) throw new NotFoundException('القسم غير موجود.');
         return department;
     }
 
     async create(dto: CreateDepartmentDto) {
         const existing = await this.departmentsRepository.findByName(dto.name);
         if (existing)
-            throw new ConflictException(
-                'A department with this name already exists.',
-            );
+            throw new ConflictException('يوجد قسم بنفس الاسم بالفعل.');
 
         if (dto.managerId) {
             await this.assertValidManagerCandidate(dto.managerId);
@@ -213,9 +211,7 @@ export class DepartmentsService {
         if (dto.name) {
             const found = await this.departmentsRepository.findByName(dto.name);
             if (found && found.id !== id) {
-                throw new ConflictException(
-                    'A department with this name already exists.',
-                );
+                throw new ConflictException('يوجد قسم بنفس الاسم بالفعل.');
             }
         }
 
@@ -287,11 +283,10 @@ export class DepartmentsService {
 
     private async assertValidManagerCandidate(userId: string) {
         const user = await this.departmentsRepository.findUserById(userId);
-        if (!user)
-            throw new BadRequestException('Assigned manager does not exist.');
+        if (!user) throw new BadRequestException('المدير المعين غير موجود.');
         if (user.status !== 'active')
             throw new BadRequestException(
-                'Assigned manager must be an active user.',
+                'يجب أن يكون المدير المعين مستخدماً نشطاً.',
             );
     }
 }

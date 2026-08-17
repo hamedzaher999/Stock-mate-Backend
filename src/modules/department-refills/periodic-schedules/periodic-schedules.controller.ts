@@ -44,8 +44,7 @@ export class PeriodicSchedulesController {
             user.sub,
         );
         return {
-            message:
-                'Recurring refill schedule cancelled. No further requests will be generated.',
+            message: 'تم إلغاء جدول التزويد المتكرر. لن يتم إنشاء طلبات أخرى.',
             data,
         };
     }

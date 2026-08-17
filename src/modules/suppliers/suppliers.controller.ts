@@ -44,14 +44,14 @@ export class SuppliersController {
     @RequirePermissions(PERMISSIONS.MANAGE_SUPPLIERS)
     async create(@Body() dto: CreateSupplierDto) {
         const data = await this.suppliersService.create(dto);
-        return { message: 'Supplier created.', data };
+        return { message: 'تم إنشاء المورد بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_SUPPLIERS)
     async update(@Param('id') id: string, @Body() dto: UpdateSupplierDto) {
         const data = await this.suppliersService.update(id, dto);
-        return { message: 'Supplier updated.', data };
+        return { message: 'تم تحديث المورد بنجاح.', data };
     }
 
     @Patch(':id/status')
@@ -62,7 +62,7 @@ export class SuppliersController {
     ) {
         const data = await this.suppliersService.updateStatus(id, dto);
         return {
-            message: `Supplier marked as ${dto.isActive ? 'active' : 'inactive'}.`,
+            message: `تم تعيين المورد كـ ${dto.isActive ? 'نشط' : 'غير نشط'}.`,
             data,
         };
     }

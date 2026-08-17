@@ -21,7 +21,7 @@ export class CategoriesService {
     async findById(id: string) {
         const categories = await this.catalogCacheService.getCategories();
         const category = categories.find((c) => c.id === id);
-        if (!category) throw new NotFoundException('Category not found.');
+        if (!category) throw new NotFoundException('الفئة غير موجودة.');
         return category;
     }
 
@@ -41,7 +41,7 @@ export class CategoriesService {
         );
         if (sibling) {
             throw new ConflictException(
-                'A category with this name already exists at this level.',
+                'توجد فئة بنفس الاسم في هذا المستوى بالفعل.',
             );
         }
 
@@ -96,12 +96,10 @@ export class CategoriesService {
         ]);
 
         if (productsCount > 0)
-            throw new BadRequestException(
-                'Cannot delete a category that has products assigned.',
-            );
+            throw new BadRequestException('لا يمكن حذف فئة تحتوي على منتجات.');
         if (subcategoriesCount > 0)
             throw new BadRequestException(
-                'Cannot delete a category that has subcategories.',
+                'لا يمكن حذف فئة تحتوي على فئات فرعية.',
             );
 
         await this.categoriesRepository.delete(id);

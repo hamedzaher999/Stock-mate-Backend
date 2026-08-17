@@ -10,6 +10,8 @@ export const NOTIFICATION_TYPES = {
     AI_INSIGHT: 'ai_insight',
     DISPOSAL_TRANSFER_INITIATED: 'disposal_transfer_initiated',
     DISPOSAL_TRANSFER_CANCELLED: 'disposal_transfer_cancelled',
+    DISPOSAL_SALE_REQUEST_STATUS_CHANGED:
+        'disposal_sale_request_status_changed',
 } as const;
 
 export type NotificationTypeCode =

@@ -11,7 +11,7 @@ export interface FefoAllocation {
 
 export class InsufficientStockError extends Error {
     constructor(public readonly shortfall: number) {
-        super(`Insufficient stock: short by ${shortfall}.`);
+        super(`مخزون غير كافٍ: الناقص ${shortfall} وحدة.`);
     }
 }
 

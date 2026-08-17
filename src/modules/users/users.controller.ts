@@ -36,7 +36,7 @@ export class UsersController {
         @Body() dto: UpdateMeDto,
     ) {
         const data = await this.usersService.updateMe(user.sub, dto);
-        return { message: 'Profile updated.', data };
+        return { message: 'تم تحديث الملف الشخصي بنجاح.', data };
     }
 
     @Get()
@@ -60,14 +60,14 @@ export class UsersController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.usersService.create(dto, user.sub);
-        return { message: 'User created.', data };
+        return { message: 'تم إنشاء المستخدم بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_ACCOUNTS)
     async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
         const data = await this.usersService.update(id, dto);
-        return { message: 'User updated.', data };
+        return { message: 'تم تحديث المستخدم بنجاح.', data };
     }
 
     @Patch(':id/status')
@@ -78,7 +78,10 @@ export class UsersController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.usersService.updateStatus(id, dto, user.sub);
-        return { message: `User marked as ${dto.status}.`, data };
+        return {
+            message: `تم تعيين المستخدم كـ ${dto.status === 'active' ? 'نشط' : 'غير نشط'}.`,
+            data,
+        };
     }
 
     @Get(':id/sessions')
@@ -103,6 +106,6 @@ export class UsersController {
     @RequirePermissions(PERMISSIONS.MANAGE_ACCOUNTS)
     async revokeAllSessions(@Param('id') id: string) {
         await this.usersService.revokeAllSessionsForUser(id);
-        return { message: 'All sessions revoked for this user.', data: null };
+        return { message: 'تم إنهاء جميع الجلسات لهذا المستخدم.', data: null };
     }
 }

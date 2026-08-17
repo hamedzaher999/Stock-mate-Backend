@@ -89,7 +89,7 @@ export class PurchaseReceivingController {
         );
         return {
             message:
-                'Purchase receipt recorded. Awaiting confirmation from the warehouse manager who requested it.',
+                'تم تسجيل إيصال الشراء. في انتظار التأكيد من مدير المستودع الذي طلبه.',
             data,
         };
     }
@@ -107,7 +107,7 @@ export class PurchaseReceivingController {
             user.sub,
         );
         return {
-            message: 'Purchase receipt confirmed and warehouse stock updated.',
+            message: 'تم تأكيد إيصال الشراء وتحديث مخزون المستودع.',
             data,
         };
     }
@@ -141,13 +141,13 @@ export class PurchaseReceivingController {
             dto,
             newImages,
         );
-        return { message: 'Purchase receipt updated.', data };
+        return { message: 'تم تحديث إيصال الشراء.', data };
     }
 
     @Post(':id/cancel')
     @RequirePermissions(PERMISSIONS.RECEIVE_PURCHASE)
     async cancel(@Param('id') id: string) {
         const data = await this.purchaseReceivingService.cancel(id);
-        return { message: 'Purchase receipt cancelled.', data };
+        return { message: 'تم إلغاء إيصال الشراء.', data };
     }
 }

@@ -48,7 +48,7 @@ export class RefillDeliveriesController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.refillDeliveriesService.create(dto, user.sub);
-        return { message: 'Delivery shipped from warehouse stock.', data };
+        return { message: 'تم شحن التسليم من مخزون المستودع.', data };
     }
 
     @Post(':id/confirm')
@@ -63,6 +63,6 @@ export class RefillDeliveriesController {
             dto,
             user.sub,
         );
-        return { message: 'Delivery confirmed.', data };
+        return { message: 'تم تأكيد التسليم.', data };
     }
 }

@@ -27,4 +27,5 @@ export const validationSchema = Joi.object({
     PURCHASE_RECEIPT_MAX_IMAGES: Joi.number().min(1).max(30).default(10),
     CHATBOT_INTERNAL_SECRET: Joi.string().min(32).required(),
     CHATBOT_SERVICE_URL: Joi.string().uri().required(),
+    DISPOSAL_SALE_MAX_IMAGES: Joi.number().min(1).max(30).default(10),
 });

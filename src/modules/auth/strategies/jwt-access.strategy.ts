@@ -41,7 +41,7 @@ export class JwtAccessStrategy extends PassportStrategy(
         );
         if (!session) {
             throw new UnauthorizedException(
-                'Session has been revoked or has expired.',
+                'الجلسة تم إنهاؤها أو انتهت صلاحيتها. يرجى تسجيل الدخول مرة أخرى.',
             );
         }
 

@@ -48,7 +48,7 @@ export class StockCountsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.stockCountsService.create(dto, user.sub);
-        return { message: 'Stock count session started.', data };
+        return { message: 'تم بدء جلسة جرد المخزون.', data };
     }
 
     @Post(':id/items')
@@ -58,7 +58,7 @@ export class StockCountsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.stockCountsService.addItem(id, dto, user.sub);
-        return { message: 'Item counted.', data };
+        return { message: 'تم عد العنصر.', data };
     }
 
     @Patch(':id/items/:itemId')
@@ -74,7 +74,7 @@ export class StockCountsController {
             dto,
             user.sub,
         );
-        return { message: 'Item count updated.', data };
+        return { message: 'تم تحديث عد العنصر.', data };
     }
 
     @Post(':id/complete')
@@ -83,7 +83,7 @@ export class StockCountsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.stockCountsService.complete(id, user.sub);
-        return { message: 'Stock count completed.', data };
+        return { message: 'تم إكمال جرد المخزون.', data };
     }
 
     @Delete(':id')
@@ -92,6 +92,6 @@ export class StockCountsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         await this.stockCountsService.cancel(id, user.sub);
-        return { message: 'Draft stock count discarded.', data: null };
+        return { message: 'تم تجاهل مسودة جرد المخزون.', data: null };
     }
 }

@@ -1,11 +1,11 @@
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Param,
+    Patch,
+    Post,
 } from '@nestjs/common';
 import { UnitsService } from './units.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
@@ -15,38 +15,38 @@ import { PERMISSIONS } from '../../../common/constants/permissions.constants';
 
 @Controller('catalog/units')
 export class UnitsController {
-  constructor(private readonly unitsService: UnitsService) {}
+    constructor(private readonly unitsService: UnitsService) {}
 
-  @Get()
-  async findAll() {
-    const data = await this.unitsService.findAll();
-    return { message: 'Success', data };
-  }
+    @Get()
+    async findAll() {
+        const data = await this.unitsService.findAll();
+        return { message: 'Success', data };
+    }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const data = await this.unitsService.findById(id);
-    return { message: 'Success', data };
-  }
+    @Get(':id')
+    async findOne(@Param('id') id: string) {
+        const data = await this.unitsService.findById(id);
+        return { message: 'Success', data };
+    }
 
-  @Post()
-  @RequirePermissions(PERMISSIONS.MANAGE_UNITS)
-  async create(@Body() dto: CreateUnitDto) {
-    const data = await this.unitsService.create(dto);
-    return { message: 'Unit created.', data };
-  }
+    @Post()
+    @RequirePermissions(PERMISSIONS.MANAGE_UNITS)
+    async create(@Body() dto: CreateUnitDto) {
+        const data = await this.unitsService.create(dto);
+        return { message: 'تم إنشاء الوحدة بنجاح.', data };
+    }
 
-  @Patch(':id')
-  @RequirePermissions(PERMISSIONS.MANAGE_UNITS)
-  async update(@Param('id') id: string, @Body() dto: UpdateUnitDto) {
-    const data = await this.unitsService.update(id, dto);
-    return { message: 'Unit updated.', data };
-  }
+    @Patch(':id')
+    @RequirePermissions(PERMISSIONS.MANAGE_UNITS)
+    async update(@Param('id') id: string, @Body() dto: UpdateUnitDto) {
+        const data = await this.unitsService.update(id, dto);
+        return { message: 'تم تحديث الوحدة بنجاح.', data };
+    }
 
-  @Delete(':id')
-  @RequirePermissions(PERMISSIONS.MANAGE_UNITS)
-  async remove(@Param('id') id: string) {
-    await this.unitsService.delete(id);
-    return { message: 'Unit deleted.', data: null };
-  }
+    @Delete(':id')
+    @RequirePermissions(PERMISSIONS.MANAGE_UNITS)
+    async remove(@Param('id') id: string) {
+        await this.unitsService.delete(id);
+        return { message: 'تم حذف الوحدة بنجاح.', data: null };
+    }
 }

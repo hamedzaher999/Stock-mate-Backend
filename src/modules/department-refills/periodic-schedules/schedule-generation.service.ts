@@ -116,8 +116,8 @@ export class ScheduleGenerationService {
                 userId: schedule.createdById,
                 type: NOTIFICATION_TYPES.PERIODIC_REFILL_GENERATED,
                 category: 'inventory',
-                title: 'Recurring refill generated',
-                body: `A new refill request was automatically generated from your recurring schedule and is awaiting approval.`,
+                title: 'تم إنشاء تزويد متكرر',
+                body: 'تم إنشاء طلب تزويد جديد تلقائياً من جدولك المتكرر وهو في انتظار الموافقة.',
                 data: {
                     refillRequestId: requestId,
                     periodicScheduleId: schedule.id,
@@ -133,7 +133,7 @@ export class ScheduleGenerationService {
                         userId: warehouseManager.managerId,
                         type: NOTIFICATION_TYPES.PERIODIC_REFILL_PENDING_APPROVAL,
                         category: 'inventory',
-                        title: 'Recurring refill needs approval',
+                        title: 'التزويد المتكرر يحتاج إلى موافقة',
                         body: `A recurring refill request has been generated from schedule ${schedule.id} and is awaiting your approval.`,
                         data: {
                             refillRequestId: requestId,
@@ -154,7 +154,7 @@ export class ScheduleGenerationService {
                         userId: hospitalManager.id,
                         type: NOTIFICATION_TYPES.PERIODIC_REFILL_PENDING_APPROVAL,
                         category: 'inventory',
-                        title: 'Recurring refill needs approval',
+                        title: 'التزويد المتكرر يحتاج إلى موافقة',
                         body: `A recurring refill request has been generated from schedule ${schedule.id} and is awaiting your approval.`,
                         data: {
                             refillRequestId: requestId,

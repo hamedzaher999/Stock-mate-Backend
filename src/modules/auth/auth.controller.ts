@@ -53,13 +53,13 @@ export class AuthController {
         if (dto.platform === SessionPlatform.web) {
             this.setAuthCookies(res, result);
             return {
-                message: 'Logged in successfully.',
+                message: 'تم تسجيل الدخول بنجاح.',
                 data: { user: result.user },
             };
         }
 
         return {
-            message: 'Logged in successfully.',
+            message: 'تم تسجيل الدخول بنجاح.',
             data: {
                 user: result.user,
                 accessToken: result.accessToken,
@@ -82,7 +82,7 @@ export class AuthController {
         const refreshToken = cookieToken ?? bodyToken;
 
         if (!refreshToken) {
-            return { message: 'No refresh token provided.', data: null };
+            return { message: 'لم يتم توفير رمز التحديث.', data: null };
         }
 
         const result = await this.authService.refresh(refreshToken);
@@ -90,13 +90,13 @@ export class AuthController {
         if (result.platform === SessionPlatform.web) {
             this.setAuthCookies(res, result);
             return {
-                message: 'Session refreshed.',
+                message: 'تم تحديث الجلسة بنجاح.',
                 data: { user: result.user },
             };
         }
 
         return {
-            message: 'Session refreshed.',
+            message: 'تم تحديث الجلسة بنجاح.',
             data: {
                 user: result.user,
                 accessToken: result.accessToken,
@@ -131,7 +131,7 @@ export class AuthController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         await this.authService.revokeMySession(sessionId, user.sub);
-        return { message: 'Session revoked.', data: null };
+        return { message: 'تم إنهاء الجلسة.', data: null };
     }
 
     @Post('logout')
@@ -143,7 +143,7 @@ export class AuthController {
         await this.authService.logout(user.sessionId);
         res.clearCookie(ACCESS_COOKIE);
         res.clearCookie(REFRESH_COOKIE, { path: '/api/auth/refresh' });
-        return { message: 'Logged out.', data: null };
+        return { message: 'تم تسجيل الخروج.', data: null };
     }
 
     @Post('logout-all')
@@ -155,7 +155,7 @@ export class AuthController {
         await this.authService.logoutAll(user.sub);
         res.clearCookie(ACCESS_COOKIE);
         res.clearCookie(REFRESH_COOKIE, { path: '/api/auth/refresh' });
-        return { message: 'Logged out from all devices.', data: null };
+        return { message: 'تم تسجيل الخروج من جميع الأجهزة.', data: null };
     }
 
     private setAuthCookies(

@@ -75,6 +75,7 @@ model ProductVariant {
   prescriptionItems PrescriptionItem[]
   prescriptionDispenseItems PrescriptionDispenseItem[]
   disposalTransferItems DisposalTransferItem[]
+  disposalSaleItems DisposalSaleRequestItem[]
   @@map("product_variants")
 }
 

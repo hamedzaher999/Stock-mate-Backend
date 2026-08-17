@@ -35,7 +35,7 @@ export class PrescriptionsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.prescriptionsService.renew(id, dto, user.sub);
-        return { message: 'Prescription renewed.', data };
+        return { message: 'تم تجديد الوصفة الطبية.', data };
     }
     @Post(':id/cancel')
     @Throttle({ default: { limit: 15, ttl: 60000 } })
@@ -46,6 +46,6 @@ export class PrescriptionsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.prescriptionsService.cancel(id, dto, user.sub);
-        return { message: 'Prescription cancelled.', data };
+        return { message: 'تم إلغاء الوصفة الطبية.', data };
     }
 }

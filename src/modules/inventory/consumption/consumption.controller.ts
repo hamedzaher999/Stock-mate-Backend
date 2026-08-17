@@ -17,6 +17,6 @@ export class ConsumptionController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.consumptionService.create(dto, user.sub);
-        return { message: 'Consumption recorded.', data };
+        return { message: 'تم تسجيل الاستهلاك بنجاح.', data };
     }
 }

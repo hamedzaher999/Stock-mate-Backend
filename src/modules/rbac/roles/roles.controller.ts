@@ -40,13 +40,13 @@ export class RolesController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.rolesService.create(dto, user.sub);
-        return { message: 'Role created.', data };
+        return { message: 'تم إنشاء الدور بنجاح.', data };
     }
 
     @Patch(':id')
     async update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
         const data = await this.rolesService.update(id, dto);
-        return { message: 'Role updated.', data };
+        return { message: 'تم تحديث الدور بنجاح.', data };
     }
 
     @Put(':id/permissions')
@@ -55,12 +55,12 @@ export class RolesController {
         @Body() dto: SetRolePermissionsDto,
     ) {
         const data = await this.rolesService.setPermissions(id, dto);
-        return { message: 'Role permissions updated.', data };
+        return { message: 'تم تحديث صلاحيات الدور بنجاح.', data };
     }
 
     @Delete(':id')
     async remove(@Param('id') id: string) {
         await this.rolesService.delete(id);
-        return { message: 'Role deleted.', data: null };
+        return { message: 'تم حذف الدور بنجاح.', data: null };
     }
 }

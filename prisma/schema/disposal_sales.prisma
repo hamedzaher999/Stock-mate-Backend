@@ -1,0 +1,70 @@
+model Destination {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  disposalSaleRequests DisposalSaleRequest[]
+
+  @@unique([name, phone])
+  @@unique([name, email])
+  @@map("destinations")
+}
+
+model DisposalSaleRequest {
+  id              String                    @id @default(uuid()) @db.Uuid
+  destinationId   String                    @map("destination_id") @db.Uuid
+  requestedById   String                    @map("requested_by") @db.Uuid
+  status          DisposalSaleRequestStatus @default(pending_approval)
+  approvedById    String?                   @map("approved_by") @db.Uuid
+  approvedAt      DateTime?                 @map("approved_at")
+  rejectionReason String?                   @map("rejection_reason")
+  confirmedById   String?                   @map("confirmed_by") @db.Uuid
+  confirmedAt     DateTime?                 @map("confirmed_at")
+  notes           String?
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime?                 @updatedAt @map("updated_at")
+
+  destination Destination                @relation(fields: [destinationId], references: [id])
+  requestedBy User                       @relation("DisposalSaleRequestedBy", fields: [requestedById], references: [id])
+  approvedBy  User?                      @relation("DisposalSaleApprovedBy", fields: [approvedById], references: [id])
+  confirmedBy User?                      @relation("DisposalSaleConfirmedBy", fields: [confirmedById], references: [id])
+  items       DisposalSaleRequestItem[]
+  images      DisposalSaleRequestImage[]
+
+  @@index([status])
+  @@index([destinationId])
+  @@map("disposal_sale_requests")
+}
+
+model DisposalSaleRequestItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  requestId String  @map("request_id") @db.Uuid
+  variantId String  @map("variant_id") @db.Uuid
+  batchId   String  @map("batch_id") @db.Uuid
+  quantity  Decimal
+  price     Decimal
+
+  request DisposalSaleRequest @relation(fields: [requestId], references: [id])
+  variant ProductVariant      @relation(fields: [variantId], references: [id])
+  batch   Batch                @relation(fields: [batchId], references: [id])
+
+  @@map("disposal_sale_request_items")
+}
+
+model DisposalSaleRequestImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  requestId String   @map("request_id") @db.Uuid
+  imageKey  String   @map("image_key")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  request DisposalSaleRequest @relation(fields: [requestId], references: [id])
+
+  @@index([requestId, sortOrder])
+  @@map("disposal_sale_request_images")
+}

@@ -1,6 +1,6 @@
 export class AlreadyProcessedError extends Error {
     constructor(
-        message = 'This record was already processed by another request.',
+        message = 'تم معالجة هذا الطلب بالفعل. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
     ) {
         super(message);
     }
@@ -12,7 +12,7 @@ export class CycleAllowanceExceededError extends Error {
         public readonly remaining: number,
     ) {
         super(
-            `Dispensed quantity exceeds what remains for this cycle (remaining: ${remaining}).`,
+            `الكمية المطلوبة تتجاوز المتاح في هذه الدورة (المتبقي: ${remaining}).`,
         );
     }
 }

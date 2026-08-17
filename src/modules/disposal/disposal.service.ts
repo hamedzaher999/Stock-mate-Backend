@@ -114,8 +114,8 @@ export class DisposalService {
 
         await this.notifyDepartmentManager(departmentId, {
             type: NOTIFICATION_TYPES.DISPOSAL_TRANSFER_INITIATED,
-            title: 'Disposal transfer initiated',
-            body: 'A disposal transfer was initiated for your department -- damaged, expired, and near-expiry items are being collected for the Disposal Warehouse.',
+            title: 'تم بدء نقل الهالك',
+            body: 'تم بدء نقل هالك لقسمك -- يتم جمع العناصر التالفة، ومنتهية الصلاحية، وقريبة من انتهاء الصلاحية لمستودع الهالك.',
             data: { disposalTransferId: transfer.id, departmentId },
         });
 
@@ -217,8 +217,8 @@ export class DisposalService {
 
             await this.notifyDepartmentManager(transfer.departmentId, {
                 type: NOTIFICATION_TYPES.DISPOSAL_TRANSFER_CANCELLED,
-                title: 'Disposal transfer cancelled',
-                body: 'The disposal transfer for your department was cancelled -- any near-expiry items that were pulled have been returned to your live stock.',
+                title: 'تم إلغاء نقل الهالك',
+                body: 'تم إلغاء نقل الهالك لقسمك -- أي عناصر قريبة من انتهاء الصلاحية تم سحبها قد تمت إعادتها إلى مخزونك الحي.',
                 data: {
                     disposalTransferId: id,
                     departmentId: transfer.departmentId,

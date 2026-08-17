@@ -43,7 +43,7 @@ export class DisposalController {
             departmentId,
             user.sub,
         );
-        return { message: 'Disposal transfer initiated.', data };
+        return { message: 'تم بدء نقل الهالك.', data };
     }
 
     @Post('transfers/:id/confirm')
@@ -54,7 +54,7 @@ export class DisposalController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.disposalService.confirm(id, dto, user.sub);
-        return { message: 'Disposal transfer confirmed.', data };
+        return { message: 'تم تأكيد نقل الهالك.', data };
     }
 
     @Post('transfers/:id/cancel')
@@ -65,6 +65,6 @@ export class DisposalController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.disposalService.cancel(id, dto, user.sub);
-        return { message: 'Disposal transfer cancelled.', data };
+        return { message: 'تم إلغاء نقل الهالك.', data };
     }
 }

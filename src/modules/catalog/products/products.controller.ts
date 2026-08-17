@@ -40,14 +40,14 @@ export class ProductsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.productsService.create(dto, user.sub);
-        return { message: 'Product created.', data };
+        return { message: 'تم إنشاء المنتج بنجاح.', data };
     }
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_MATERIALS)
     async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
         const data = await this.productsService.update(id, dto);
-        return { message: 'Product updated.', data };
+        return { message: 'تم تحديث المنتج بنجاح.', data };
     }
 
     @Patch(':id/status')
@@ -58,7 +58,7 @@ export class ProductsController {
     ) {
         const data = await this.productsService.updateStatus(id, dto);
         return {
-            message: `Product marked as ${dto.isActive ? 'active' : 'inactive'}.`,
+            message: `تم تعيين المنتج كـ ${dto.isActive ? 'نشط' : 'غير نشط'}.`,
             data,
         };
     }

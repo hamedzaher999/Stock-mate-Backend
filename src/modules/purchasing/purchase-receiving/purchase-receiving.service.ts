@@ -99,12 +99,12 @@ export class PurchaseReceivingService {
             parsedItems = JSON.parse(raw.items);
         } catch {
             throw new BadRequestException(
-                '"items" must be a valid JSON-encoded array.',
+                'بيانات العناصر غير صحيحة. يرجى التأكد من صحة الصيغة.',
             );
         }
 
         if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-            throw new BadRequestException('"items" must be a non-empty array.');
+            throw new BadRequestException('يجب إضافة عنصر واحد على الأقل.');
         }
 
         const dto = plainToInstance(CreatePurchaseReceiptDto, {
@@ -124,7 +124,7 @@ export class PurchaseReceivingService {
             throw new BadRequestException(
                 messages.length > 0
                     ? messages
-                    : 'Invalid purchase receipt payload.',
+                    : 'بيانات الإيصال غير مكتملة أو غير صحيحة.',
             );
         }
 
@@ -598,13 +598,11 @@ export class PurchaseReceivingService {
                 parsedItems = JSON.parse(raw.items);
             } catch {
                 throw new BadRequestException(
-                    '"items" must be a valid JSON-encoded array.',
+                    'بيانات العناصر غير صحيحة. يرجى التأكد من صحة الصيغة.',
                 );
             }
             if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-                throw new BadRequestException(
-                    '"items" must be a non-empty array.',
-                );
+                throw new BadRequestException('يجب إضافة عنصر واحد على الأقل.');
             }
         }
 
@@ -614,12 +612,12 @@ export class PurchaseReceivingService {
                 parsedRemoveImageIds = JSON.parse(raw.removeImageIds);
             } catch {
                 throw new BadRequestException(
-                    '"removeImageIds" must be a valid JSON-encoded array.',
+                    'قائمة الصور المراد حذفها غير صحيحة.',
                 );
             }
             if (!Array.isArray(parsedRemoveImageIds)) {
                 throw new BadRequestException(
-                    '"removeImageIds" must be an array.',
+                    'قائمة الصور المراد حذفها غير صحيحة.',
                 );
             }
         }
@@ -639,7 +637,7 @@ export class PurchaseReceivingService {
             throw new BadRequestException(
                 messages.length > 0
                     ? messages
-                    : 'Invalid purchase receipt payload.',
+                    : 'بيانات الإيصال غير مكتملة أو غير صحيحة.',
             );
         }
 
