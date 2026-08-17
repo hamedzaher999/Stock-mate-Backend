@@ -138,4 +138,10 @@ export class DisposalSalesController {
             data,
         };
     }
+    @Get(':id/images')
+    @RequirePermissions(PERMISSIONS.VIEW_DISPOSAL)
+    async getImages(@Param('id') id: string) {
+        const data = await this.disposalSalesService.getImageUrls(id);
+        return { message: 'Success', data };
+    }
 }

@@ -342,4 +342,23 @@ export class DisposalSalesService {
             throw error;
         }
     }
+
+    async getImageUrls(id: string) {
+        await this.findById(id);
+        const images = await this.disposalSalesRepository.findImageKeys(id);
+
+        return Promise.all(
+            images.map(async (image) => {
+                const signed = await this.storageService.getSignedUrl(
+                    image.imageKey,
+                );
+                return {
+                    id: image.id,
+                    sortOrder: image.sortOrder,
+                    url: signed.url,
+                    expiresAt: signed.expiresAt,
+                };
+            }),
+        );
+    }
 }
