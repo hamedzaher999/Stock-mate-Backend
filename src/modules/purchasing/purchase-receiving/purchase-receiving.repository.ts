@@ -412,4 +412,9 @@ export class PurchaseReceivingRepository {
             select: purchaseReceiptDetailSelect,
         });
     }
+    countUnconfirmedForRequest(purchaseRequestId: string) {
+        return this.prisma.purchaseReceipt.count({
+            where: { purchaseRequestId, status: 'pending_confirmation' },
+        });
+    }
 }

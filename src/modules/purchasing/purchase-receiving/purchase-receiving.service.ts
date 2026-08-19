@@ -130,7 +130,6 @@ export class PurchaseReceivingService {
 
         return dto;
     }
-
     async create(
         dto: CreatePurchaseReceiptDto,
         receivedById: string,
@@ -167,6 +166,16 @@ export class PurchaseReceivingService {
         if (!RECEIVABLE_REQUEST_STATUSES.includes(request.status)) {
             throw new ConflictException(
                 'This purchase request is not open for receiving.',
+            );
+        }
+
+        const pendingReceipts =
+            await this.purchaseReceivingRepository.countUnconfirmedForRequest(
+                dto.purchaseRequestId,
+            );
+        if (pendingReceipts > 0) {
+            throw new ConflictException(
+                'This purchase request already has a receipt awaiting confirmation -- confirm it before creating another.',
             );
         }
 

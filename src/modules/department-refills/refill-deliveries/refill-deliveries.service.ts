@@ -109,6 +109,16 @@ export class RefillDeliveriesService {
             );
         }
 
+        const pendingDeliveries =
+            await this.refillDeliveriesRepository.countUnconfirmedForRequest(
+                dto.refillRequestId,
+            );
+        if (pendingDeliveries > 0) {
+            throw new ConflictException(
+                'This refill request already has a delivery awaiting confirmation -- confirm it before creating another.',
+            );
+        }
+
         const warehouse =
             await this.departmentsCacheService.getByType('central_warehouse');
         if (!warehouse)

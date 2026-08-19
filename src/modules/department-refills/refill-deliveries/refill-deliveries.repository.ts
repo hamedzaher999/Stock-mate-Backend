@@ -341,4 +341,9 @@ export class RefillDeliveriesRepository {
             });
         });
     }
+    countUnconfirmedForRequest(refillRequestId: string) {
+        return this.prisma.departmentRefillDelivery.count({
+            where: { refillRequestId, confirmedAt: null },
+        });
+    }
 }
