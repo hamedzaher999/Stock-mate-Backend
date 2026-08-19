@@ -32,7 +32,7 @@ export class DispenseQueueService {
     async lookup(dto: LookupDispenseQueueDto) {
         if (!dto.nationalId && !dto.familyBookNumber) {
             throw new BadRequestException(
-                'Provide a nationalId or familyBookNumber to search.',
+                'يجب توفير الرقم الوطني أو رقم دفتر العائلة للبحث.',
             );
         }
 

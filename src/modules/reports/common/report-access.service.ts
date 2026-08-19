@@ -14,7 +14,7 @@ export class ReportAccessService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || unrestrictedRoles.includes(scope.roleName))
             return null;

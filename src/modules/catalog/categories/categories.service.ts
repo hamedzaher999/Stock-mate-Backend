@@ -30,7 +30,7 @@ export class CategoriesService {
             const parent = await this.findById(dto.parentCategoryId);
             if (parent.name === dto.name) {
                 throw new BadRequestException(
-                    'A category cannot have the same name as its parent.',
+                    'لا يمكن أن تحمل الفئة نفس اسم الفئة الأم.',
                 );
             }
         }
@@ -56,7 +56,7 @@ export class CategoriesService {
         if (dto.parentCategoryId) {
             if (dto.parentCategoryId === id) {
                 throw new BadRequestException(
-                    'A category cannot be its own parent.',
+                    'لا يمكن أن تكون الفئة أمًا لنفسها.',
                 );
             }
 
@@ -65,7 +65,7 @@ export class CategoriesService {
             const parent = await this.findById(dto.parentCategoryId);
             if (dto.name && parent.name === dto.name) {
                 throw new BadRequestException(
-                    'A category cannot have the same name as its parent.',
+                    'لا يمكن أن تحمل الفئة نفس اسم الفئة الأم.',
                 );
             }
         }
@@ -77,7 +77,7 @@ export class CategoriesService {
             );
             if (sibling && sibling.id !== id) {
                 throw new ConflictException(
-                    'A category with this name already exists at this level.',
+                    'توجد فئة بنفس الاسم في هذا المستوى بالفعل.',
                 );
             }
         }
@@ -116,10 +116,10 @@ export class CategoriesService {
         while (current?.parentCategoryId) {
             if (current.parentCategoryId === categoryId) {
                 throw new BadRequestException(
-                    'This change would create a circular category hierarchy.',
+                    'هذا التعديل سيؤدي إلى إنشاء تسلسل هرمي دائري للفئات.',
                 );
             }
-            if (visited.has(current.id)) break; // safety net against pre-existing bad data
+            if (visited.has(current.id)) break;
             visited.add(current.id);
             current = byId.get(current.parentCategoryId);
         }

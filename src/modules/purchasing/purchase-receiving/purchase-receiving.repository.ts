@@ -221,9 +221,7 @@ export class PurchaseReceivingRepository {
                 },
             });
             if (claimed.count === 0) {
-                throw new AlreadyProcessedError(
-                    'This receipt has already been confirmed.',
-                );
+                throw new AlreadyProcessedError('تم تأكيد هذا الإيصال مسبقاً.');
             }
 
             for (const c of params.confirmations) {

@@ -163,7 +163,7 @@ export class DisposalSalesRepository {
         });
         if (claimed.count === 0) {
             throw new AlreadyProcessedError(
-                'This disposal sale request was already updated by another request.',
+                'تم تحديث طلب بيع الهالك هذا مسبقاً بواسطة طلب آخر.',
             );
         }
         return this.prisma.disposalSaleRequest.findUniqueOrThrow({
@@ -210,7 +210,7 @@ export class DisposalSalesRepository {
             });
             if (claimed.count === 0) {
                 throw new AlreadyProcessedError(
-                    'This disposal sale request has already been confirmed or is no longer awaiting confirmation.',
+                    'تم تأكيد طلب بيع الهالك هذا مسبقاً أو لم يعد في انتظار التأكيد.',
                 );
             }
 

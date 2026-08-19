@@ -45,7 +45,7 @@ export class ChatbotProxyService {
                     this.httpService.post<ChatbotReply>(
                         `${baseUrl}/internal/chat/message`,
                         {
-                            message: dto.message,
+                            message: `${dto.message}\n\n[تعليمات: يجب أن تكون إجابتك باللغة العربية فقط.]`,
                             history: dto.history,
                             userId: requestingUserId,
                         },
@@ -81,7 +81,7 @@ export class ChatbotProxyService {
                 );
 
                 if (canRetry) {
-                    const backoffMs = 500 * Math.pow(2, attempt); // 500ms, 1000ms, ...
+                    const backoffMs = 500 * Math.pow(2, attempt);
                     await sleep(backoffMs);
                     continue;
                 }
@@ -99,11 +99,10 @@ export class ChatbotProxyService {
             axiosError.code === 'ECONNABORTED'
         ) {
             throw new ServiceUnavailableException(
-                `The assistant is temporarily unavailable (${axiosError.code}). Please try again shortly.`,
+                `المساعد غير متاح مؤقتاً (${axiosError.code}). يرجى المحاولة مرة أخرى بعد قليل.`,
             );
         }
 
-        // Try to pull a real message out of the downstream error body, if present.
         const downstreamData = axiosError.response?.data as
             { message?: string; error?: string } | undefined;
         const downstreamMessage =
@@ -112,8 +111,8 @@ export class ChatbotProxyService {
             axiosError.message;
 
         throw new BadGatewayException(
-            `The assistant could not process this request. ` +
-                `[status=${status ?? 'n/a'}] ${downstreamMessage}`,
+            `لم يتمكن المساعد من معالجة هذا الطلب. ` +
+                `[الحالة=${status ?? 'غير متاح'}] ${downstreamMessage}`,
         );
     }
 }

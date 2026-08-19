@@ -32,7 +32,7 @@ export class AdjustmentsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && dto.departmentId && dto.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view adjustments for your own department.',
+                'يمكنك فقط عرض التسويات الخاصة بقسمك.',
             );
         }
 
@@ -55,23 +55,20 @@ export class AdjustmentsService {
 
     async create(dto: CreateAdjustmentDto, reportedById: string) {
         const batch = await this.adjustmentsRepository.findBatch(dto.batchId);
-        if (!batch) throw new BadRequestException('Batch does not exist.');
+        if (!batch) throw new BadRequestException('الدفعة (Batch) غير موجودة.');
         if (batch.variantId !== dto.variantId)
             throw new BadRequestException(
-                'Batch does not match the given variant.',
+                'الدفعة لا تتطابق مع المتغير المحدد.',
             );
 
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.isActive)
-            throw new BadRequestException('Department is inactive.');
+            throw new BadRequestException('القسم غير نشط.');
         if (!department.tracksInventory) {
-            throw new BadRequestException(
-                'This department does not track inventory.',
-            );
+            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
         }
 
         await this.assertDepartmentScope(reportedById, dto.departmentId);
@@ -80,13 +77,13 @@ export class AdjustmentsService {
             await this.adjustmentsRepository.findVariantMaterialType(
                 dto.variantId,
             );
-        if (!variant) throw new BadRequestException('Variant does not exist.');
+        if (!variant) throw new BadRequestException('المتغير غير موجود.');
         if (
             variant.product.materialType === 'fixed_asset' &&
             !FIXED_ASSET_ALLOWED_TYPES.includes(dto.adjustmentType)
         ) {
             throw new BadRequestException(
-                'Fixed assets can only be adjusted as damaged or shrinkage.',
+                'لا يمكن تعديل الأصول الثابتة إلا كحالة تالف (damaged) أو عجز (shrinkage).',
             );
         }
 
@@ -97,7 +94,7 @@ export class AdjustmentsService {
                 );
             if (!sessionExists)
                 throw new BadRequestException(
-                    'Referenced stock count session does not exist.',
+                    'جلسة جرد المخزون المشار إليها غير موجودة.',
                 );
         }
 
@@ -112,7 +109,7 @@ export class AdjustmentsService {
             );
             if (!batchStock || Number(batchStock.quantity) < dto.quantity) {
                 throw new BadRequestException(
-                    'Insufficient stock in this batch at this department for the requested adjustment.',
+                    'المخزون غير كافٍ في هذه الدفعة بهذا القسم للتسوية المطلوبة.',
                 );
             }
         }
@@ -124,7 +121,7 @@ export class AdjustmentsService {
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(
-                    'Insufficient stock in this batch at this department for the requested adjustment.',
+                    'المخزون غير كافٍ في هذه الدفعة بهذا القسم للتسوية المطلوبة.',
                 );
             }
             throw error;
@@ -136,7 +133,7 @@ export class AdjustmentsService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;
@@ -150,7 +147,7 @@ export class AdjustmentsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException(
-                'You can only report adjustments for your own department.',
+                'يمكنك الإبلاغ عن التسويات الخاصة بقسمك فقط.',
             );
         }
     }

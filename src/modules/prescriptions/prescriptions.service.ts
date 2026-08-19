@@ -48,7 +48,7 @@ export class PrescriptionsService {
     async findById(id: string) {
         const prescription = await this.prescriptionsRepository.findById(id);
         if (!prescription)
-            throw new NotFoundException('Prescription not found.');
+            throw new NotFoundException('الوصفة الطبية غير موجودة.');
         return prescription;
     }
 
@@ -60,7 +60,7 @@ export class PrescriptionsService {
         const prescription = await this.findById(id);
         if (prescription.status !== 'active') {
             throw new ConflictException(
-                'Only an active prescription can be cancelled.',
+                'يمكن إلغاء الوصفات الطبية النشطة فقط.',
             );
         }
 
@@ -75,7 +75,7 @@ export class PrescriptionsService {
         } catch (error) {
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(
-                    'This prescription was already updated by another request.',
+                    'تم تحديث هذه الوصفة الطبية بالفعل بواسطة طلب آخر.',
                 );
             }
             throw error;
@@ -86,27 +86,27 @@ export class PrescriptionsService {
         const oldPrescription = await this.findById(id);
         if (oldPrescription.status !== 'active') {
             throw new ConflictException(
-                'Only an active prescription can be renewed.',
+                'يمكن تجديد الوصفات الطبية النشطة فقط.',
             );
         }
 
         await this.assertCanManage(oldPrescription.doctorId, doctorId);
 
         const visit = await this.prescriptionsRepository.findVisit(dto.visitId);
-        if (!visit) throw new BadRequestException('Visit does not exist.');
+        if (!visit) throw new BadRequestException('الزيارة الطبية غير موجودة.');
         if (visit.status !== 'completed') {
             throw new BadRequestException(
-                'The visit must be completed before a prescription can be renewed against it.',
+                'يجب أن تكون الزيارة مكتملة قبل إمكانية تجديد الوصفة بناءً عليها.',
             );
         }
         if (visit.patientId !== oldPrescription.patientId) {
             throw new BadRequestException(
-                "The visit provided does not belong to this prescription's patient.",
+                'الزيارة المقدمة لا تنتمي إلى مريض هذه الوصفة الطبية.',
             );
         }
         if (visit.doctorId !== doctorId) {
             throw new ForbiddenException(
-                'The renewal must be issued from a consultation you conducted yourself.',
+                'يجب إصدار التجديد من استشارة قمت بإجرائها بنفسك.',
             );
         }
 
@@ -133,7 +133,7 @@ export class PrescriptionsService {
         } catch (error) {
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(
-                    'This prescription was already updated by another request.',
+                    'تم تحديث هذه الوصفة الطبية بالفعل بواسطة طلب آخر.',
                 );
             }
             throw error;
@@ -153,7 +153,7 @@ export class PrescriptionsService {
         if (permissions.has(PERMISSIONS.MANAGE_ALL_PRESCRIPTIONS)) return;
 
         throw new ForbiddenException(
-            'You can only renew or cancel prescriptions you wrote yourself.',
+            'يمكنك تجديد أو إلغاء الوصفات الطبية التي كتبتها بنفسك فقط.',
         );
     }
 }

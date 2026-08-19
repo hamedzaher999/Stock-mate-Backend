@@ -24,16 +24,14 @@ export class RolesService {
 
     async findById(id: string) {
         const role = await this.rolesRepository.findById(id);
-        if (!role) throw new NotFoundException('Role not found.');
+        if (!role) throw new NotFoundException('الدور غير موجود.');
         return role;
     }
 
     async create(dto: CreateRoleDto, createdById: string) {
         const existing = await this.rolesRepository.findByName(dto.name);
         if (existing)
-            throw new ConflictException(
-                'A role with this name already exists.',
-            );
+            throw new ConflictException('يوجد دور بهذا الاسم مسبقاً.');
         return this.rolesRepository.create({
             name: dto.name,
             description: dto.description,
@@ -51,14 +49,12 @@ export class RolesService {
     async delete(id: string) {
         const role = await this.findById(id);
         if (role.isSystem)
-            throw new BadRequestException(
-                'Built-in system roles cannot be deleted.',
-            );
+            throw new BadRequestException('لا يمكن حذف أدوار النظام الأساسية.');
 
         const usersCount = await this.rolesRepository.countUsersWithRole(id);
         if (usersCount > 0)
             throw new BadRequestException(
-                'Cannot delete a role that is still assigned to users.',
+                'لا يمكن حذف دور ما زال مرتبطاً بمستخدمين.',
             );
 
         return this.rolesRepository.delete(id);
@@ -69,7 +65,7 @@ export class RolesService {
 
         if (role.isSuperAdmin) {
             throw new BadRequestException(
-                'The super-admin role automatically has every permission -- its role_permissions cannot be edited.',
+                'دور المدير الخارق يمتلك كافة الصلاحيات تلقائياً - لا يمكن تعديل صلاحيات هذا الدور.',
             );
         }
 
@@ -78,7 +74,7 @@ export class RolesService {
         );
         if (permissions.length !== dto.permissionCodes.length) {
             throw new BadRequestException(
-                'One or more permission codes do not exist.',
+                'واحد أو أكثر من رموز الصلاحيات غير موجود.',
             );
         }
 

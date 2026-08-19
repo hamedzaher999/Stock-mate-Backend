@@ -45,9 +45,7 @@ export class DisposalSalesService {
         const warehouse =
             await this.departmentsCacheService.getByType('disposal_warehouse');
         if (!warehouse) {
-            throw new BadRequestException(
-                'No Disposal Warehouse department is configured.',
-            );
+            throw new BadRequestException('لم يتم تكوين قسم مستودع الهالك.');
         }
         return this.departmentInventoryService.getLiveStock(
             warehouse.id,
@@ -81,8 +79,7 @@ export class DisposalSalesService {
 
     async findById(id: string) {
         const request = await this.disposalSalesRepository.findById(id);
-        if (!request)
-            throw new NotFoundException('Disposal sale request not found.');
+        if (!request) throw new NotFoundException('طلب بيع الهالك غير موجود.');
         return request;
     }
 
@@ -92,18 +89,16 @@ export class DisposalSalesService {
                 dto.destinationId,
             );
         if (!destination)
-            throw new BadRequestException('Destination does not exist.');
+            throw new BadRequestException('جهة الوجهة غير موجودة.');
         if (!destination.isActive)
             throw new BadRequestException(
-                'Cannot create a request against an inactive destination.',
+                'لا يمكن إنشاء طلب ضد جهة وجهة غير نشطة.',
             );
 
         const warehouse =
             await this.departmentsCacheService.getByType('disposal_warehouse');
         if (!warehouse) {
-            throw new BadRequestException(
-                'No Disposal Warehouse department is configured.',
-            );
+            throw new BadRequestException('لم يتم تكوين قسم مستودع الهالك.');
         }
 
         for (const item of dto.items) {
@@ -111,10 +106,11 @@ export class DisposalSalesService {
                 await this.disposalSalesRepository.findBatchForValidation(
                     item.batchId,
                 );
-            if (!batch) throw new BadRequestException('Batch does not exist.');
+            if (!batch)
+                throw new BadRequestException('الدفعة (Batch) غير موجودة.');
             if (batch.variantId !== item.variantId) {
                 throw new BadRequestException(
-                    'Selected batch does not match the given variant.',
+                    'الدفعة المختارة لا تتطابق مع المتغير المحدد.',
                 );
             }
 
@@ -124,7 +120,7 @@ export class DisposalSalesService {
             );
             if (!stock || Number(stock.quantity) < item.quantity) {
                 throw new BadRequestException(
-                    'Insufficient stock in one or more selected batches at the Disposal Warehouse.',
+                    'المخزون غير كافٍ في واحدة أو أكثر من الدفعات المختارة في مستودع الهالك.',
                 );
             }
         }
@@ -155,9 +151,7 @@ export class DisposalSalesService {
     async approve(id: string, approverId: string) {
         const request = await this.findById(id);
         if (request.status !== 'pending_approval') {
-            throw new ConflictException(
-                'This request is not awaiting approval.',
-            );
+            throw new ConflictException('هذا الطلب ليس في انتظار الموافقة.');
         }
 
         const updated = await this.runGuarded(() =>
@@ -174,9 +168,7 @@ export class DisposalSalesService {
     async reject(id: string, dto: RejectRequestDto) {
         const request = await this.findById(id);
         if (request.status !== 'pending_approval') {
-            throw new ConflictException(
-                'This request is not awaiting approval.',
-            );
+            throw new ConflictException('هذا الطلب ليس في انتظار الموافقة.');
         }
 
         const updated = await this.runGuarded(() =>
@@ -193,12 +185,12 @@ export class DisposalSalesService {
         const request = await this.findById(id);
         if (request.status !== 'pending_approval') {
             throw new ConflictException(
-                'Only a request awaiting approval can be cancelled.',
+                'يمكن فقط إلغاء الطلب الذي ينتظر الموافقة.',
             );
         }
         if (request.requestedById !== requestingUserId) {
             throw new ForbiddenException(
-                'You can only cancel disposal sale requests you created.',
+                'يمكنك فقط إلغاء طلبات بيع الهالك التي قمت بإنشائها.',
             );
         }
 
@@ -215,14 +207,14 @@ export class DisposalSalesService {
         const request = await this.findById(id);
         if (request.status !== 'awaiting_confirmation') {
             throw new ConflictException(
-                'Images can only be added while the request is awaiting confirmation.',
+                'لا يمكن إضافة الصور إلا أثناء انتظار الطلب للتأكيد.',
             );
         }
 
         for (const file of files) {
             if (!detectImageMimeType(file.buffer)) {
                 throw new BadRequestException(
-                    'One or more uploaded files are not a valid JPEG, PNG, or WEBP image.',
+                    'واحد أو أكثر من الملفات المرفوعة ليس صورة صالحة بتنسيق JPEG أو PNG أو WEBP.',
                 );
             }
         }
@@ -231,7 +223,7 @@ export class DisposalSalesService {
             this.configService.get<number>('DISPOSAL_SALE_MAX_IMAGES') ?? 10;
         if (request.images.length + files.length > maxImages) {
             throw new BadRequestException(
-                `A disposal sale request can have at most ${maxImages} images.`,
+                `يمكن أن يحتوي طلب بيع الهالك على ${maxImages} صور كحد أقصى.`,
             );
         }
 
@@ -269,22 +261,18 @@ export class DisposalSalesService {
     async confirm(id: string, confirmingUserId: string) {
         const request = await this.findById(id);
         if (request.status !== 'awaiting_confirmation') {
-            throw new ConflictException(
-                'This request is not awaiting confirmation.',
-            );
+            throw new ConflictException('هذا الطلب ليس في انتظار التأكيد.');
         }
         if (request.images.length === 0) {
             throw new BadRequestException(
-                'At least one image is required before this request can be confirmed.',
+                'مطلوب صورة واحدة على الأقل قبل إمكانية تأكيد هذا الطلب.',
             );
         }
 
         const warehouse =
             await this.departmentsCacheService.getByType('disposal_warehouse');
         if (!warehouse) {
-            throw new BadRequestException(
-                'No Disposal Warehouse department is configured.',
-            );
+            throw new BadRequestException('لم يتم تكوين قسم مستودع الهالك.');
         }
 
         let result: Awaited<
@@ -307,7 +295,7 @@ export class DisposalSalesService {
             }
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(
-                    'Stock at the Disposal Warehouse has changed since this request was created and is no longer sufficient for one or more items.',
+                    'لقد تغير المخزون في مستودع الهالك منذ إنشاء هذا الطلب ولم يعد كافياً لعنصر واحد أو أكثر.',
                 );
             }
             throw error;
@@ -326,8 +314,8 @@ export class DisposalSalesService {
             userId: request.requestedById,
             type: NOTIFICATION_TYPES.DISPOSAL_SALE_REQUEST_STATUS_CHANGED,
             category: 'inventory',
-            title: 'Disposal sale request status updated',
-            body: `Your disposal sale request is now "${request.status}".`,
+            title: 'تم تحديث حالة طلب بيع الهالك',
+            body: `طلب بيع الهالك الخاص بك أصبح الآن "${request.status}".`,
             data: { disposalSaleRequestId: request.id, status: request.status },
         });
     }

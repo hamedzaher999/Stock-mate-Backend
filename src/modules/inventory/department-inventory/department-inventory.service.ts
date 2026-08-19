@@ -26,18 +26,15 @@ export class DepartmentInventoryService {
     ): Promise<PaginatedResult<unknown>> {
         const department =
             await this.departmentsCacheService.getById(departmentId);
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.tracksInventory) {
-            throw new BadRequestException(
-                'This department does not track inventory.',
-            );
+            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
         }
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view live stock for your own department.',
+                'يمكنك فقط عرض المخزون المباشر لقسمك.',
             );
         }
 
@@ -62,7 +59,7 @@ export class DepartmentInventoryService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;

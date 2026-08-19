@@ -113,14 +113,12 @@ export class PurchaseRequestsService {
     ) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
-            throw new ConflictException(
-                'Only draft purchase requests can be edited.',
-            );
+            throw new ConflictException('يمكن تعديل مسودات طلبات الشراء فقط.');
 
         const ownerScope = await this.resolveOwnerScope(requestingUserId);
         if (ownerScope && pr.requestedById !== ownerScope) {
             throw new ForbiddenException(
-                'You can only edit purchase requests you created.',
+                'يمكنك تعديل طلبات الشراء التي أنشأتها أنت فقط.',
             );
         }
 
@@ -140,16 +138,14 @@ export class PurchaseRequestsService {
     async submit(id: string, requestingUserId: string) {
         const pr = await this.findById(id);
         if (pr.status !== 'draft')
-            throw new ConflictException(
-                'Only draft purchase requests can be submitted.',
-            );
+            throw new ConflictException('يمكن تقديم مسودات طلبات الشراء فقط.');
         if (pr.items.length === 0)
             throw new BadRequestException('لا يمكن تقديم طلب شراء بدون عناصر.');
 
         const ownerScope = await this.resolveOwnerScope(requestingUserId);
         if (ownerScope && pr.requestedById !== ownerScope) {
             throw new ForbiddenException(
-                'You can only submit purchase requests you created.',
+                'يمكنك تقديم طلبات الشراء التي أنشأتها أنت فقط.',
             );
         }
 
@@ -166,7 +162,7 @@ export class PurchaseRequestsService {
         const pr = await this.findById(id);
         if (pr.status !== 'pending_hospital_approval')
             throw new ConflictException(
-                'This request is not awaiting hospital approval.',
+                'هذا الطلب ليس بانتظار موافقة المستشفى.',
             );
 
         const updated = await this.runGuarded(() =>
@@ -188,7 +184,7 @@ export class PurchaseRequestsService {
         const pr = await this.findById(id);
         if (pr.status !== 'pending_hospital_approval')
             throw new ConflictException(
-                'This request is not awaiting hospital approval.',
+                'هذا الطلب ليس بانتظار موافقة المستشفى.',
             );
 
         const updated = await this.runGuarded(() =>
@@ -212,9 +208,7 @@ export class PurchaseRequestsService {
     ) {
         const pr = await this.findById(id);
         if (pr.status !== 'pending_manager_approval')
-            throw new ConflictException(
-                'This request is not awaiting manager approval.',
-            );
+            throw new ConflictException('هذا الطلب ليس بانتظار موافقة المدير.');
 
         const itemIds = new Set(pr.items.map((i) => i.id));
         const dtoItemIds = new Set(
@@ -225,7 +219,7 @@ export class PurchaseRequestsService {
             ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
         ) {
             throw new BadRequestException(
-                'Approved quantities must be provided for exactly every item on this request.',
+                'يجب توفير الكميات الموافق عليها لكل عنصر في هذا الطلب بدقة.',
             );
         }
 
@@ -238,7 +232,7 @@ export class PurchaseRequestsService {
                 approval.approvedQuantity > Number(item.requestedQuantity)
             ) {
                 throw new BadRequestException(
-                    `Approved quantity for variant "${item.variant.variantName}" cannot exceed the requested quantity.`,
+                    `لا يمكن أن تتجاوز الكمية الموافق عليها للمنتج "${item.variant.variantName}" الكمية المطلوبة.`,
                 );
             }
         }
@@ -272,7 +266,7 @@ export class PurchaseRequestsService {
         if (pr.status === 'preparing') {
             if (pr.approvedById !== requestingUserId) {
                 throw new ForbiddenException(
-                    'Only the manager who approved this request can reject it.',
+                    'فقط المدير الذي وافق على هذا الطلب يمكنه رفضه.',
                 );
             }
 
@@ -282,7 +276,7 @@ export class PurchaseRequestsService {
                 );
             if (linkedReceipts > 0) {
                 throw new ConflictException(
-                    'Cannot reject once at least one receipt has been generated for this request -- complete it instead once all receipts are confirmed.',
+                    'لا يمكن الرفض بمجرد إنشاء إيصال واحد على الأقل لهذا الطلب - قم بإكماله بدلاً من ذلك بمجرد تأكيد جميع الإيصالات.',
                 );
             }
 
@@ -296,21 +290,19 @@ export class PurchaseRequestsService {
             return updated;
         }
 
-        throw new ConflictException(
-            'This request cannot be rejected from its current status.',
-        );
+        throw new ConflictException('لا يمكن رفض هذا الطلب من حالته الحالية.');
     }
 
     async complete(id: string, requestingUserId: string) {
         const pr = await this.findById(id);
         if (pr.status !== 'partially_complete') {
             throw new ConflictException(
-                'Only a request awaiting further batches can be manually completed.',
+                'يمكن إكمال الطلبات التي تنتظر دفعات إضافية يدوياً فقط.',
             );
         }
         if (pr.approvedById !== requestingUserId) {
             throw new ForbiddenException(
-                'Only the manager who approved this request can complete it.',
+                'فقط المدير الذي وافق على هذا الطلب يمكنه إكماله.',
             );
         }
 
@@ -320,7 +312,7 @@ export class PurchaseRequestsService {
             );
         if (pending > 0) {
             throw new ConflictException(
-                `Cannot complete yet -- ${pending} receipt(s) linked to this request are still awaiting confirmation from the receiver.`,
+                `لا يمكن الإكمال بعد - ${pending} إيصال (إيصالات) مرتبطة بهذا الطلب لا تزال بانتظار التأكيد من المستلم.`,
             );
         }
 
@@ -335,14 +327,14 @@ export class PurchaseRequestsService {
         const pr = await this.findById(id);
         if (!CANCELLABLE_STATUSES.includes(pr.status)) {
             throw new ConflictException(
-                `A request with status "${pr.status}" cannot be cancelled.`,
+                `لا يمكن إلغاء طلب بالحالة "${pr.status}".`,
             );
         }
 
         const ownerScope = await this.resolveOwnerScope(requestingUserId);
         if (ownerScope && pr.requestedById !== ownerScope) {
             throw new ForbiddenException(
-                'You can only cancel purchase requests you created.',
+                'يمكنك إلغاء طلبات الشراء التي أنشأتها أنت فقط.',
             );
         }
 
@@ -360,7 +352,7 @@ export class PurchaseRequestsService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;
@@ -373,14 +365,16 @@ export class PurchaseRequestsService {
                 variantIds,
             );
         if (variants.length !== variantIds.length)
-            throw new BadRequestException('One or more variants do not exist.');
+            throw new BadRequestException(
+                'واحد أو أكثر من المتغيرات غير موجود.',
+            );
 
         const inactive = variants.filter(
             (v) => !v.isActive || !v.product.isActive,
         );
         if (inactive.length > 0) {
             throw new BadRequestException(
-                'One or more selected variants (or their parent product) are inactive.',
+                'واحد أو أكثر من المتغيرات المحددة (أو المنتج الرئيسي المرتبط به) غير نشط.',
             );
         }
     }
@@ -395,8 +389,8 @@ export class PurchaseRequestsService {
             userId: pr.requestedById,
             type: NOTIFICATION_TYPES.PURCHASE_REQUEST_STATUS_CHANGED,
             category: 'purchasing',
-            title: 'Purchase request status updated',
-            body: `Purchase request ${pr.requestNumber} is now "${pr.status}".`,
+            title: 'تم تحديث حالة طلب الشراء',
+            body: `طلب الشراء ${pr.requestNumber} أصبح الآن "${pr.status}".`,
             data: { purchaseRequestId: pr.id, status: pr.status },
         });
     }

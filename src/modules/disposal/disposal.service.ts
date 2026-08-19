@@ -27,8 +27,7 @@ export class DisposalService {
     async getCandidates(departmentId: string) {
         const department =
             await this.departmentsCacheService.getById(departmentId);
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
 
         const [adjustments, nearExpiryRows] = await Promise.all([
             this.disposalRepository.findEligibleAdjustments(departmentId),
@@ -85,25 +84,22 @@ export class DisposalService {
     async findById(id: string) {
         const transfer = await this.disposalRepository.findById(id);
         if (!transfer)
-            throw new NotFoundException('Disposal transfer not found.');
+            throw new NotFoundException('عملية نقل الهالك غير موجودة.');
         return transfer;
     }
 
     async initiate(departmentId: string, initiatedById: string) {
         const department =
             await this.departmentsCacheService.getById(departmentId);
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.isActive)
-            throw new BadRequestException('Department is inactive.');
+            throw new BadRequestException('القسم غير نشط.');
         if (!department.tracksInventory) {
-            throw new BadRequestException(
-                'This department does not track inventory.',
-            );
+            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
         }
         if (department.type === 'disposal_warehouse') {
             throw new BadRequestException(
-                'The Disposal Warehouse cannot initiate a disposal transfer against itself.',
+                'لا يمكن لمستودع الهالك بدء عملية نقل هالك إلى نفسه.',
             );
         }
 
@@ -130,7 +126,7 @@ export class DisposalService {
         const transfer = await this.findById(id);
         if (transfer.status !== 'initiated') {
             throw new ConflictException(
-                'Only a transfer awaiting confirmation can be confirmed.',
+                'يمكن فقط تأكيد النقل الذي ينتظر التأكيد.',
             );
         }
 
@@ -143,7 +139,7 @@ export class DisposalService {
             ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
         ) {
             throw new BadRequestException(
-                'Confirmed quantities must be provided for exactly every item on this transfer.',
+                'يجب توفير الكميات المؤكدة لكل عنصر في عملية النقل هذه حصراً.',
             );
         }
 
@@ -153,14 +149,14 @@ export class DisposalService {
             );
             if (!item) {
                 throw new BadRequestException(
-                    'One or more items do not belong to this transfer.',
+                    'عنصر واحد أو أكثر لا ينتمي إلى عملية النقل هذه.',
                 );
             }
             if (
                 confirmedItem.confirmedQuantity > Number(item.shippedQuantity)
             ) {
                 throw new BadRequestException(
-                    'Confirmed quantity cannot exceed the shipped quantity.',
+                    'لا يمكن أن تتجاوز الكمية المؤكدة الكمية المشحونة.',
                 );
             }
             return {
@@ -175,9 +171,7 @@ export class DisposalService {
         const warehouse =
             await this.departmentsCacheService.getByType('disposal_warehouse');
         if (!warehouse) {
-            throw new BadRequestException(
-                'No Disposal Warehouse department is configured.',
-            );
+            throw new BadRequestException('لم يتم تكوين قسم مستودع الهالك.');
         }
 
         try {
@@ -204,7 +198,7 @@ export class DisposalService {
         const transfer = await this.findById(id);
         if (transfer.status !== 'initiated') {
             throw new ConflictException(
-                'Only a transfer awaiting confirmation can be cancelled.',
+                'يمكن فقط إلغاء النقل الذي ينتظر التأكيد.',
             );
         }
 

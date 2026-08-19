@@ -27,9 +27,7 @@ export class BatchesService {
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && dto.departmentId && dto.departmentId !== scope) {
-            throw new ForbiddenException(
-                'You can only view batches for your own department.',
-            );
+            throw new ForbiddenException('يمكنك فقط عرض الدفعات الخاصة بقسمك.');
         }
 
         const { items, total } = await this.batchesRepository.findMany({
@@ -50,7 +48,7 @@ export class BatchesService {
 
     async findById(id: string, requestingUserId: string) {
         const batch = await this.batchesRepository.findById(id);
-        if (!batch) throw new NotFoundException('Batch not found.');
+        if (!batch) throw new NotFoundException('الدفعة غير موجودة.');
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (!scope) return batch;
@@ -68,7 +66,8 @@ export class BatchesService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope)
+            throw new BadRequestException('المستخدم المطلوب غير موجود.');
 
         if (UNRESTRICTED_ROLES.includes(scope.roleName)) return null; // ❌ same missing check
         return scope.departmentId;

@@ -123,7 +123,7 @@ export class StockCountsRepository {
             });
             if (existingDraft) {
                 throw new AlreadyProcessedError(
-                    'This department already has a draft stock count in progress -- complete or cancel it before starting a new one.',
+                    'يحتوي هذا القسم بالفعل على مسودة جرد مخزون قيد التنفيذ -- يجدر إكمالها أو إلغاؤها قبل بدء واحدة جديدة.',
                 );
             }
 
@@ -144,12 +144,12 @@ export class StockCountsRepository {
             `;
             if (locked.length === 0) {
                 throw new AlreadyProcessedError(
-                    'This stock count no longer exists.',
+                    'جرد المخزون هذا لم يعد موجوداً.',
                 );
             }
             if (locked[0].status !== 'draft') {
                 throw new AlreadyProcessedError(
-                    'This stock count is no longer a draft -- it may have already been completed.',
+                    'عملية جرد المخزون هذه لم تعد مسودة -- ربما تم إكمالها مسبقاً.',
                 );
             }
 
@@ -211,7 +211,7 @@ export class StockCountsRepository {
             });
             if (claimed.count === 0) {
                 throw new AlreadyProcessedError(
-                    'This stock count has already been completed.',
+                    'تم إكمال جرد المخزون هذا مسبقاً.',
                 );
             }
 

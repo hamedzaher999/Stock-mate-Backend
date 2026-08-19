@@ -50,7 +50,7 @@ export class NotificationsService {
 
     async markRead(id: string, userId: string) {
         const owned = await this.notificationsRepository.findOwned(id, userId);
-        if (!owned) throw new NotFoundException('Notification not found.');
+        if (!owned) throw new NotFoundException('الإشعار غير موجود.');
         return this.notificationsRepository.markRead(id);
     }
 

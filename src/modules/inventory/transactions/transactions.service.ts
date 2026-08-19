@@ -32,7 +32,7 @@ export class TransactionsService {
             }
             if (dto.departmentId && dto.departmentId !== scope.departmentId) {
                 throw new ForbiddenException(
-                    'You can only view transactions for your own department.',
+                    'يمكنك فقط عرض المعاملات الخاصة بقسمك.',
                 );
             }
         }
@@ -64,7 +64,7 @@ export class TransactionsService {
     ): Promise<{ unrestricted: boolean; departmentId: string | null }> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         const unrestricted =
             scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName);

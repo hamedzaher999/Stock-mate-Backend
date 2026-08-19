@@ -33,7 +33,7 @@ export class DispensingService {
         }
         if (CLOSED_CYCLE_STATUSES.includes(prescription.currentCycleStatus)) {
             throw new ConflictException(
-                'The current cycle for this prescription is not open for dispensing.',
+                'الدورة الحالية لهذه الوصفة الطبية ليست مخصصة للصرف.',
             );
         }
 
@@ -41,7 +41,7 @@ export class DispensingService {
             await this.departmentsCacheService.getByType('pharmacy');
         if (!pharmacy) {
             throw new BadRequestException(
-                'No Pharmacy department is configured -- cannot dispense.',
+                'لم يتم إعداد قسم الصيدلية -- لا يمكن إجراء الصرف.',
             );
         }
 
@@ -64,7 +64,7 @@ export class DispensingService {
             );
             if (!item) {
                 throw new BadRequestException(
-                    'One or more items do not belong to this prescription.',
+                    'عنصر واحد أو أكثر لا ينتمي إلى هذه الوصفة الطبية.',
                 );
             }
 
@@ -73,7 +73,7 @@ export class DispensingService {
                 Number(item.prescribedQuantity) - alreadyThisCycle;
             if (inputItem.quantity > remaining) {
                 throw new BadRequestException(
-                    `Dispensed quantity exceeds what remains for this cycle (remaining: ${remaining}).`,
+                    `الكمية المصروفة تتجاوز المتبقي لهذه الدورة (المتبقي: ${remaining}).`,
                 );
             }
 
@@ -127,7 +127,7 @@ export class DispensingService {
             }
             if (error instanceof CycleAllowanceExceededError) {
                 throw new ConflictException(
-                    'The remaining allowance for this cycle changed before this request completed (likely a concurrent dispense) -- please refresh and try again.',
+                    'الكمية المتبقية المسموحة لهذه الدورة تغيرت قبل اكتمال هذا الطلب (يُحتمل وجود عملية صرف متزامنة) -- يرجى تحديث الصفحة والمحاولة مرة أخرى.',
                 );
             }
             throw error;

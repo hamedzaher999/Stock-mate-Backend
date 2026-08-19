@@ -58,7 +58,7 @@ export class RefillRequestsService {
             dto.departmentId !== departmentScope
         ) {
             throw new ForbiddenException(
-                'You can only view refill requests from your own department.',
+                'يمكنك فقط عرض طلبات التزويد الخاصة بقسمك.',
             );
         }
 
@@ -93,7 +93,7 @@ export class RefillRequestsService {
             await this.resolveDepartmentScope(requestingUserId);
         if (departmentScope && request.departmentId !== departmentScope) {
             throw new ForbiddenException(
-                'You can only view refill requests from your own department.',
+                'يمكنك فقط عرض طلبات التزويد الخاصة بقسمك.',
             );
         }
 
@@ -106,12 +106,12 @@ export class RefillRequestsService {
         const requestType = dto.requestType ?? 'normal';
         if (requestType === 'normal' && dto.frequencyInterval) {
             throw new BadRequestException(
-                'frequencyInterval only applies to recurring (non-normal) requests.',
+                'فترة التكرار تنطبق فقط على الطلبات المتكررة (غير العادية).',
             );
         }
         if (requestType !== 'normal' && !dto.frequencyInterval) {
             throw new BadRequestException(
-                'frequencyInterval (the period count) is required for a recurring request.',
+                'فترة التكرار (عدد الفترات) مطلوبة للطلب المتكرر.',
             );
         }
 
@@ -119,7 +119,7 @@ export class RefillRequestsService {
             await this.userScopeService.getUserScope(requestedById);
         if (!requesterScope?.departmentId) {
             throw new BadRequestException(
-                'You must be assigned to a department to create a refill request.',
+                'يجب تعيينك إلى قسم لتنفيذ طلب تزويد.',
             );
         }
 
@@ -128,18 +128,16 @@ export class RefillRequestsService {
         );
         if (!department) {
             throw new BadRequestException(
-                'You must be assigned to a department to create a refill request.',
+                'يجب تعيينك إلى قسم لتنفيذ طلب تزويد.',
             );
         }
         if (department.type === 'central_warehouse') {
             throw new BadRequestException(
-                'The Central Warehouse does not submit refill requests -- it fulfills them.',
+                'المستودع المركزي لا يقدم طلبات تزويد -- بل يقوم بتلبيتها.',
             );
         }
         if (!department.isActive) {
-            throw new BadRequestException(
-                'Your department is currently inactive.',
-            );
+            throw new BadRequestException('قسمك غير مفعل حالياً.');
         }
 
         await this.assertVariantsConfiguredForDepartment(
@@ -167,12 +165,12 @@ export class RefillRequestsService {
         const request = await this.findById(id);
         if (request.status !== 'draft')
             throw new ConflictException(
-                'Only draft refill requests can be edited.',
+                'يمكن تعديل طلبات التزويد المسودة فقط.',
             );
 
         if (request.requestedById !== requestingUserId) {
             throw new ForbiddenException(
-                'You can only edit refill requests you created.',
+                'يمكنك فقط تعديل طلبات التزويد التي أنشأتها.',
             );
         }
 
@@ -196,16 +194,16 @@ export class RefillRequestsService {
         const request = await this.findById(id);
         if (request.status !== 'draft')
             throw new ConflictException(
-                'Only draft refill requests can be submitted.',
+                'يمكن تقديم طلبات التزويد المسودة فقط.',
             );
         if (request.items.length === 0)
             throw new BadRequestException(
-                'Cannot submit a refill request with no items.',
+                'لا يمكن تقديم طلب تزويد بدون عناصر.',
             );
 
         if (request.requestedById !== requestingUserId) {
             throw new ForbiddenException(
-                'You can only submit refill requests you created.',
+                'يمكنك فقط تقديم طلبات التزويد التي أنشأتها.',
             );
         }
 
@@ -275,7 +273,7 @@ export class RefillRequestsService {
             ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
         ) {
             throw new BadRequestException(
-                'Approved quantities must be provided for exactly every item on this request.',
+                'يجب توفير الكميات الموافق عليها لكل عنصر في هذا الطلب بدقة.',
             );
         }
 
@@ -288,7 +286,7 @@ export class RefillRequestsService {
                 approval.approvedQuantity > Number(item.requestedQuantity)
             ) {
                 throw new BadRequestException(
-                    `Approved quantity for variant "${item.variant.variantName}" cannot exceed the requested quantity.`,
+                    `الكمية الموافق عليها للبديل "${item.variant.variantName}" لا يمكن أن تتجاوز الكمية المطلوبة.`,
                 );
             }
         }
@@ -299,12 +297,12 @@ export class RefillRequestsService {
 
         if (isNewRecurringProposal && !dto.approvalPolicy) {
             throw new BadRequestException(
-                'approvalPolicy is required to approve a new recurring refill schedule.',
+                'سياسة الموافقة مطلوبة للموافقة على جدول تزويد متكرر جديد.',
             );
         }
         if (!isNewRecurringProposal && dto.approvalPolicy) {
             throw new BadRequestException(
-                'approvalPolicy only applies when approving a brand-new recurring schedule proposal.',
+                'سياسة الموافقة تنطبق فقط عند الموافقة على مقترح جدول متكرر جديد تماماً.',
             );
         }
 
@@ -341,7 +339,7 @@ export class RefillRequestsService {
         if (request.status === 'preparing') {
             if (request.approvedById !== requestingUserId) {
                 throw new ForbiddenException(
-                    'Only the manager who approved this request can reject it.',
+                    'فقط المدير الذي وافق على هذا الطلب يمكنه رفضه.',
                 );
             }
 
@@ -351,7 +349,7 @@ export class RefillRequestsService {
                 );
             if (linkedDeliveries > 0) {
                 throw new ConflictException(
-                    'Cannot reject once at least one delivery has been generated for this request -- complete it instead once all deliveries are confirmed.',
+                    'لا يمكن الرفض بمجرد إنشاء عملية تسليم واحدة على الأقل لهذا الطلب -- قم بإكماله بدلاً من ذلك بمجرد تأكيد جميع عمليات التسليم.',
                 );
             }
 
@@ -365,21 +363,19 @@ export class RefillRequestsService {
             return updated;
         }
 
-        throw new ConflictException(
-            'This request cannot be rejected from its current status.',
-        );
+        throw new ConflictException('لا يمكن رفض هذا الطلب من حالته الحالية.');
     }
 
     async complete(id: string, requestingUserId: string) {
         const request = await this.findById(id);
         if (request.status !== 'partially_complete') {
             throw new ConflictException(
-                'Only a request awaiting further batches can be manually completed.',
+                'يمكن إكمال الطلبات التي تنتظر دفعات إضافية يدوياً فقط.',
             );
         }
         if (request.approvedById !== requestingUserId) {
             throw new ForbiddenException(
-                'Only the manager who approved this request can complete it.',
+                'فقط المدير الذي وافق على هذا الطلب يمكنه إكماله.',
             );
         }
 
@@ -389,7 +385,7 @@ export class RefillRequestsService {
             );
         if (pending > 0) {
             throw new ConflictException(
-                `Cannot complete yet -- ${pending} delivery(ies) linked to this request are still awaiting confirmation from the receiving department.`,
+                `لا يمكن الإكمال بعد -- ${pending} من عمليات التسليم المرتبطة بهذا الطلب لا تزال تنتظر التأكيد من القسم المستلم.`,
             );
         }
 
@@ -404,7 +400,7 @@ export class RefillRequestsService {
         const request = await this.findById(id);
         if (!CANCELLABLE_STATUSES.includes(request.status)) {
             throw new ConflictException(
-                `A request with status "${request.status}" cannot be cancelled.`,
+                `لا يمكن إلغاء طلب بالحالة "${request.status}".`,
             );
         }
         if (request.requestedById !== requestingUserId) {
@@ -427,14 +423,14 @@ export class RefillRequestsService {
                 variantIds,
             );
         if (variants.length !== variantIds.length)
-            throw new BadRequestException('One or more variants do not exist.');
+            throw new BadRequestException('بديل واحد أو أكثر غير موجود.');
 
         const inactive = variants.filter(
             (v) => !v.isActive || !v.product.isActive,
         );
         if (inactive.length > 0) {
             throw new BadRequestException(
-                'One or more selected variants (or their parent product) are inactive.',
+                'بديل واحد أو أكثر من البدائل المختارة (أو المنتج الأساسي التابع لها) غير مفعل.',
             );
         }
     }
@@ -460,7 +456,7 @@ export class RefillRequestsService {
 
         const item = await this.refillRequestsRepository.findItemById(itemId);
         if (!item || item.refillRequestId !== refillRequestId) {
-            throw new NotFoundException('Refill item not found.');
+            throw new NotFoundException('لم يتم العثور على عنصر التزويد.');
         }
 
         return item;
@@ -505,7 +501,7 @@ export class RefillRequestsService {
 
         if (unconfigured.length > 0) {
             throw new BadRequestException(
-                `The following variant(s) are not configured as active stock items for this department: ${unconfigured.join(', ')}.`,
+                `البدائل التالية غير مُكوّنة كعناصر مخزون نشطة لهذا القسم: ${unconfigured.join(', ')}.`,
             );
         }
     }

@@ -71,7 +71,7 @@ export class DepartmentsService {
         const config = SELECTABLE_CONTEXTS[context];
         if (!config) {
             throw new BadRequestException(
-                `Unknown department selection context "${context}".`,
+                `سياق اختيار القسم غير معروف "${context}".`,
             );
         }
         return this.resolveSelectable(requestingUserId, config);
@@ -86,7 +86,7 @@ export class DepartmentsService {
     ) {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         const canViewAll =
             scope.isSuperAdmin ||
@@ -225,7 +225,7 @@ export class DepartmentsService {
 
         if (!dto.isActive && SINGLETON_TYPES.includes(department.type)) {
             throw new BadRequestException(
-                `The ${department.type.replace('_', ' ')} cannot be deactivated -- it is required for core operations.`,
+                `لا يمكن إلغاء تفعيل ${department.type.replace('_', ' ')} -- فهو مطلوب العمليات الأساسية.`,
             );
         }
 

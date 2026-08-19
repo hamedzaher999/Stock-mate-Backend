@@ -66,7 +66,7 @@ export class SuppliersService {
     }
     async findById(id: string) {
         const supplier = await this.suppliersRepository.findById(id);
-        if (!supplier) throw new NotFoundException('Supplier not found.');
+        if (!supplier) throw new NotFoundException('المورد غير موجود.');
         return supplier;
     }
 
@@ -79,7 +79,7 @@ export class SuppliersService {
                 );
             if (duplicatePhone) {
                 throw new ConflictException(
-                    'A supplier with this name and phone number already exists.',
+                    'يوجد مورد بنفس الاسم ورقم الهاتف مسبقاً.',
                 );
             }
         }
@@ -92,7 +92,7 @@ export class SuppliersService {
                 );
             if (duplicateEmail) {
                 throw new ConflictException(
-                    'A supplier with this name and email already exists.',
+                    'يوجد مورد بنفس الاسم والبريد الإلكتروني مسبقاً.',
                 );
             }
         }
@@ -114,7 +114,7 @@ export class SuppliersService {
                     );
                 if (duplicatePhone && duplicatePhone.id !== id) {
                     throw new ConflictException(
-                        'A supplier with this name and phone number already exists.',
+                        'يوجد مورد بنفس الاسم ورقم الهاتف مسبقاً.',
                     );
                 }
             }
@@ -130,7 +130,7 @@ export class SuppliersService {
                     );
                 if (duplicateEmail && duplicateEmail.id !== id) {
                     throw new ConflictException(
-                        'A supplier with this name and email already exists.',
+                        'يوجد مورد بنفس الاسم والبريد الإلكتروني مسبقاً.',
                     );
                 }
             }

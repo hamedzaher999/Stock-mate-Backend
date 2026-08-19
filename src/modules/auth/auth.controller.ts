@@ -111,7 +111,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async me(@CurrentUser() user: AuthenticatedUser) {
         const data = await this.authService.me(user.sub);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Get('sessions')
@@ -121,7 +121,7 @@ export class AuthController {
             user.sub,
             user.sessionId,
         );
-        return { message: 'Success', data };
+        return { message: 'تم جلب الجلسات بنجاح.', data };
     }
 
     @Delete('sessions/:sessionId')

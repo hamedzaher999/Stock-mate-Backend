@@ -67,7 +67,7 @@ export class VariantsService {
         if (!product) throw new BadRequestException('المنتج غير موجود.');
         if (!product.isActive) {
             throw new BadRequestException(
-                'Cannot create a variant under an inactive product.',
+                'لا يمكن إنشاء متغير تحت منتج غير نشط.',
             );
         }
 
@@ -92,7 +92,7 @@ export class VariantsService {
 
         if (dto.unitId) {
             const unit = await this.variantsRepository.unitExists(dto.unitId);
-            if (!unit) throw new BadRequestException('Unit does not exist.');
+            if (!unit) throw new BadRequestException('الوحدة غير موجودة.');
         }
 
         const updated = await this.variantsRepository.update(id, dto);
@@ -147,7 +147,7 @@ export class VariantsService {
 
     private async assertExists(id: string) {
         const variant = await this.variantsRepository.findById(id);
-        if (!variant) throw new NotFoundException('Variant not found.');
+        if (!variant) throw new NotFoundException('المتغير غير موجود.');
         return variant;
     }
 }

@@ -202,7 +202,7 @@ export class DisposalRepository {
                 nearExpiryRows.length === 0
             ) {
                 throw new BadRequestException(
-                    'Nothing is currently eligible for disposal in this department.',
+                    'لا يوجد أي عناصر مؤهلة للتخلص منها في هذا القسم حالياً.',
                 );
             }
 
@@ -273,7 +273,7 @@ export class DisposalRepository {
 
             if (itemsCreated === 0) {
                 throw new BadRequestException(
-                    'Nothing is currently eligible for disposal in this department.',
+                    'لا يوجد أي عناصر مؤهلة للتخلص منها في هذا القسم حالياً.',
                 );
             }
 
@@ -309,7 +309,7 @@ export class DisposalRepository {
             });
             if (claimed.count === 0) {
                 throw new AlreadyProcessedError(
-                    'This disposal transfer has already been confirmed or cancelled.',
+                    'تم تأكيد نقل الهالك هذا أو إلغاؤه مسبقاً.',
                 );
             }
 

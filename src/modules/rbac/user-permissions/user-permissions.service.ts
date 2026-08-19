@@ -36,7 +36,7 @@ export class UserPermissionsService {
     ) {
         if (targetUserId === grantedById) {
             throw new BadRequestException(
-                'You cannot modify your own permission overrides.',
+                'لا يمكنك تعديل استثناءات الصلاحيات الخاصة بك.',
             );
         }
 
@@ -45,8 +45,7 @@ export class UserPermissionsService {
         const [permission] = await this.permissionsRepository.findByCodes([
             dto.permissionCode,
         ]);
-        if (!permission)
-            throw new NotFoundException('Permission code not found.');
+        if (!permission) throw new NotFoundException('رمز الصلاحية غير موجود.');
 
         const result = await this.userPermissionsRepository.upsert({
             userId: targetUserId,
@@ -90,7 +89,7 @@ export class UserPermissionsService {
     async resetToDefault(targetUserId: string, requestingUserId: string) {
         if (targetUserId === requestingUserId) {
             throw new BadRequestException(
-                'You cannot reset your own permission overrides.',
+                'لا يمكنك إعادة تعيين استثناءات الصلاحيات الخاصة بك.',
             );
         }
 
@@ -161,9 +160,7 @@ export class UserPermissionsService {
         reason?: string,
     ) {
         if (targetUserId === requesterId) {
-            throw new BadRequestException(
-                'You cannot revoke all of your own permissions.',
-            );
+            throw new BadRequestException('لا يمكنك سحب جميع صلاحياتك بنفسك.');
         }
 
         const target = await this.assertManageableTarget(targetUserId);
@@ -206,7 +203,7 @@ export class UserPermissionsService {
 
         const sourceRole = await this.rolesRepository.findById(sourceRoleId);
         if (!sourceRole)
-            throw new BadRequestException('Source role does not exist.');
+            throw new BadRequestException('الدور المصدر غير موجود.');
 
         const sourceCodes =
             await this.userPermissionsRepository.findRolePermissionCodes(
@@ -239,7 +236,7 @@ export class UserPermissionsService {
                 permissionId: permission.id,
                 effect: 'grant',
                 grantedById: requesterId,
-                reason: reason ?? `Copied from role "${sourceRole.name}"`,
+                reason: reason ?? `تم النسخ من الدور "${sourceRole.name}"`,
             });
         }
 
@@ -250,10 +247,10 @@ export class UserPermissionsService {
     private async assertManageableTarget(targetUserId: string) {
         const target =
             await this.userPermissionsRepository.findUserRole(targetUserId);
-        if (!target) throw new NotFoundException('User not found.');
+        if (!target) throw new NotFoundException('المستخدم غير موجود.');
         if (target.role.isSuperAdmin) {
             throw new BadRequestException(
-                'The super-admin account already has full access -- overrides do not apply to it.',
+                'حساب المدير الخارق يمتلك صلاحيات كاملة مسبقاً - لا تنطبق الاستثناءات عليه.',
             );
         }
         return target;

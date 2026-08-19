@@ -37,7 +37,7 @@ export class StockCountsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && dto.departmentId && dto.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view stock counts for your own department.',
+                'يمكنك فقط عرض عمليات جرد المخزون الخاصة بقسمك.',
             );
         }
 
@@ -60,12 +60,12 @@ export class StockCountsService {
     async findById(id: string, requestingUserId: string) {
         const session = await this.stockCountsRepository.findById(id);
         if (!session)
-            throw new NotFoundException('Stock count session not found.');
+            throw new NotFoundException('جلسة جرد المخزون غير موجودة.');
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && session.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view stock counts for your own department.',
+                'يمكنك فقط عرض عمليات جرد المخزون الخاصة بقسمك.',
             );
         }
 
@@ -76,14 +76,11 @@ export class StockCountsService {
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.isActive)
-            throw new BadRequestException('Department is inactive.');
+            throw new BadRequestException('القسم غير نشط.');
         if (!department.tracksInventory) {
-            throw new BadRequestException(
-                'This department does not track inventory.',
-            );
+            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
         }
 
         await this.assertDepartmentScope(initiatedById, dto.departmentId);
@@ -94,7 +91,7 @@ export class StockCountsService {
             );
         if (existingDraft) {
             throw new ConflictException(
-                `This department already has a draft stock count in progress (started ${existingDraft.createdAt.toISOString()}). Complete or cancel it before starting a new one.`,
+                `يحتوي هذا القسم بالفعل على مسودة جرد مخزون قيد التنفيذ (بدأت في ${existingDraft.createdAt.toISOString()}). يرجى إكمالها أو إلغاؤها قبل بدء واحدة جديدة.`,
             );
         }
 
@@ -121,24 +118,24 @@ export class StockCountsService {
         const session = await this.findById(sessionId, requestingUserId);
         if (session.status !== 'draft')
             throw new ConflictException(
-                'Cannot add items to a completed stock count.',
+                'لا يمكن إضافة عناصر إلى عملية جرد مخزون مكتملة.',
             );
 
         const variant = await this.stockCountsRepository.findVariant(
             dto.variantId,
         );
-        if (!variant) throw new BadRequestException('Variant does not exist.');
+        if (!variant) throw new BadRequestException('المتغير غير موجود.');
 
         if (!dto.batchId) {
             throw new BadRequestException(
-                'A batchId is required for stock counting.',
+                'معرف الدفعة (batchId) مطلوب لعملية جرد المخزون.',
             );
         }
         const batch = await this.stockCountsRepository.findBatch(dto.batchId);
-        if (!batch) throw new BadRequestException('Batch does not exist.');
+        if (!batch) throw new BadRequestException('الدفعة (Batch) غير موجودة.');
         if (batch.variantId !== dto.variantId) {
             throw new BadRequestException(
-                'Batch does not match the given variant.',
+                'الدفعة لا تتطابق مع المتغير المحدد.',
             );
         }
 
@@ -167,12 +164,12 @@ export class StockCountsService {
         const session = await this.findById(sessionId, requestingUserId);
         if (session.status !== 'draft')
             throw new ConflictException(
-                'Cannot edit items on a completed stock count.',
+                'لا يمكن تعديل العناصر في عملية جرد مخزون مكتملة.',
             );
 
         const item = await this.stockCountsRepository.findItemById(itemId);
         if (!item || item.sessionId !== sessionId)
-            throw new NotFoundException('Stock count item not found.');
+            throw new NotFoundException('عنصر جرد المخزون غير موجود.');
 
         return this.stockCountsRepository.updateItem(
             itemId,
@@ -185,15 +182,13 @@ export class StockCountsService {
     async complete(sessionId: string, requestingUserId: string) {
         const session = await this.findById(sessionId, requestingUserId);
         if (session.status !== 'draft')
-            throw new ConflictException(
-                'This stock count has already been completed.',
-            );
+            throw new ConflictException('تم إكمال جرد المخزون هذا مسبقاً.');
 
         const itemCount =
             await this.stockCountsRepository.countItems(sessionId);
         if (itemCount === 0)
             throw new BadRequestException(
-                'Cannot complete a stock count with no items.',
+                'لا يمكن إكمال جرد مخزون لا يحتوي على أي عناصر.',
             );
 
         try {
@@ -207,7 +202,7 @@ export class StockCountsService {
             }
             if (error instanceof InsufficientStockError) {
                 throw new ConflictException(
-                    'Cannot complete this stock count -- live stock has changed since counting and is now insufficient to apply a shrinkage adjustment for one or more items. Please review current stock levels first.',
+                    'تعذر إكمال عملية الجرد -- لقد تغير المخزون المباشر منذ عملية العد وأصبح غير كافٍ لتطبيق تسوية العجز لعنصر واحد أو أكثر. يرجى مراجعة مستويات المخزون الحالية أولاً.',
                 );
             }
             throw error;
@@ -218,7 +213,7 @@ export class StockCountsService {
         const session = await this.findById(sessionId, requestingUserId);
         if (session.status !== 'draft') {
             throw new ConflictException(
-                'Only a draft stock count can be cancelled -- a completed count is a permanent record.',
+                'يمكن فقط إلغاء مسودة جرد المخزون -- الجرد المكتمل يعد سجلاً دائماً.',
             );
         }
 
@@ -237,7 +232,7 @@ export class StockCountsService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;
@@ -251,7 +246,7 @@ export class StockCountsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException(
-                'You can only initiate stock counts for your own department.',
+                'يمكنك بدء عمليات جرد المخزون لقسمك فقط.',
             );
         }
     }

@@ -56,7 +56,7 @@ export class UsersService {
 
     async findById(id: string) {
         const user = await this.usersRepository.findById(id);
-        if (!user) throw new NotFoundException('User not found.');
+        if (!user) throw new NotFoundException('المستخدم غير موجود.');
         return user;
     }
 
@@ -69,13 +69,13 @@ export class UsersService {
 
     async create(dto: CreateUserDto, createdById: string) {
         const role = await this.usersRepository.findRoleById(dto.roleId);
-        if (!role) throw new BadRequestException('Role does not exist.');
+        if (!role) throw new BadRequestException('الدور غير موجود.');
         if (!role.isActive)
-            throw new BadRequestException('Cannot assign an inactive role.');
+            throw new BadRequestException('لا يمكن تعيين دور غير نشط.');
 
         if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
             throw new ConflictException(
-                'The Hospital Manager account is a fixed, singular master account and cannot be created.',
+                'حساب مدير المستشفى هو حساب رئيسي ثابت وفريد ولا يمكن إنشاؤه.',
             );
         }
 
@@ -83,19 +83,14 @@ export class UsersService {
             const department = await this.usersRepository.departmentExists(
                 dto.departmentId,
             );
-            if (!department)
-                throw new BadRequestException('Department does not exist.');
+            if (!department) throw new BadRequestException('القسم غير موجود.');
         }
 
         if (role.name === DOCTOR_ROLE_NAME) {
             if (!dto.departmentId)
-                throw new BadRequestException(
-                    'Doctors must be assigned to a department.',
-                );
+                throw new BadRequestException('يجب تعيين الأطباء إلى قسم.');
             if (!dto.specialty)
-                throw new BadRequestException(
-                    'Doctors must have a specialty specified.',
-                );
+                throw new BadRequestException('يجب تحديد تخصص للأطباء.');
         }
 
         const duplicate = await this.usersRepository.findByPhoneOrEmail(
@@ -104,7 +99,7 @@ export class UsersService {
         );
         if (duplicate)
             throw new ConflictException(
-                'A user with this phone or email already exists.',
+                'يوجد مستخدم برقم الهاتف أو البريد الإلكتروني هذا مسبقاً.',
             );
 
         return this.usersRepository.create({
@@ -127,21 +122,19 @@ export class UsersService {
             dto.roleId !== existing.roleId
         ) {
             throw new BadRequestException(
-                "The Hospital Manager account's role cannot be changed.",
+                'لا يمكن تغيير دور حساب مدير المستشفى.',
             );
         }
 
         if (dto.roleId) {
             const role = await this.usersRepository.findRoleById(dto.roleId);
-            if (!role) throw new BadRequestException('Role does not exist.');
+            if (!role) throw new BadRequestException('الدور غير موجود.');
             if (!role.isActive)
-                throw new BadRequestException(
-                    'Cannot assign an inactive role.',
-                );
+                throw new BadRequestException('لا يمكن تعيين دور غير نشط.');
 
             if (role.name === HOSPITAL_MANAGER_ROLE_NAME) {
                 throw new ConflictException(
-                    'The Hospital Manager role cannot be assigned -- it is a fixed, singular master account.',
+                    'لا يمكن تعيين دور مدير المستشفى -- فهو حساب رئيسي ثابت وفريد.',
                 );
             }
 
@@ -155,7 +148,7 @@ export class UsersService {
                 (!effectiveDepartmentId || !effectiveSpecialty)
             ) {
                 throw new BadRequestException(
-                    'Doctors must have both a department and a specialty.',
+                    'يجب أن يمتلك الأطباء قسماً وتخصصاً معاً.',
                 );
             }
         }
@@ -164,8 +157,7 @@ export class UsersService {
             const department = await this.usersRepository.departmentExists(
                 dto.departmentId,
             );
-            if (!department)
-                throw new BadRequestException('Department does not exist.');
+            if (!department) throw new BadRequestException('القسم غير موجود.');
         }
 
         if (dto.phone || dto.email) {
@@ -177,7 +169,7 @@ export class UsersService {
                 );
             if (duplicate)
                 throw new ConflictException(
-                    'A user with this phone or email already exists.',
+                    'يوجد مستخدم برقم الهاتف أو البريد الإلكتروني هذا مسبقاً.',
                 );
         }
 
@@ -199,9 +191,7 @@ export class UsersService {
         requestingUserId: string,
     ) {
         if (id === requestingUserId && dto.status === 'inactive') {
-            throw new ForbiddenException(
-                'You cannot deactivate your own account.',
-            );
+            throw new ForbiddenException('لا يمكنك إلغاء تنشيط حسابك الشخصي.');
         }
 
         const target = await this.findById(id);
@@ -211,14 +201,12 @@ export class UsersService {
             dto.status === 'inactive'
         ) {
             throw new ForbiddenException(
-                'The Hospital Manager account can never be deactivated.',
+                'لا يمكن أبداً إلغاء تنشيط حساب مدير المستشفى.',
             );
         }
 
         const updated = await this.usersRepository.updateStatus(id, dto.status);
 
-        // أمان: عند تعطيل المستخدم، أنهِ كل جلساته النشطة فورًا بدل انتظار
-        // انتهاء صلاحية الـ access token (حتى 3 ساعات).
         if (dto.status === 'inactive') {
             await this.sessionsService.revokeAllForUser(id);
         }
@@ -229,7 +217,7 @@ export class UsersService {
     async updateMe(userId: string, dto: UpdateMeDto) {
         if (!dto.phone && !dto.email) {
             throw new BadRequestException(
-                'Provide a phone or email to update.',
+                'يرجى توفير رقم هاتف أو بريد إلكتروني للتحديث.',
             );
         }
 
@@ -241,7 +229,7 @@ export class UsersService {
             );
         if (duplicate)
             throw new ConflictException(
-                'A user with this phone or email already exists.',
+                'يوجد مستخدم برقم الهاتف أو البريد الإلكتروني هذا مسبقاً.',
             );
 
         return this.usersRepository.update(userId, dto);

@@ -35,7 +35,7 @@ export class StockSettingsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && dto.departmentId && dto.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view stock settings for your own department.',
+                'يمكنك فقط عرض إعدادات المخزون الخاصة بقسمك.',
             );
         }
 
@@ -65,7 +65,7 @@ export class StockSettingsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && setting.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view stock settings for your own department.',
+                'يمكنك فقط عرض إعدادات المخزون الخاصة بقسمك.',
             );
         }
 
@@ -78,11 +78,10 @@ export class StockSettingsService {
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.isActive) {
             throw new BadRequestException(
-                'Cannot configure stock settings for an inactive department.',
+                'لا يمكن تكوين إعدادات المخزون لقسم غير نشط.',
             );
         }
 
@@ -99,7 +98,7 @@ export class StockSettingsService {
                 results.push({
                     variantId: item.variantId,
                     success: false,
-                    error: 'Duplicate variantId in this request -- only the first occurrence was processed.',
+                    error: 'معرف الصنف (variantId) مكرر في هذا الطلب -- تمت معالجة الظهور الأول فقط.',
                 });
                 return false;
             }
@@ -126,16 +125,16 @@ export class StockSettingsService {
 
                 const variant = variantById.get(item.variantId);
                 if (!variant) {
-                    throw new BadRequestException('Variant does not exist.');
+                    throw new BadRequestException('الصنف غير موجود.');
                 }
                 if (!variant.isActive || !variant.product.isActive) {
                     throw new BadRequestException(
-                        'Cannot configure stock settings for an inactive variant.',
+                        'لا يمكن تكوين إعدادات المخزون لصنف غير نشط.',
                     );
                 }
                 if (existingVariantIds.has(item.variantId)) {
                     throw new ConflictException(
-                        'This variant is already configured for this department.',
+                        'هذا الصنف مُكوَّن مسبقاً لهذا القسم.',
                     );
                 }
 
@@ -167,7 +166,7 @@ export class StockSettingsService {
 
         if (createdCount === 0) {
             throw new BadRequestException({
-                message: 'All stock setting items failed to create.',
+                message: 'فشل إنشاء جميع عناصر إعدادات المخزون.',
                 results,
             });
         }
@@ -180,7 +179,7 @@ export class StockSettingsService {
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
         ) {
-            return 'This variant is already configured for this department.';
+            return 'هذا الصنف مُكوَّن مسبقاً لهذا القسم.';
         }
         if (
             error instanceof BadRequestException ||
@@ -198,7 +197,7 @@ export class StockSettingsService {
             }
             return error.message;
         }
-        return 'Failed to create stock setting.';
+        return 'فشل إنشاء إعداد المخزون.';
     }
     async update(
         id: string,
@@ -246,14 +245,14 @@ export class StockSettingsService {
 
     private async fetchById(id: string) {
         const setting = await this.stockSettingsRepository.findById(id);
-        if (!setting) throw new NotFoundException('Stock setting not found.');
+        if (!setting) throw new NotFoundException('إعداد المخزون غير موجود.');
         return setting;
     }
 
     private assertValidRange(min?: number, max?: number) {
         if (min !== undefined && max !== undefined && min > max) {
             throw new BadRequestException(
-                'minimumStock cannot be greater than maximumStock.',
+                'لا يمكن أن يكون الحد الأدنى للمخزون أكبر من الحد الأقصى.',
             );
         }
     }
@@ -263,7 +262,7 @@ export class StockSettingsService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;
@@ -277,7 +276,7 @@ export class StockSettingsService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException(
-                'You can only manage stock settings for your own department.',
+                'يمكنك فقط إدارة إعدادات المخزون الخاصة بقسمك.',
             );
         }
     }

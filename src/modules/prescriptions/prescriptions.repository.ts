@@ -143,7 +143,7 @@ export class PrescriptionsRepository {
             });
             if (claimed.count === 0) {
                 throw new AlreadyProcessedError(
-                    'This prescription was already updated by another request.',
+                    'تم تحديث هذه الوصفة الطبية بالفعل بواسطة طلب آخر.',
                 );
             }
 
@@ -184,7 +184,7 @@ export class PrescriptionsRepository {
             });
             if (claimed.count === 0) {
                 throw new AlreadyProcessedError(
-                    'This prescription was already updated by another request.',
+                    'تم تحديث هذه الوصفة الطبية بالفعل بواسطة طلب آخر.',
                 );
             }
 

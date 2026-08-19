@@ -22,8 +22,8 @@ export class EmailOtpSender implements OtpSender {
         const { data, error } = await this.resend.emails.send({
             from: this.fromAddress,
             to: destination,
-            subject: 'Your Red Crescent verification code',
-            text: `Your verification code is: ${code}. It expires in 5 minutes.`,
+            subject: 'رمز التحقق الخاص بالهلال الأحمر',
+            text: `رمز التحقق الخاص بك هو: ${code}. تنتهي صلاحيته خلال 5 دقائق.`,
         });
 
         if (error) {

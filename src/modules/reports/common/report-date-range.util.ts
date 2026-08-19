@@ -15,7 +15,7 @@ export function resolveReportDateRange(
 
     if (from.getTime() > to.getTime()) {
         throw new BadRequestException(
-            '"from" date must be before or equal to "to" date.',
+            'يجب أن يكون تاريخ "من" سابقاً أو مساوياً لتاريخ "إلى".',
         );
     }
 

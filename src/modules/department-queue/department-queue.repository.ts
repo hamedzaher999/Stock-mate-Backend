@@ -130,7 +130,7 @@ export class DepartmentQueueRepository {
                     error.code === 'P2002'
                 ) {
                     throw new ConflictException(
-                        'This patient already has an active queue entry in this department.',
+                        'هذا المريض لديه بالفعل إدخال نشط في قائمة الانتظار لهذا القسم.',
                     );
                 }
                 throw error;
@@ -148,7 +148,7 @@ export class DepartmentQueueRepository {
         });
         if (claimed.count === 0) {
             throw new AlreadyProcessedError(
-                'This patient is no longer waiting -- someone else may have already selected them.',
+                'هذا المريض لم يعد في الانتظار -- ربما قام شخص آخر باختياره بالفعل.',
             );
         }
         return this.prisma.departmentQueue.findUniqueOrThrow({

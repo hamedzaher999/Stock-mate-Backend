@@ -136,23 +136,21 @@ export class PurchaseReceivingService {
         receiptImages: Express.Multer.File[],
     ) {
         if (!receiptImages || receiptImages.length === 0) {
-            throw new BadRequestException(
-                'At least one receipt image is required.',
-            );
+            throw new BadRequestException('مطلوب صورة إيصال واحدة على الأقل.');
         }
 
         const maxImages =
             this.configService.get<number>('PURCHASE_RECEIPT_MAX_IMAGES') ?? 10;
         if (receiptImages.length > maxImages) {
             throw new BadRequestException(
-                `A purchase receipt can have at most ${maxImages} images.`,
+                `يمكن أن يحتوي إيصال الشراء على ${maxImages} صور كحد أقصى.`,
             );
         }
 
         for (const file of receiptImages) {
             if (!detectImageMimeType(file.buffer)) {
                 throw new BadRequestException(
-                    'One or more uploaded files are not a valid JPEG, PNG, or WEBP image.',
+                    'واحد أو أكثر من الملفات المرفوعة ليس صورة صالحة من نوع JPEG أو PNG أو WEBP.',
                 );
             }
         }
@@ -161,12 +159,9 @@ export class PurchaseReceivingService {
             await this.purchaseReceivingRepository.findRequestForReceiving(
                 dto.purchaseRequestId,
             );
-        if (!request)
-            throw new BadRequestException('Purchase request does not exist.');
+        if (!request) throw new BadRequestException('طلب الشراء غير موجود.');
         if (!RECEIVABLE_REQUEST_STATUSES.includes(request.status)) {
-            throw new ConflictException(
-                'This purchase request is not open for receiving.',
-            );
+            throw new ConflictException('طلب الشراء هذا ليس متاحاً للاستلام.');
         }
 
         const pendingReceipts =
@@ -175,19 +170,16 @@ export class PurchaseReceivingService {
             );
         if (pendingReceipts > 0) {
             throw new ConflictException(
-                'This purchase request already has a receipt awaiting confirmation -- confirm it before creating another.',
+                'يوجد بالفعل إيصال لطلب الشراء هذا بانتظار التأكيد - يرجى تأكيده قبل إنشاء إيصال آخر.',
             );
         }
 
         const supplier = await this.purchaseReceivingRepository.supplierExists(
             dto.supplierId,
         );
-        if (!supplier)
-            throw new BadRequestException('Supplier does not exist.');
+        if (!supplier) throw new BadRequestException('المورد غير موجود.');
         if (!supplier.isActive)
-            throw new BadRequestException(
-                'Cannot record a receipt against an inactive supplier.',
-            );
+            throw new BadRequestException('لا يمكن تسجيل إيصال لمورد غير نشط.');
 
         const purchaseRequestItemIds = dto.items.map(
             (i) => i.purchaseRequestItemId,
@@ -197,7 +189,7 @@ export class PurchaseReceivingService {
             purchaseRequestItemIds.length
         ) {
             throw new BadRequestException(
-                'Each purchase request item can only appear once on a receipt.',
+                'يمكن أن يظهر كل عنصر من طلب الشراء مرة واحدة فقط في الإيصال.',
             );
         }
 
@@ -207,11 +199,11 @@ export class PurchaseReceivingService {
             );
             if (!requestItem)
                 throw new BadRequestException(
-                    'One or more items do not belong to this purchase request.',
+                    'عنصر أو أكثر لا ينتمي إلى طلب الشراء هذا.',
                 );
             if (requestItem.approvedQuantity === null) {
                 throw new BadRequestException(
-                    'This item has not been assigned an approved quantity yet.',
+                    'لم يتم تعيين كمية موافق عليها لهذا العنصر بعد.',
                 );
             }
 
@@ -263,9 +255,7 @@ export class PurchaseReceivingService {
     ) {
         const receipt = await this.findById(id);
         if (receipt.status !== 'pending_confirmation') {
-            throw new ConflictException(
-                'This receipt has already been confirmed.',
-            );
+            throw new ConflictException('تم تأكيد هذا الإيصال مسبقاً.');
         }
 
         const request = await this.prisma.purchaseRequest.findUnique({
@@ -273,13 +263,11 @@ export class PurchaseReceivingService {
             select: { id: true, requestedById: true },
         });
         if (!request)
-            throw new NotFoundException(
-                'Associated purchase request not found.',
-            );
+            throw new NotFoundException('طلب الشراء المرتبط غير موجود.');
 
         if (request.requestedById !== confirmingUserId) {
             throw new ForbiddenException(
-                'Only the user who created this purchase request can confirm receipts against it.',
+                'فقط المستخدم الذي أنشأ طلب الشراء هذا يمكنه تأكيد الإيصالات الخاصة به.',
             );
         }
 
@@ -292,16 +280,14 @@ export class PurchaseReceivingService {
             ![...itemIds].every((itemId) => dtoItemIds.has(itemId))
         ) {
             throw new BadRequestException(
-                'Confirmed quantities must be provided for exactly every item on this receipt.',
+                'يجب تقديم الكميات المؤكدة لكل عنصر في هذا الإيصال بدقة.',
             );
         }
 
         const warehouse =
             await this.departmentsCacheService.getByType('central_warehouse');
         if (!warehouse) {
-            throw new BadRequestException(
-                'No Central Warehouse department is configured.',
-            );
+            throw new BadRequestException('لم يتم تكوين قسم المستودع المركزي.');
         }
 
         const confirmations = dto.items.map((confirmedItem) => {
@@ -310,13 +296,13 @@ export class PurchaseReceivingService {
             );
             if (!receiptItem)
                 throw new BadRequestException(
-                    'One or more items do not belong to this receipt.',
+                    'عنصر أو أكثر لا ينتمي إلى هذا الإيصال.',
                 );
             if (
                 confirmedItem.confirmedQuantity > Number(receiptItem.quantity)
             ) {
                 throw new BadRequestException(
-                    'Confirmed quantity cannot exceed the declared received quantity for that batch.',
+                    'لا يمكن أن تتجاوز الكمية المؤكدة الكمية المستلمة المعلنة لتلك الدفعة.',
                 );
             }
 
@@ -373,8 +359,8 @@ export class PurchaseReceivingService {
             userId: updatedRequest.requestedById,
             type: NOTIFICATION_TYPES.PURCHASE_REQUEST_STATUS_CHANGED,
             category: 'purchasing',
-            title: 'Purchase request status updated',
-            body: `Purchase request ${updatedRequest.requestNumber} is now "${updatedRequest.status}".`,
+            title: 'تم تحديث حالة طلب الشراء',
+            body: `طلب الشراء ${updatedRequest.requestNumber} أصبح الآن "${updatedRequest.status}".`,
             data: {
                 purchaseRequestId: updatedRequest.id,
                 status: updatedRequest.status,
@@ -392,7 +378,7 @@ export class PurchaseReceivingService {
         const receipt = await this.findById(id);
         if (receipt.status !== 'pending_confirmation') {
             throw new ConflictException(
-                'Only a receipt awaiting confirmation can be edited.',
+                'يمكن تعديل الإيصالات التي تنتظر التأكيد فقط.',
             );
         }
 
@@ -405,7 +391,7 @@ export class PurchaseReceivingService {
             const invalid = removeIds.filter((rid) => !existingIds.has(rid));
             if (invalid.length > 0) {
                 throw new BadRequestException(
-                    'One or more images to remove do not belong to this receipt.',
+                    'صورة أو أكثر المراد حذفها لا تنتمي إلى هذا الإيصال.',
                 );
             }
         }
@@ -422,7 +408,7 @@ export class PurchaseReceivingService {
             existingImages.length - removeIds.length + newImages.length;
         if (remainingCount < 1) {
             throw new BadRequestException(
-                'A purchase receipt must have at least one image -- to replace the last remaining image, submit the removal and the new image in the same request.',
+                'يجب أن يحتوي إيصال الشراء على صورة واحدة على الأقل - لاستبدال الصورة الأخيرة المتبقية، قم بإرسال طلب الحذف والصورة الجديدة في نفس الطلب.',
             );
         }
 
@@ -557,7 +543,7 @@ export class PurchaseReceivingService {
         const receipt = await this.findById(id);
         if (receipt.status !== 'pending_confirmation') {
             throw new ConflictException(
-                'Only a receipt awaiting confirmation can be cancelled.',
+                'يمكن إلغاء الإيصالات التي تنتظر التأكيد فقط.',
             );
         }
 

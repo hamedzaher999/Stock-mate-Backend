@@ -29,9 +29,7 @@ export class PeriodicSchedulesService {
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && dto.departmentId && dto.departmentId !== scope) {
-            throw new ForbiddenException(
-                'You can only view schedules for your own department.',
-            );
+            throw new ForbiddenException('يمكنك فقط عرض الجداول الخاصة بقسمك.');
         }
 
         const { items, total } =
@@ -54,13 +52,13 @@ export class PeriodicSchedulesService {
     async findById(id: string, requestingUserId: string) {
         const schedule = await this.periodicSchedulesRepository.findById(id);
         if (!schedule)
-            throw new NotFoundException('Periodic refill schedule not found.');
+            throw new NotFoundException(
+                'لم يتم العثور على جدول التزويد المتكرر.',
+            );
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && schedule.departmentId !== scope) {
-            throw new ForbiddenException(
-                'You can only view schedules for your own department.',
-            );
+            throw new ForbiddenException('يمكنك فقط عرض الجداول الخاصة بقسمك.');
         }
 
         return schedule;
@@ -73,9 +71,7 @@ export class PeriodicSchedulesService {
     ) {
         const schedule = await this.findById(id, requestingUserId);
         if (schedule.status !== 'active') {
-            throw new ConflictException(
-                'Only an active schedule can be cancelled.',
-            );
+            throw new ConflictException('يمكن إلغاء الجداول النشطة فقط.');
         }
 
         try {

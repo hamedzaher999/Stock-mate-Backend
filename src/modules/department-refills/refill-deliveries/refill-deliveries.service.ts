@@ -66,7 +66,8 @@ export class RefillDeliveriesService {
 
     async findById(id: string, requestingUserId: string) {
         const delivery = await this.refillDeliveriesRepository.findById(id);
-        if (!delivery) throw new NotFoundException('Delivery not found.');
+        if (!delivery)
+            throw new NotFoundException('لم يتم العثور على عملية التسليم.');
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope) {
@@ -76,7 +77,7 @@ export class RefillDeliveriesService {
                 );
             if (departmentId !== scope) {
                 throw new ForbiddenException(
-                    'You can only view deliveries for your own department.',
+                    'يمكنك فقط عرض عمليات التسليم الخاصة بقسمك.',
                 );
             }
         }
@@ -101,11 +102,10 @@ export class RefillDeliveriesService {
             await this.refillDeliveriesRepository.findRefillRequestForDelivery(
                 dto.refillRequestId,
             );
-        if (!request)
-            throw new BadRequestException('Refill request does not exist.');
+        if (!request) throw new BadRequestException('طلب التزويد غير موجود.');
         if (!SHIPPABLE_STATUSES.includes(request.status)) {
             throw new ConflictException(
-                'This refill request is not open for shipment.',
+                'طلب التزويد هذا ليس متاحاً للشحن حالياً.',
             );
         }
 
@@ -115,16 +115,14 @@ export class RefillDeliveriesService {
             );
         if (pendingDeliveries > 0) {
             throw new ConflictException(
-                'This refill request already has a delivery awaiting confirmation -- confirm it before creating another.',
+                'طلب التزويد هذا لديه بالفعل عملية تسليم بانتظار التأكيد -- قم بتأكيدها قبل إنشاء عملية تسليم أخرى.',
             );
         }
 
         const warehouse =
             await this.departmentsCacheService.getByType('central_warehouse');
         if (!warehouse)
-            throw new BadRequestException(
-                'No Central Warehouse department is configured.',
-            );
+            throw new BadRequestException('لم يتم تكوين قسم المستودع المركزي.');
 
         const lines: {
             refillItemId: string;
@@ -138,11 +136,11 @@ export class RefillDeliveriesService {
             );
             if (!refillItem)
                 throw new BadRequestException(
-                    'One or more items do not belong to this refill request.',
+                    'عنصر واحد أو أكثر لا ينتمي إلى طلب التزويد هذا.',
                 );
             if (refillItem.approvedQuantity === null) {
                 throw new BadRequestException(
-                    'This item has not been assigned an approved quantity yet.',
+                    'لم يتم تعيين كمية موافق عليها لهذا العنصر بعد.',
                 );
             }
 
@@ -153,16 +151,16 @@ export class RefillDeliveriesService {
                 );
             if (!batchStock)
                 throw new BadRequestException(
-                    'Selected batch is not stocked at the Central Warehouse.',
+                    'الدفعة المختارة غير متوفرة في المستودع المركزي.',
                 );
             if (batchStock.batch.variantId !== refillItem.variantId) {
                 throw new BadRequestException(
-                    'Selected batch does not match the requested variant.',
+                    'الدفعة المختارة لا تتطابق مع البديل المطلوب.',
                 );
             }
             if (Number(batchStock.quantity) < inputItem.shippedQuantity) {
                 throw new BadRequestException(
-                    'Insufficient stock in the selected batch at the warehouse.',
+                    'الكمية غيرเพียงية في الدفعة المختارة بالمستودع.',
                 );
             }
 
@@ -199,18 +197,19 @@ export class RefillDeliveriesService {
     ) {
         const delivery =
             await this.refillDeliveriesRepository.findById(deliveryId);
-        if (!delivery) throw new NotFoundException('Delivery not found.');
+        if (!delivery)
+            throw new NotFoundException('لم يتم العثور على عملية التسليم.');
         if (delivery.confirmedAt)
-            throw new ConflictException(
-                'This delivery has already been confirmed.',
-            );
+            throw new ConflictException('تم تأكيد عملية التسليم هذه مسبقاً.');
 
         const request =
             await this.refillDeliveriesRepository.findRefillRequestForDelivery(
                 delivery.refillRequestId,
             );
         if (!request)
-            throw new NotFoundException('Associated refill request not found.');
+            throw new NotFoundException(
+                'لم يتم العثور على طلب التزويد المرتبط.',
+            );
 
         if (request.requestedById !== confirmingUserId) {
             const scope =
@@ -220,7 +219,7 @@ export class RefillDeliveriesService {
                 scope?.departmentId === request.departmentId;
             if (!canConfirmOnBehalf) {
                 throw new ForbiddenException(
-                    'Only the original requester or another staff member in the requesting department can confirm deliveries against this request.',
+                    'فقط طالب الطلب الأصلي أو موظف آخر في القسم الطالب يمكنه تأكيد عمليات التسليم لهذا الطلب.',
                 );
             }
         }
@@ -244,7 +243,7 @@ export class RefillDeliveriesService {
             ![...itemIds].every((id) => dtoItemIds.has(id))
         ) {
             throw new BadRequestException(
-                'Received quantities must be provided for exactly every item on this delivery.',
+                'يجب توفير الكميات المستلمة لكل عنصر في عملية التسليم هذه بدقة.',
             );
         }
 
@@ -254,7 +253,7 @@ export class RefillDeliveriesService {
             );
             if (!deliveryItem)
                 throw new BadRequestException(
-                    'One or more items do not belong to this delivery.',
+                    'عنصر واحد أو أكثر لا ينتمي إلى عملية التسليم هذه.',
                 );
 
             confirmations.push({

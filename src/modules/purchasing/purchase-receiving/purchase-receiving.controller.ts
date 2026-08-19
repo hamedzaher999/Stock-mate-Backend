@@ -74,7 +74,7 @@ export class PurchaseReceivingController {
                     fileIsRequired: true,
                     exceptionFactory: () =>
                         new Error(
-                            'At least one receipt image is required, and each file must be a valid image.',
+                            'مطلوب صورة إيصال واحدة على الأقل، ويجب أن تكون كل ملف صورة صالحة.',
                         ),
                 }),
         )

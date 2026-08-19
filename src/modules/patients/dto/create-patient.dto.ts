@@ -6,11 +6,15 @@ export class CreatePatientDto {
     fullName!: string;
 
     @IsOptional()
-    @Matches(/^\d{11}$/, { message: 'nationalId must be exactly 11 digits.' })
+    @Matches(/^\d{11}$/, {
+        message: 'يجب أن يتكون الرقم الوطني من 11 رقماً بالضبط.',
+    })
     nationalId?: string;
 
     @IsOptional()
     @MaxLength(50)
-    @Matches(/^\d+$/, { message: 'familyBookNumber must contain digits only.' })
+    @Matches(/^\d+$/, {
+        message: 'يجب أن يحتوي رقم دفتر العائلة على أرقام فقط.',
+    })
     familyBookNumber?: string;
 }

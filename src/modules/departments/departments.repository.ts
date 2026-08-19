@@ -99,7 +99,7 @@ export class DepartmentsRepository {
             });
             if (count > 0) {
                 throw new AlreadyProcessedError(
-                    `A department of type "${data.type}" already exists; only one is allowed.`,
+                    `يوجد قسم من نوع "${data.type}" بالفعل؛ يُسمح بوجود قسم واحد فقط.`,
                 );
             }
 

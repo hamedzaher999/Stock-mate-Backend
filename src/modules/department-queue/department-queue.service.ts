@@ -42,7 +42,7 @@ export class DepartmentQueueService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         const departmentId = scope ?? dto.departmentId;
         if (!departmentId) {
-            throw new BadRequestException('departmentId is required.');
+            throw new BadRequestException('معرف القسم مطلوب.');
         }
         if (scope && dto.departmentId && dto.departmentId !== scope) {
             throw new ForbiddenException(
@@ -69,12 +69,15 @@ export class DepartmentQueueService {
 
     async findById(id: string, requestingUserId: string) {
         const entry = await this.departmentQueueRepository.findById(id);
-        if (!entry) throw new NotFoundException('Queue entry not found.');
+        if (!entry)
+            throw new NotFoundException(
+                'لم يتم العثور على إدخال قائمة الانتظار.',
+            );
 
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && entry.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view queue entries for your own department.',
+                'يمكنك فقط عرض إدخالات قائمة الانتظار الخاصة بقسمك.',
             );
         }
 
@@ -85,7 +88,7 @@ export class DepartmentQueueService {
         const scope = await this.resolveDepartmentScope(addedById);
         if (scope && dto.departmentId !== scope) {
             throw new ForbiddenException(
-                "You can only add patients to your own department's queue.",
+                'يمكنك فقط إضافة المرضى إلى قائمة انتظار قسمك.',
             );
         }
 
@@ -97,12 +100,12 @@ export class DepartmentQueueService {
             throw new BadRequestException('المريض غير موجود.');
         if (department.type !== QUEUEABLE_DEPARTMENT_TYPE) {
             throw new BadRequestException(
-                'Patients can only be queued at clinical (standard) departments.',
+                'يمكن وضع المرضى في قائمة الانتظار في الأقسام السريرية (القياسية) فقط.',
             );
         }
         if (!department.hasQueue) {
             throw new BadRequestException(
-                'This department does not have a patient queue enabled.',
+                'هذا القسم ليس لديه قائمة انتظار للمرضى مفعلة.',
             );
         }
 
@@ -142,9 +145,7 @@ export class DepartmentQueueService {
             scope?.roleName !== HOSPITAL_MANAGER_ROLE_NAME &&
             scope?.departmentId !== entry.departmentId
         ) {
-            throw new ForbiddenException(
-                'You can only lock patients in your own department.',
-            );
+            throw new ForbiddenException('يمكنك قفل المرضى في قسمك الخاص فقط.');
         }
 
         try {
@@ -179,7 +180,7 @@ export class DepartmentQueueService {
                 );
             if (!permissions.has(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)) {
                 throw new ForbiddenException(
-                    'Only the doctor who locked this patient, or a queue manager, can release it.',
+                    'فقط الطبيب الذي قفل هذا المريض، أو مدير قائمة الانتظار، يمكنه إطلاق سراحه.',
                 );
             }
             await this.assertDepartmentScope(
@@ -199,7 +200,7 @@ export class DepartmentQueueService {
         const entry = await this.findById(id, requestingUserId);
         if (entry.status !== 'waiting' && entry.status !== 'in_consultation') {
             throw new ConflictException(
-                'Only a waiting or in-consultation entry can be removed.',
+                'يمكن إزالة الإدخالات التي في حالة الانتظار أو قيد الاستشارة فقط.',
             );
         }
 
@@ -217,7 +218,7 @@ export class DepartmentQueueService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;
@@ -231,7 +232,7 @@ export class DepartmentQueueService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException(
-                'You can only act on queue entries in your own department.',
+                'يمكنك فقط إجراء عمليات على إدخالات قائمة الانتظار في قسمك الخاص.',
             );
         }
     }

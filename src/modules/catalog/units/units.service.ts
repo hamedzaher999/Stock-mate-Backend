@@ -22,16 +22,14 @@ export class UnitsService {
     async findById(id: string) {
         const units = await this.catalogCacheService.getUnits();
         const unit = units.find((u) => u.id === id);
-        if (!unit) throw new NotFoundException('Unit not found.');
+        if (!unit) throw new NotFoundException('الوحدة غير موجودة.');
         return unit;
     }
 
     async create(dto: CreateUnitDto) {
         const existing = await this.unitsRepository.findByName(dto.name);
         if (existing)
-            throw new ConflictException(
-                'A unit with this name already exists.',
-            );
+            throw new ConflictException('توجد وحدة بنفس الاسم بالفعل.');
         const created = await this.unitsRepository.create(dto);
         await this.catalogCacheService.invalidateUnits();
         return created;
@@ -59,7 +57,7 @@ export class UnitsService {
         const count = await this.unitsRepository.countVariantsUsingUnit(id);
         if (count > 0)
             throw new BadRequestException(
-                'Cannot delete a unit that is in use by product variants.',
+                'لا يمكن حذف وحدة يتم استخدامها في متغيرات المنتجات.',
             );
         await this.unitsRepository.delete(id);
         await this.catalogCacheService.invalidateUnits();

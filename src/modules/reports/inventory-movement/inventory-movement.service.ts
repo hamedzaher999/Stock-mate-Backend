@@ -93,7 +93,7 @@ export class InventoryMovementReportService {
         const rowCount = await this.repository.countRows(filters.where);
         if (rowCount > MAX_EXPORT_ROWS) {
             throw new BadRequestException(
-                `This export would contain ${rowCount} rows, which exceeds the ${MAX_EXPORT_ROWS} limit -- narrow the date range or add a department/variant filter.`,
+                `سوف يحتوي هذا التصدير على ${rowCount} صفاً، وهو ما يتجاوز الحد المسموح به (${MAX_EXPORT_ROWS}) -- يرجى تضييق نطاق التاريخ أو إضافة فلتر للقسم أو الصنف.`,
             );
         }
 
@@ -231,7 +231,7 @@ export class InventoryMovementReportService {
             );
         if (scope && dto.departmentId && dto.departmentId !== scope) {
             throw new ForbiddenException(
-                'You can only view reports for your own department.',
+                'يمكنك فقط عرض التقارير الخاصة بقسمك.',
             );
         }
         const departmentId = scope ?? dto.departmentId;

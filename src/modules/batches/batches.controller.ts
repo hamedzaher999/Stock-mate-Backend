@@ -16,7 +16,7 @@ export class BatchesController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.batchesService.list(query, user.sub);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Get(':id')
@@ -26,6 +26,6 @@ export class BatchesController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.batchesService.findById(id, user.sub);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 }

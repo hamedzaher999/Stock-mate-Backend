@@ -41,7 +41,7 @@ export class ProductsService {
 
     async findById(id: string) {
         const product = await this.productsRepository.findById(id);
-        if (!product) throw new NotFoundException('Product not found.');
+        if (!product) throw new NotFoundException('المنتج غير موجود.');
         return product;
     }
 
@@ -50,8 +50,7 @@ export class ProductsService {
             const category = await this.productsRepository.categoryExists(
                 dto.categoryId,
             );
-            if (!category)
-                throw new BadRequestException('Category does not exist.');
+            if (!category) throw new BadRequestException('الفئة غير موجودة.');
         }
 
         return this.productsRepository.create({

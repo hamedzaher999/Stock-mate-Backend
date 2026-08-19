@@ -37,14 +37,14 @@ export class PatientsService {
 
     async findById(id: string) {
         const patient = await this.patientsRepository.findById(id);
-        if (!patient) throw new NotFoundException('Patient not found.');
+        if (!patient) throw new NotFoundException('المريض غير موجود.');
         return patient;
     }
 
     async lookup(dto: LookupPatientDto) {
         if (!dto.nationalId && !dto.familyBookNumber && !dto.patientId) {
             throw new BadRequestException(
-                'Provide at least one of nationalId, familyBookNumber, or patientId to search.',
+                'يجب توفير واحد على الأقل من الرقم الوطني، أو رقم دفتر العائلة، أو معرف المريض للبحث.',
             );
         }
 
@@ -81,7 +81,7 @@ export class PatientsService {
             );
             if (existing) {
                 throw new ConflictException(
-                    'A patient with this National ID is already registered -- use the lookup endpoint to retrieve their existing record instead of creating a duplicate.',
+                    'مريض بهذا الرقم الوطني مسجل مسبقاً -- استخدم نقطة نهاية البحث (lookup) لاسترجاع سجله الحالي بدلاً من إنشاء سجل مكرر.',
                 );
             }
         }
@@ -94,7 +94,7 @@ export class PatientsService {
                 );
             if (duplicateInFamily) {
                 throw new ConflictException(
-                    'A patient with this name already exists under this family book number.',
+                    'يوجد مريض بهذا الاسم بالفعل تحت رقم دفتر العائلة هذا.',
                 );
             }
         }
@@ -122,7 +122,7 @@ export class PatientsService {
             );
             if (existing && existing.id !== id) {
                 throw new ConflictException(
-                    'A patient with this National ID is already registered.',
+                    'مريض بهذا الرقم الوطني مسجل مسبقاً.',
                 );
             }
         }
@@ -139,7 +139,7 @@ export class PatientsService {
                 );
             if (duplicateInFamily && duplicateInFamily.id !== id) {
                 throw new ConflictException(
-                    'A patient with this name already exists under this family book number.',
+                    'يوجد مريض بهذا الاسم بالفعل تحت رقم دفتر العائلة هذا.',
                 );
             }
         }

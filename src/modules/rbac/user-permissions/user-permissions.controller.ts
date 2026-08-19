@@ -32,7 +32,7 @@ export class UserPermissionsController {
             dto,
             user.sub,
         );
-        return { message: 'Permission override saved.', data };
+        return { message: 'تم حفظ استثناء الصلاحية بنجاح.', data };
     }
 
     @Post('group')
@@ -49,8 +49,8 @@ export class UserPermissionsController {
         return {
             message:
                 dto.effect === 'grant'
-                    ? 'Permissions granted.'
-                    : 'Permissions revoked.',
+                    ? 'تم منح الصلاحيات.'
+                    : 'تم سحب الصلاحيات.',
             data,
         };
     }
@@ -66,7 +66,7 @@ export class UserPermissionsController {
             user.sub,
             dto.reason,
         );
-        return { message: 'All role permissions revoked for this user.', data };
+        return { message: 'تم سحب جميع صلاحيات الدور لهذا المستخدم.', data };
     }
 
     @Post('override-role')
@@ -82,7 +82,7 @@ export class UserPermissionsController {
             dto.reason,
         );
         return {
-            message: 'Role permissions copied to user as overrides.',
+            message: 'تم نسخ صلاحيات الدور إلى المستخدم كاستثناءات.',
             data,
         };
     }
@@ -98,7 +98,7 @@ export class UserPermissionsController {
             permissionCode,
             user.sub,
         );
-        return { message: 'Permission override removed.', data: null };
+        return { message: 'تم إزالة استثناء الصلاحية.', data: null };
     }
 
     @Delete()
@@ -107,6 +107,9 @@ export class UserPermissionsController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         await this.userPermissionsService.resetToDefault(userId, user.sub);
-        return { message: 'Permissions reset to role defaults.', data: null };
+        return {
+            message: 'تم إعادة تعيين الصلاحيات إلى القيم الافتراضية للدور.',
+            data: null,
+        };
     }
 }

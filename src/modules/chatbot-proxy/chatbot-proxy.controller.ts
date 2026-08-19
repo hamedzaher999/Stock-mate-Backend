@@ -16,6 +16,6 @@ export class ChatbotProxyController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         const data = await this.chatbotProxyService.sendMessage(dto, user.sub);
-        return { message: 'Success', data };
+        return { message: 'تم بنجاح', data };
     }
 }

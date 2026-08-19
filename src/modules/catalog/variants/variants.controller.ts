@@ -26,13 +26,13 @@ export class VariantsController {
     @Get()
     async findAll(@Query() query: ListVariantsDto) {
         const data = await this.variantsService.list(query);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Get(':id')
     async findOne(@Param('id') id: string) {
         const data = await this.variantsService.findById(id);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Post()

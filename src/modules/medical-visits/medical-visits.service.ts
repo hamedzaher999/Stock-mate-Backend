@@ -53,13 +53,13 @@ export class MedicalVisitsService {
 
     async findById(id: string) {
         const visit = await this.medicalVisitsRepository.findById(id);
-        if (!visit) throw new NotFoundException('Medical visit not found.');
+        if (!visit) throw new NotFoundException('الزيارة الطبية غير موجودة.');
         return visit;
     }
 
     async getPatientHistory(patientId: string) {
         const patient = await this.patientsRepository.findById(patientId);
-        if (!patient) throw new NotFoundException('Patient not found.');
+        if (!patient) throw new NotFoundException('المريض غير موجود.');
 
         const visits =
             await this.medicalVisitsRepository.findAllForPatient(patientId);
@@ -129,10 +129,10 @@ export class MedicalVisitsService {
             dto.queueEntryId,
         );
         if (!entry)
-            throw new BadRequestException('Queue entry does not exist.');
+            throw new BadRequestException('إدخال قائمة الانتظار غير موجود.');
         if (entry.status !== 'waiting') {
             throw new ConflictException(
-                'Only a patient currently waiting can be selected.',
+                'يمكن فقط اختيار المريض الذي ينتظر حالياً.',
             );
         }
 
@@ -141,9 +141,7 @@ export class MedicalVisitsService {
             scope?.roleName !== HOSPITAL_MANAGER_ROLE_NAME &&
             scope?.departmentId !== entry.departmentId
         ) {
-            throw new ForbiddenException(
-                'You can only select patients in your own department.',
-            );
+            throw new ForbiddenException('يمكنك اختيار المرضى في قسمك فقط.');
         }
 
         try {
@@ -154,7 +152,7 @@ export class MedicalVisitsService {
         } catch (error) {
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(
-                    'This patient is no longer waiting -- someone else may have already selected them.',
+                    'هذا المريض لم يعد في قائمة الانتظار -- ربما قام شخص آخر باختياره مسبقاً.',
                 );
             }
             throw error;
@@ -166,10 +164,10 @@ export class MedicalVisitsService {
             dto.queueEntryId,
         );
         if (!entry)
-            throw new BadRequestException('Queue entry does not exist.');
+            throw new BadRequestException('إدخال قائمة الانتظار غير موجود.');
         if (entry.status !== 'in_consultation') {
             throw new ConflictException(
-                'Only a selected (in-consultation) patient can be completed.',
+                'يمكن فقط إتمام استشارة المريض المختار (قيد الاستشارة حالياً).',
             );
         }
 
@@ -179,7 +177,7 @@ export class MedicalVisitsService {
             scope?.roleName !== HOSPITAL_MANAGER_ROLE_NAME
         ) {
             throw new ForbiddenException(
-                'Only the doctor who selected this patient can complete the consultation.',
+                'فقط الطبيب الذي قام باختيار هذا المريض يمكنه إتمام الاستشارة.',
             );
         }
 
@@ -204,9 +202,7 @@ export class MedicalVisitsService {
     async cancel(id: string, dto: CancelVisitDto, requestingUserId: string) {
         const visit = await this.findById(id);
         if (visit.status !== 'completed') {
-            throw new ConflictException(
-                'Only a completed visit can be cancelled.',
-            );
+            throw new ConflictException('يمكن فقط إلغاء الزيارة المكتملة.');
         }
 
         const isOwner = visit.doctorId === requestingUserId;
@@ -217,7 +213,7 @@ export class MedicalVisitsService {
                 );
             if (!permissions.has(PERMISSIONS.CANCEL_VISIT)) {
                 throw new ForbiddenException(
-                    'Only the doctor who documented this visit, or a user with visit-cancellation permission, can cancel it.',
+                    'فقط الطبيب الذي وثّق هذه الزيارة، أو مستخدم لديه صلاحية إلغاء الزيارات، يمكنه إلغاؤها.',
                 );
             }
         }

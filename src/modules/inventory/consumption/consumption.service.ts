@@ -23,14 +23,11 @@ export class ConsumptionService {
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department)
-            throw new BadRequestException('Department does not exist.');
+        if (!department) throw new BadRequestException('القسم غير موجود.');
         if (!department.isActive)
-            throw new BadRequestException('Department is inactive.');
+            throw new BadRequestException('القسم غير نشط.');
         if (!department.tracksInventory) {
-            throw new BadRequestException(
-                'This department does not track inventory.',
-            );
+            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
         }
 
         await this.assertDepartmentScope(performedById, dto.departmentId);
@@ -40,16 +37,13 @@ export class ConsumptionService {
                 await this.consumptionRepository.findVariantMaterialType(
                     line.variantId,
                 );
-            if (!variant)
-                throw new BadRequestException('Variant does not exist.');
+            if (!variant) throw new BadRequestException('المتغير غير موجود.');
             if (!variant.isActive || !variant.product.isActive) {
-                throw new BadRequestException(
-                    'Cannot consume an inactive variant.',
-                );
+                throw new BadRequestException('لا يمكن استهلاك متغير غير نشط.');
             }
             if (variant.product.materialType === 'fixed_asset') {
                 throw new BadRequestException(
-                    'Fixed assets cannot be consumed -- report damaged or shrinkage instead.',
+                    'لا يمكن استهلاك الأصول الثابتة -- يجدر الإبلاغ عن تلف أو عجز بدلاً من ذلك.',
                 );
             }
         }
@@ -64,7 +58,7 @@ export class ConsumptionService {
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(
-                    'Insufficient stock to record this consumption.',
+                    'المخزون غير كافٍ لتسجيل هذا الاستهلاك.',
                 );
             }
             throw error;
@@ -76,7 +70,7 @@ export class ConsumptionService {
     ): Promise<string | null> {
         const scope =
             await this.userScopeService.getUserScope(requestingUserId);
-        if (!scope) throw new BadRequestException('Requesting user not found.');
+        if (!scope) throw new BadRequestException('المستخدم الطالب غير موجود.');
 
         if (scope.isSuperAdmin || UNRESTRICTED_ROLES.includes(scope.roleName))
             return null;
@@ -89,9 +83,7 @@ export class ConsumptionService {
     ) {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && scope !== targetDepartmentId) {
-            throw new ForbiddenException(
-                'You can only record consumption for your own department.',
-            );
+            throw new ForbiddenException('يمكنك تسجيل الاستهلاك لقسمك فقط.');
         }
     }
 }

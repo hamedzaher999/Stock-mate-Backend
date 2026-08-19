@@ -159,7 +159,7 @@ export class PurchaseRequestsRepository {
         });
         if (claimed.count === 0) {
             throw new AlreadyProcessedError(
-                'This purchase request was already updated by another request.',
+                'تم تحديث طلب الشراء هذا مسبقاً بواسطة طلب آخر.',
             );
         }
         return this.prisma.purchaseRequest.findUniqueOrThrow({
@@ -212,7 +212,7 @@ export class PurchaseRequestsRepository {
         });
         if (claimed.count === 0) {
             throw new AlreadyProcessedError(
-                'This purchase request was already updated by another request.',
+                'تم تحديث طلب الشراء هذا مسبقاً بواسطة طلب آخر.',
             );
         }
         return this.prisma.purchaseRequest.findUniqueOrThrow({

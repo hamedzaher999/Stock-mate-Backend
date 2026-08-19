@@ -24,13 +24,13 @@ export class ProductsController {
     @Get()
     async findAll(@Query() query: ListProductsDto) {
         const data = await this.productsService.list(query);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Get(':id')
     async findOne(@Param('id') id: string) {
         const data = await this.productsService.findById(id);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Post()

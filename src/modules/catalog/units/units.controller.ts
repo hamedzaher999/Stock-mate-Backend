@@ -20,13 +20,13 @@ export class UnitsController {
     @Get()
     async findAll() {
         const data = await this.unitsService.findAll();
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Get(':id')
     async findOne(@Param('id') id: string) {
         const data = await this.unitsService.findById(id);
-        return { message: 'Success', data };
+        return { message: 'تم جلب البيانات بنجاح.', data };
     }
 
     @Post()

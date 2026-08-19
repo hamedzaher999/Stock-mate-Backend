@@ -41,7 +41,7 @@ export class DestinationsService {
 
     async findById(id: string) {
         const destination = await this.destinationsRepository.findById(id);
-        if (!destination) throw new NotFoundException('Destination not found.');
+        if (!destination) throw new NotFoundException('جهة الوجهة غير موجودة.');
         return destination;
     }
 
@@ -54,7 +54,7 @@ export class DestinationsService {
                 );
             if (duplicatePhone) {
                 throw new ConflictException(
-                    'A destination with this name and phone number already exists.',
+                    'توجد جهة وجهة بهذا الاسم ورقم الهاتف بالفعل.',
                 );
             }
         }
@@ -67,7 +67,7 @@ export class DestinationsService {
                 );
             if (duplicateEmail) {
                 throw new ConflictException(
-                    'A destination with this name and email already exists.',
+                    'توجد جهة وجهة بهذا الاسم والبريد الإلكتروني بالفعل.',
                 );
             }
         }
@@ -89,7 +89,7 @@ export class DestinationsService {
                     );
                 if (duplicatePhone && duplicatePhone.id !== id) {
                     throw new ConflictException(
-                        'A destination with this name and phone number already exists.',
+                        'توجد جهة وجهة بهذا الاسم ورقم الهاتف بالفعل.',
                     );
                 }
             }
@@ -105,7 +105,7 @@ export class DestinationsService {
                     );
                 if (duplicateEmail && duplicateEmail.id !== id) {
                     throw new ConflictException(
-                        'A destination with this name and email already exists.',
+                        'توجد جهة وجهة بهذا الاسم والبريد الإلكتروني بالفعل.',
                     );
                 }
             }
