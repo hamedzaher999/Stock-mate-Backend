@@ -22,6 +22,7 @@ import { ApproveRefillRequestDto } from './dto/approve-refill-request.dto';
 import { ListRefillRequestsDto } from './dto/list-refill-requests.dto';
 import { RejectRequestDto } from '../../../common/dto/reject-request.dto';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import { RefillDeliveriesRepository } from '../refill-deliveries/refill-deliveries.repository';
 
 const UNRESTRICTED_ROLES = [
     WAREHOUSE_MANAGER_ROLE_NAME,
@@ -40,6 +41,7 @@ export class RefillRequestsService {
         private readonly notificationsService: NotificationsService,
         private readonly departmentsCacheService: DepartmentsCacheService,
         private readonly userScopeService: UserScopeService,
+        private readonly refillDeliveriesRepository: RefillDeliveriesRepository,
     ) {}
 
     async list(
@@ -339,19 +341,37 @@ export class RefillRequestsService {
         if (request.status === 'preparing') {
             if (request.approvedById !== requestingUserId) {
                 throw new ForbiddenException(
-                    'فقط المدير الذي وافق على هذا الطلب يمكنه رفضه.',
+                    'Only the manager who approved this request can reject it.',
                 );
             }
 
-            const linkedDeliveries =
-                await this.refillRequestsRepository.countDeliveriesForRequest(
+            const confirmedDeliveries =
+                await this.refillRequestsRepository.countConfirmedDeliveriesForRequest(
                     id,
                 );
-            if (linkedDeliveries > 0) {
+            if (confirmedDeliveries > 0) {
                 throw new ConflictException(
-                    'لا يمكن الرفض بمجرد إنشاء عملية تسليم واحدة على الأقل لهذا الطلب -- قم بإكماله بدلاً من ذلك بمجرد تأكيد جميع عمليات التسليم.',
+                    'Cannot reject once at least one delivery has been confirmed for this request -- complete it instead once all deliveries are confirmed.',
                 );
             }
+
+            const warehouse =
+                await this.departmentsCacheService.getByType(
+                    'central_warehouse',
+                );
+            if (!warehouse) {
+                throw new BadRequestException(
+                    'No Central Warehouse department is configured.',
+                );
+            }
+
+            await this.refillDeliveriesRepository.cancelUnconfirmedDeliveriesForRequest(
+                {
+                    refillRequestId: id,
+                    warehouseDepartmentId: warehouse.id,
+                    cancelledById: requestingUserId,
+                },
+            );
 
             const updated = await this.runGuarded(() =>
                 this.refillRequestsRepository.updateStatus(id, 'preparing', {
@@ -363,7 +383,9 @@ export class RefillRequestsService {
             return updated;
         }
 
-        throw new ConflictException('لا يمكن رفض هذا الطلب من حالته الحالية.');
+        throw new ConflictException(
+            'This request cannot be rejected from its current status.',
+        );
     }
 
     async complete(id: string, requestingUserId: string) {

@@ -346,4 +346,75 @@ export class RefillDeliveriesRepository {
             where: { refillRequestId, confirmedAt: null },
         });
     }
+    async cancelUnconfirmedDeliveriesForRequest(params: {
+        refillRequestId: string;
+        warehouseDepartmentId: string;
+        cancelledById: string;
+    }): Promise<number> {
+        return this.prisma.$transaction(async (tx) => {
+            const deliveries = await tx.departmentRefillDelivery.findMany({
+                where: {
+                    refillRequestId: params.refillRequestId,
+                    confirmedAt: null,
+                },
+                select: {
+                    id: true,
+                    items: {
+                        select: {
+                            id: true,
+                            batchId: true,
+                            shippedQuantity: true,
+                        },
+                    },
+                },
+            });
+
+            for (const delivery of deliveries) {
+                for (const item of delivery.items) {
+                    const updatedStock = await tx.batchStock.upsert({
+                        where: {
+                            batchId_departmentId: {
+                                batchId: item.batchId,
+                                departmentId: params.warehouseDepartmentId,
+                            },
+                        },
+                        update: {
+                            quantity: { increment: item.shippedQuantity },
+                        },
+                        create: {
+                            batchId: item.batchId,
+                            departmentId: params.warehouseDepartmentId,
+                            quantity: item.shippedQuantity,
+                        },
+                    });
+
+                    const batch = await tx.batch.findUniqueOrThrow({
+                        where: { id: item.batchId },
+                        select: { variantId: true },
+                    });
+
+                    await this.inventoryLedger.record(tx, {
+                        transactionType: 'department_transfer_in',
+                        variantId: batch.variantId,
+                        batchId: item.batchId,
+                        departmentId: params.warehouseDepartmentId,
+                        quantity: Number(item.shippedQuantity),
+                        balanceAfter: Number(updatedStock.quantity),
+                        referenceType: 'refill_request',
+                        referenceId: params.refillRequestId,
+                        performedById: params.cancelledById,
+                    });
+                }
+
+                await tx.departmentRefillDeliveryItem.deleteMany({
+                    where: { deliveryId: delivery.id },
+                });
+                await tx.departmentRefillDelivery.delete({
+                    where: { id: delivery.id },
+                });
+            }
+
+            return deliveries.length;
+        });
+    }
 }

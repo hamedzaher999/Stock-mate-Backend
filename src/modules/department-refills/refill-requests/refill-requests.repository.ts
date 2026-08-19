@@ -339,6 +339,11 @@ export class RefillRequestsRepository {
             where: { refillRequestId: id, confirmedAt: null },
         });
     }
+    countConfirmedDeliveriesForRequest(id: string) {
+        return this.prisma.departmentRefillDelivery.count({
+            where: { refillRequestId: id, confirmedAt: { not: null } },
+        });
+    }
     findConfiguredVariantIds(departmentId: string, variantIds: string[]) {
         return this.prisma.departmentStockSetting
             .findMany({
