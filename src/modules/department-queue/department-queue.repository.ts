@@ -172,7 +172,19 @@ export class DepartmentQueueRepository {
             select: queueEntrySelect,
         });
     }
-
+    removeAll(
+        departmentId: string | undefined,
+        removedById: string,
+        removedReason: string,
+    ) {
+        return this.prisma.departmentQueue.updateMany({
+            where: {
+                status: { in: LIVE_STATUSES },
+                ...(departmentId && { departmentId }),
+            },
+            data: { status: 'removed', removedById, removedReason },
+        });
+    }
     complete(id: string) {
         return this.prisma.departmentQueue.update({
             where: { id },

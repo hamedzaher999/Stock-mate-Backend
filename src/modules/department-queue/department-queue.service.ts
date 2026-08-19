@@ -20,6 +20,7 @@ import { PERMISSIONS } from '../../common/constants/permissions.constants';
 import { UserScopeService } from '../rbac/user-scope.service';
 import { DepartmentsCacheService } from '../departments/departments-cache.service';
 import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
+import { RemoveAllQueueEntriesDto } from './dto/remove-all-queue-entries.dto';
 const UNRESTRICTED_ROLES = [RECEPTION_STAFF_ROLE_NAME];
 const QUEUEABLE_DEPARTMENT_TYPE = 'standard';
 
@@ -235,5 +236,35 @@ export class DepartmentQueueService {
                 'يمكنك فقط إجراء عمليات على إدخالات قائمة الانتظار في قسمك الخاص.',
             );
         }
+    }
+    async removeAll(
+        departmentId: string | undefined,
+        dto: RemoveAllQueueEntriesDto,
+        requestingUserId: string,
+    ) {
+        const scope = await this.resolveDepartmentScope(requestingUserId);
+
+        if (scope) {
+            if (departmentId && departmentId !== scope) {
+                throw new ForbiddenException(
+                    'يمكنك فقط إزالة كل المرضى من قائمة انتظار قسمك الخاص.',
+                );
+            }
+            departmentId = scope;
+        }
+
+        if (departmentId) {
+            const department =
+                await this.departmentsCacheService.getById(departmentId);
+            if (!department) throw new BadRequestException('القسم غير موجود.');
+        }
+
+        const result = await this.departmentQueueRepository.removeAll(
+            departmentId,
+            requestingUserId,
+            dto.removedReason,
+        );
+
+        return { removedCount: result.count };
     }
 }

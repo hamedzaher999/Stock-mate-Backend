@@ -16,6 +16,7 @@ import { RequirePermissions } from '../../core/decorators/require-permissions.de
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
+import { RemoveAllQueueEntriesDto } from './dto/remove-all-queue-entries.dto';
 
 @Controller('department-queue')
 export class DepartmentQueueController {
@@ -52,7 +53,23 @@ export class DepartmentQueueController {
         const data = await this.departmentQueueService.create(dto, user.sub);
         return { message: 'تمت إضافة المريض إلى قائمة الانتظار.', data };
     }
-
+    @Post('remove-all')
+    @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_QUEUE)
+    async removeAll(
+        @Query('departmentId') departmentId: string | undefined,
+        @Body() dto: RemoveAllQueueEntriesDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        const data = await this.departmentQueueService.removeAll(
+            departmentId,
+            dto,
+            user.sub,
+        );
+        return {
+            message: `تمت إزالة ${data.removedCount} مريض من قائمة الانتظار.`,
+            data,
+        };
+    }
     @Patch(':id/release')
     async release(
         @Param('id') id: string,
