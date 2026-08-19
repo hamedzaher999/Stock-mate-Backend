@@ -178,4 +178,16 @@ export class AdjustmentsRepository {
             });
         });
     }
+    findConfiguredVariantIds(departmentId: string, variantIds: string[]) {
+        return this.prisma.departmentStockSetting
+            .findMany({
+                where: {
+                    departmentId,
+                    variantId: { in: variantIds },
+                    isActive: true,
+                },
+                select: { variantId: true },
+            })
+            .then((rows) => rows.map((r) => r.variantId));
+    }
 }

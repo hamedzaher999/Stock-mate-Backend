@@ -23,11 +23,14 @@ export class ConsumptionService {
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department) throw new BadRequestException('القسم غير موجود.');
+        if (!department)
+            throw new BadRequestException('Department does not exist.');
         if (!department.isActive)
-            throw new BadRequestException('القسم غير نشط.');
+            throw new BadRequestException('Department is inactive.');
         if (!department.tracksInventory) {
-            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
+            throw new BadRequestException(
+                'This department does not track inventory.',
+            );
         }
 
         await this.assertDepartmentScope(performedById, dto.departmentId);
@@ -37,16 +40,25 @@ export class ConsumptionService {
                 await this.consumptionRepository.findVariantMaterialType(
                     line.variantId,
                 );
-            if (!variant) throw new BadRequestException('المتغير غير موجود.');
+            if (!variant)
+                throw new BadRequestException('Variant does not exist.');
             if (!variant.isActive || !variant.product.isActive) {
-                throw new BadRequestException('لا يمكن استهلاك متغير غير نشط.');
+                throw new BadRequestException(
+                    'Cannot consume an inactive variant.',
+                );
             }
             if (variant.product.materialType === 'fixed_asset') {
                 throw new BadRequestException(
-                    'لا يمكن استهلاك الأصول الثابتة -- يجدر الإبلاغ عن تلف أو عجز بدلاً من ذلك.',
+                    'Fixed assets cannot be consumed -- report damaged or shrinkage instead.',
                 );
             }
         }
+
+        const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
+        await this.assertVariantsConfiguredForDepartment(
+            dto.departmentId,
+            variantIds,
+        );
 
         try {
             return await this.consumptionRepository.consume({
@@ -58,7 +70,7 @@ export class ConsumptionService {
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(
-                    'المخزون غير كافٍ لتسجيل هذا الاستهلاك.',
+                    'Insufficient stock to record this consumption.',
                 );
             }
             throw error;
@@ -84,6 +96,24 @@ export class ConsumptionService {
         const scope = await this.resolveDepartmentScope(requestingUserId);
         if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException('يمكنك تسجيل الاستهلاك لقسمك فقط.');
+        }
+    }
+    private async assertVariantsConfiguredForDepartment(
+        departmentId: string,
+        variantIds: string[],
+    ) {
+        const configuredIds =
+            await this.consumptionRepository.findConfiguredVariantIds(
+                departmentId,
+                variantIds,
+            );
+        const configuredSet = new Set(configuredIds);
+        const unconfigured = variantIds.filter((id) => !configuredSet.has(id));
+
+        if (unconfigured.length > 0) {
+            throw new BadRequestException(
+                `The following variant(s) are not configured as active stock items for this department: ${unconfigured.join(', ')}.`,
+            );
         }
     }
 }

@@ -55,20 +55,23 @@ export class AdjustmentsService {
 
     async create(dto: CreateAdjustmentDto, reportedById: string) {
         const batch = await this.adjustmentsRepository.findBatch(dto.batchId);
-        if (!batch) throw new BadRequestException('الدفعة (Batch) غير موجودة.');
+        if (!batch) throw new BadRequestException('Batch does not exist.');
         if (batch.variantId !== dto.variantId)
             throw new BadRequestException(
-                'الدفعة لا تتطابق مع المتغير المحدد.',
+                'Batch does not match the given variant.',
             );
 
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
         );
-        if (!department) throw new BadRequestException('القسم غير موجود.');
+        if (!department)
+            throw new BadRequestException('Department does not exist.');
         if (!department.isActive)
-            throw new BadRequestException('القسم غير نشط.');
+            throw new BadRequestException('Department is inactive.');
         if (!department.tracksInventory) {
-            throw new BadRequestException('هذا القسم لا يتتبع المخزون.');
+            throw new BadRequestException(
+                'This department does not track inventory.',
+            );
         }
 
         await this.assertDepartmentScope(reportedById, dto.departmentId);
@@ -77,15 +80,20 @@ export class AdjustmentsService {
             await this.adjustmentsRepository.findVariantMaterialType(
                 dto.variantId,
             );
-        if (!variant) throw new BadRequestException('المتغير غير موجود.');
+        if (!variant) throw new BadRequestException('Variant does not exist.');
         if (
             variant.product.materialType === 'fixed_asset' &&
             !FIXED_ASSET_ALLOWED_TYPES.includes(dto.adjustmentType)
         ) {
             throw new BadRequestException(
-                'لا يمكن تعديل الأصول الثابتة إلا كحالة تالف (damaged) أو عجز (shrinkage).',
+                'Fixed assets can only be adjusted as damaged or shrinkage.',
             );
         }
+
+        await this.assertVariantConfiguredForDepartment(
+            dto.departmentId,
+            dto.variantId,
+        );
 
         if (dto.stockCountSessionId) {
             const sessionExists =
@@ -94,7 +102,7 @@ export class AdjustmentsService {
                 );
             if (!sessionExists)
                 throw new BadRequestException(
-                    'جلسة جرد المخزون المشار إليها غير موجودة.',
+                    'Referenced stock count session does not exist.',
                 );
         }
 
@@ -109,7 +117,7 @@ export class AdjustmentsService {
             );
             if (!batchStock || Number(batchStock.quantity) < dto.quantity) {
                 throw new BadRequestException(
-                    'المخزون غير كافٍ في هذه الدفعة بهذا القسم للتسوية المطلوبة.',
+                    'Insufficient stock in this batch at this department for the requested adjustment.',
                 );
             }
         }
@@ -121,7 +129,7 @@ export class AdjustmentsService {
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(
-                    'المخزون غير كافٍ في هذه الدفعة بهذا القسم للتسوية المطلوبة.',
+                    'Insufficient stock in this batch at this department for the requested adjustment.',
                 );
             }
             throw error;
@@ -148,6 +156,21 @@ export class AdjustmentsService {
         if (scope && scope !== targetDepartmentId) {
             throw new ForbiddenException(
                 'يمكنك الإبلاغ عن التسويات الخاصة بقسمك فقط.',
+            );
+        }
+    }
+    private async assertVariantConfiguredForDepartment(
+        departmentId: string,
+        variantId: string,
+    ) {
+        const configuredIds =
+            await this.adjustmentsRepository.findConfiguredVariantIds(
+                departmentId,
+                [variantId],
+            );
+        if (configuredIds.length === 0) {
+            throw new BadRequestException(
+                'This variant is not configured as an active stock item for this department.',
             );
         }
     }
