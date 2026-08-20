@@ -1,3 +1,4 @@
+import { RequireAnyPermissions } from '../../core/decorators/require-any-permissions.decorator';
 import {
     Body,
     Controller,
@@ -22,7 +23,10 @@ export class StockSettingsController {
     constructor(private readonly stockSettingsService: StockSettingsService) {}
 
     @Get()
-    @RequirePermissions(PERMISSIONS.VIEW_INVENTORY)
+    @RequireAnyPermissions(
+        PERMISSIONS.VIEW_INVENTORY,
+        PERMISSIONS.MANAGE_DEPARTMENT_MATERIALS,
+    )
     async findAll(
         @Query() query: ListStockSettingsDto,
         @CurrentUser() user: AuthenticatedUser,
@@ -56,12 +60,8 @@ export class StockSettingsController {
 
     @Patch(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_MATERIALS)
-    async update(
-        @Param('id') id: string,
-        @Body() dto: UpdateStockSettingDto,
-        @CurrentUser() user: AuthenticatedUser,
-    ) {
-        const data = await this.stockSettingsService.update(id, dto, user.sub);
+    async update(@Param('id') id: string, @Body() dto: UpdateStockSettingDto) {
+        const data = await this.stockSettingsService.update(id, dto);
         return { message: 'تم تحديث إعداد المخزون بنجاح.', data };
     }
 
@@ -70,13 +70,8 @@ export class StockSettingsController {
     async updateStatus(
         @Param('id') id: string,
         @Body() dto: UpdateStockSettingStatusDto,
-        @CurrentUser() user: AuthenticatedUser,
     ) {
-        const data = await this.stockSettingsService.updateStatus(
-            id,
-            dto,
-            user.sub,
-        );
+        const data = await this.stockSettingsService.updateStatus(id, dto);
         return {
             message: `تم تعيين إعداد المخزون كـ ${dto.isActive ? 'نشط' : 'غير نشط'}.`,
             data,
@@ -85,11 +80,8 @@ export class StockSettingsController {
 
     @Delete(':id')
     @RequirePermissions(PERMISSIONS.MANAGE_DEPARTMENT_MATERIALS)
-    async remove(
-        @Param('id') id: string,
-        @CurrentUser() user: AuthenticatedUser,
-    ) {
-        await this.stockSettingsService.delete(id, user.sub);
+    async remove(@Param('id') id: string) {
+        await this.stockSettingsService.delete(id);
         return { message: 'تم حذف إعداد المخزون بنجاح.', data: null };
     }
 }
