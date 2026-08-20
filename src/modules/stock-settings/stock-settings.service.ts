@@ -73,7 +73,7 @@ export class StockSettingsService {
     }
 
     async create(dto: CreateStockSettingDto, requestingUserId: string) {
-        await this.assertDepartmentScope(requestingUserId, dto.departmentId);
+        // await this.assertDepartmentScope(requestingUserId, dto.departmentId);
 
         const department = await this.departmentsCacheService.getById(
             dto.departmentId,
