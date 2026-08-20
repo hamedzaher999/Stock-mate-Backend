@@ -25,6 +25,7 @@ import type {
     IStorageService,
     UploadedImage,
 } from '../../core/storage/storage.interface';
+import { StockThresholdCheckService } from '../inventory/stock-threshold-check.service';
 
 @Injectable()
 export class DisposalSalesService {
@@ -34,6 +35,7 @@ export class DisposalSalesService {
         private readonly departmentInventoryService: DepartmentInventoryService,
         private readonly notificationsService: NotificationsService,
         private readonly configService: ConfigService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
         @Inject(STORAGE_SERVICE)
         private readonly storageService: IStorageService,
     ) {}
@@ -300,6 +302,13 @@ export class DisposalSalesService {
             }
             throw error;
         }
+
+        await this.stockThresholdCheckService.checkAndNotifyMany(
+            request.items.map((i) => ({
+                variantId: i.variantId,
+                departmentId: warehouse.id,
+            })),
+        );
 
         await this.notifyStatusChange(result);
         return result;

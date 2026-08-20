@@ -3,6 +3,7 @@ import { Prisma, RefillRequestPriority, RequestStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/prisma/prisma.service';
 import { variantInventorySelect } from '../../../common/selects/variant.select';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 const purchaseRequestDetailSelect = {
     id: true,
     requestNumber: true,
@@ -230,6 +231,15 @@ export class PurchaseRequestsRepository {
     countUnconfirmedReceiptsForRequest(id: string) {
         return this.prisma.purchaseReceipt.count({
             where: { purchaseRequestId: id, status: 'pending_confirmation' },
+        });
+    }
+    findHospitalManagerId() {
+        return this.prisma.user.findFirst({
+            where: {
+                role: { name: HOSPITAL_MANAGER_ROLE_NAME },
+                status: 'active',
+            },
+            select: { id: true },
         });
     }
 }

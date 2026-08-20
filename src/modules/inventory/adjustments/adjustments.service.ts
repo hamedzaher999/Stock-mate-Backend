@@ -11,6 +11,7 @@ import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { StockThresholdCheckService } from '../stock-threshold-check.service';
 const INCREASING_ADJUSTMENT_TYPES = ['found'];
 const FIXED_ASSET_ALLOWED_TYPES = ['damaged', 'shrinkage'];
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
@@ -20,6 +21,7 @@ export class AdjustmentsService {
         private readonly adjustmentsRepository: AdjustmentsRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
         private readonly userScopeService: UserScopeService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async list(
@@ -122,10 +124,15 @@ export class AdjustmentsService {
             }
         }
         try {
-            return await this.adjustmentsRepository.createAdjustment({
+            const result = await this.adjustmentsRepository.createAdjustment({
                 ...dto,
                 reportedById,
             });
+            await this.stockThresholdCheckService.checkAndNotify({
+                variantId: dto.variantId,
+                departmentId: dto.departmentId,
+            });
+            return result;
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(

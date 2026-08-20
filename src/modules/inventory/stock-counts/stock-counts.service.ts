@@ -16,6 +16,7 @@ import { UserScopeService } from '../../rbac/user-scope.service';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
 import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { StockThresholdCheckService } from '../stock-threshold-check.service';
 
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
@@ -25,6 +26,7 @@ export class StockCountsService {
         private readonly stockCountsRepository: StockCountsRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
         private readonly userScopeService: UserScopeService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async list(
@@ -192,10 +194,18 @@ export class StockCountsService {
             );
 
         try {
-            return await this.stockCountsRepository.completeSession(
+            const result = await this.stockCountsRepository.completeSession(
                 sessionId,
                 requestingUserId,
             );
+            const pairs = result.items
+                .filter((i) => i.batchId)
+                .map((i) => ({
+                    variantId: i.variantId,
+                    departmentId: result.departmentId,
+                }));
+            await this.stockThresholdCheckService.checkAndNotifyMany(pairs);
+            return result;
         } catch (error) {
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(error.message);

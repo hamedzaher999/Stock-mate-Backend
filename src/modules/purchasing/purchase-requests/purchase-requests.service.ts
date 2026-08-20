@@ -88,13 +88,28 @@ export class PurchaseRequestsService {
         const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
         await this.assertVariantsActive(variantIds);
 
-        return this.purchaseRequestsRepository.create({
+        const created = await this.purchaseRequestsRepository.create({
             requestNumber: generateRequestNumber('PR'),
             requestedById,
             priority: dto.priority,
             notes: dto.notes,
             items: dto.items,
         });
+
+        const hospitalManager =
+            await this.purchaseRequestsRepository.findHospitalManagerId();
+        if (hospitalManager) {
+            await this.notificationsService.create({
+                userId: hospitalManager.id,
+                type: NOTIFICATION_TYPES.PURCHASE_REQUEST_STATUS_CHANGED,
+                category: 'purchasing',
+                title: 'طلب شراء جديد بانتظار الموافقة',
+                body: `تم إنشاء طلب شراء جديد (${created.requestNumber}) وهو بانتظار موافقتك.`,
+                data: { purchaseRequestId: created.id, status: created.status },
+            });
+        }
+
+        return created;
     }
     private async runGuarded<T>(action: () => Promise<T>): Promise<T> {
         try {

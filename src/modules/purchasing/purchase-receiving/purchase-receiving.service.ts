@@ -28,6 +28,7 @@ import { CreatePurchaseReceiptFormDto } from './dto/create-purchase-receipt-form
 import { detectImageMimeType } from '../../../common/utils/image-signature.util';
 import { ConfigService } from '@nestjs/config';
 import { UpdatePurchaseReceiptFormDto } from './dto/update-purchase-receipt-form.dto';
+import { StockThresholdCheckService } from '../../inventory/stock-threshold-check.service';
 
 const RECEIVABLE_REQUEST_STATUSES = ['preparing', 'partially_complete'];
 
@@ -41,6 +42,7 @@ export class PurchaseReceivingService {
         private readonly configService: ConfigService,
         @Inject(STORAGE_SERVICE)
         private readonly storageService: IStorageService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async list(
@@ -336,6 +338,14 @@ export class PurchaseReceivingService {
                 batchType: receipt.type,
                 confirmations,
             });
+            await this.stockThresholdCheckService.checkAndNotifyMany(
+                confirmations
+                    .filter((c) => c.confirmedQuantity > 0)
+                    .map((c) => ({
+                        variantId: c.variantId,
+                        departmentId: warehouse.id,
+                    })),
+            );
         } catch (error) {
             if (error instanceof AlreadyProcessedError) {
                 throw new ConflictException(

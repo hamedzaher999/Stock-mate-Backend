@@ -98,7 +98,7 @@ export class UsersController {
         @Param('sessionId') sessionId: string,
     ) {
         await this.usersService.revokeSessionForUser(id, sessionId);
-        return { message: 'Session revoked.', data: null };
+        return { message: 'تم إنهاء الجلسة.', data: null };
     }
 
     @Post(':id/sessions/revoke-all')

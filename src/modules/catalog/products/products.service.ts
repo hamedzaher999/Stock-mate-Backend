@@ -69,8 +69,7 @@ export class ProductsService {
             const category = await this.productsRepository.categoryExists(
                 dto.categoryId,
             );
-            if (!category)
-                throw new BadRequestException('Category does not exist.');
+            if (!category) throw new BadRequestException('الفئة غير موجودة.');
         }
 
         return this.productsRepository.update(id, dto);

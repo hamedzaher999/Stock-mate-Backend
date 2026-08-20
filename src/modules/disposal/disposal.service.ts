@@ -13,6 +13,7 @@ import { ListDisposalTransfersDto } from './dto/list-disposal-transfers.dto';
 import { ConfirmDisposalTransferDto } from './dto/confirm-disposal-transfer.dto';
 import { CancelDisposalTransferDto } from './dto/cancel-disposal-transfer.dto';
 import { PaginatedResult } from '../../core/interfaces/paginated-result.interface';
+import { StockThresholdCheckService } from '../inventory/stock-threshold-check.service';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -22,6 +23,7 @@ export class DisposalService {
         private readonly disposalRepository: DisposalRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
         private readonly notificationsService: NotificationsService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async getCandidates(departmentId: string) {
@@ -174,8 +176,11 @@ export class DisposalService {
             throw new BadRequestException('لم يتم تكوين قسم مستودع الهالك.');
         }
 
+        let result: Awaited<
+            ReturnType<typeof this.disposalRepository.confirmTransfer>
+        >;
         try {
-            return await this.disposalRepository.confirmTransfer({
+            result = await this.disposalRepository.confirmTransfer({
                 transferId: id,
                 disposalWarehouseId: warehouse.id,
                 confirmedById: confirmingUserId,
@@ -188,6 +193,20 @@ export class DisposalService {
             }
             throw error;
         }
+
+        // Confirmed quantities land in the disposal warehouse -- check its
+        // stock levels for every affected variant right away instead of
+        // waiting for the daily threshold cron.
+        await this.stockThresholdCheckService.checkAndNotifyMany(
+            confirmations
+                .filter((c) => c.confirmedQuantity > 0)
+                .map((c) => ({
+                    variantId: c.variantId,
+                    departmentId: warehouse.id,
+                })),
+        );
+
+        return result;
     }
 
     async cancel(
@@ -208,6 +227,19 @@ export class DisposalService {
                 cancelledById: cancellingUserId,
                 reason: dto.reason,
             });
+
+            // cancelTransfer restores stock only for the 'near_expiry' items
+            // it had already deducted at initiation time, and it restores
+            // them into the transfer's originating department -- check that
+            // department's thresholds for those variants now.
+            await this.stockThresholdCheckService.checkAndNotifyMany(
+                transfer.items
+                    .filter((i) => i.sourceType === 'near_expiry')
+                    .map((i) => ({
+                        variantId: i.variantId,
+                        departmentId: transfer.departmentId,
+                    })),
+            );
 
             await this.notifyDepartmentManager(transfer.departmentId, {
                 type: NOTIFICATION_TYPES.DISPOSAL_TRANSFER_CANCELLED,

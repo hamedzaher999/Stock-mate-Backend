@@ -17,8 +17,10 @@ import { ConsumptionService } from './consumption/consumption.service';
 import { ConsumptionRepository } from './consumption/consumption.repository';
 import { RbacModule } from '../rbac/rbac.module';
 import { DepartmentsModule } from '../departments/departments.module';
+import { StockThresholdCheckService } from './stock-threshold-check.service';
+import { StockSettingsModule } from '../stock-settings/stock-settings.module';
 @Module({
-    imports: [RbacModule, DepartmentsModule],
+    imports: [RbacModule, DepartmentsModule, StockSettingsModule],
     controllers: [
         DepartmentInventoryController,
         AdjustmentsController,
@@ -38,7 +40,12 @@ import { DepartmentsModule } from '../departments/departments.module';
         InventoryLedgerService,
         ConsumptionService,
         ConsumptionRepository,
+        StockThresholdCheckService,
     ],
-    exports: [InventoryLedgerService, DepartmentInventoryService],
+    exports: [
+        InventoryLedgerService,
+        DepartmentInventoryService,
+        StockThresholdCheckService,
+    ],
 })
 export class InventoryModule {}

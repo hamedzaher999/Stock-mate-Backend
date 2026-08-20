@@ -9,6 +9,7 @@ import { InsufficientStockError } from '../../../common/utils/fefo.util';
 import { DepartmentsCacheService } from '../../departments/departments-cache.service';
 import { UserScopeService } from '../../rbac/user-scope.service';
 import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
+import { StockThresholdCheckService } from '../stock-threshold-check.service';
 const UNRESTRICTED_ROLES = [HOSPITAL_MANAGER_ROLE_NAME];
 
 @Injectable()
@@ -17,6 +18,7 @@ export class ConsumptionService {
         private readonly consumptionRepository: ConsumptionRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
         private readonly userScopeService: UserScopeService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async create(dto: CreateConsumptionDto, performedById: string) {
@@ -61,12 +63,19 @@ export class ConsumptionService {
         );
 
         try {
-            return await this.consumptionRepository.consume({
+            const result = await this.consumptionRepository.consume({
                 departmentId: dto.departmentId,
                 performedById,
                 notes: dto.notes,
                 lines: dto.items,
             });
+            await this.stockThresholdCheckService.checkAndNotifyMany(
+                variantIds.map((variantId) => ({
+                    variantId,
+                    departmentId: dto.departmentId,
+                })),
+            );
+            return result;
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(

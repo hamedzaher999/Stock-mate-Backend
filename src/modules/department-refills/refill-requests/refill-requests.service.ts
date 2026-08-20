@@ -147,17 +147,45 @@ export class RefillRequestsService {
             variantIds,
         );
 
-        return this.refillRequestsRepository.create({
+        const created = await this.refillRequestsRepository.create({
             requestNumber: generateRequestNumber('DRF'),
+
             departmentId: requesterScope.departmentId,
+
             requestedById,
+
             priority: dto.priority ?? 'normal',
+
             requestType,
+
             frequencyInterval:
                 requestType === 'normal' ? undefined : dto.frequencyInterval,
+
             notes: dto.notes,
+
             items: dto.items,
         });
+
+        const hospitalManager =
+            await this.refillRequestsRepository.findHospitalManagerId();
+
+        if (hospitalManager) {
+            await this.notificationsService.create({
+                userId: hospitalManager.id,
+
+                type: NOTIFICATION_TYPES.REFILL_REQUEST_STATUS_CHANGED,
+
+                category: 'inventory',
+
+                title: 'طلب تزويد جديد بانتظار الموافقة',
+
+                body: `تم إنشاء طلب تزويد جديد (${created.requestNumber}) وهو بانتظار موافقتك.`,
+
+                data: { refillRequestId: created.id, status: created.status },
+            });
+        }
+
+        return created;
     }
     async update(
         id: string,

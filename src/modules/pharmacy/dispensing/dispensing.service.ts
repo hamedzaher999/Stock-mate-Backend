@@ -12,6 +12,7 @@ import {
     AlreadyProcessedError,
     CycleAllowanceExceededError,
 } from '../../../common/utils/concurrency.util';
+import { StockThresholdCheckService } from '../../inventory/stock-threshold-check.service';
 const CLOSED_CYCLE_STATUSES = ['delivered', 'missed', 'cancelled'];
 
 @Injectable()
@@ -19,6 +20,7 @@ export class DispensingService {
     constructor(
         private readonly dispensingRepository: DispensingRepository,
         private readonly departmentsCacheService: DepartmentsCacheService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async dispense(dto: DispensePrescriptionDto, dispensedById: string) {
@@ -93,7 +95,7 @@ export class DispensingService {
                 prescription.currentCycleNumber >= prescription.totalCycles);
 
         try {
-            return await this.dispensingRepository.dispense({
+            const result = await this.dispensingRepository.dispense({
                 prescriptionId: dto.prescriptionId,
                 patientId: prescription.patientId,
                 departmentId: pharmacy.id,
@@ -116,6 +118,15 @@ export class DispensingService {
                     fullName: prescription.patient.fullName,
                 },
             });
+
+            await this.stockThresholdCheckService.checkAndNotifyMany(
+                requestedItems.map((i) => ({
+                    variantId: i.variantId,
+                    departmentId: pharmacy.id,
+                })),
+            );
+
+            return result;
         } catch (error) {
             if (error instanceof InsufficientStockError) {
                 throw new BadRequestException(

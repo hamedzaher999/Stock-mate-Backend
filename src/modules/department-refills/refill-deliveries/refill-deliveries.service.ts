@@ -21,6 +21,7 @@ import {
     HOSPITAL_MANAGER_ROLE_NAME,
     WAREHOUSE_MANAGER_ROLE_NAME,
 } from '../../../common/constants/roles.constants';
+import { StockThresholdCheckService } from '../../inventory/stock-threshold-check.service';
 
 const SHIPPABLE_STATUSES = ['preparing', 'partially_complete'];
 const UNRESTRICTED_ROLES = [
@@ -35,6 +36,7 @@ export class RefillDeliveriesService {
         private readonly notificationsService: NotificationsService,
         private readonly departmentsCacheService: DepartmentsCacheService,
         private readonly userScopeService: UserScopeService,
+        private readonly stockThresholdCheckService: StockThresholdCheckService,
     ) {}
 
     async list(
@@ -286,6 +288,21 @@ export class RefillDeliveriesService {
             }
             throw error;
         }
+
+        const variantIdByRefillItemId = new Map(
+            request.items.map((i) => [i.id, i.variantId]),
+        );
+        const affectedPairs = confirmations
+            .filter((c) => c.received > 0)
+            .map((c) => ({
+                variantId: variantIdByRefillItemId.get(c.refillItemId),
+                departmentId: request.departmentId,
+            }))
+            .filter(
+                (p): p is { variantId: string; departmentId: string } =>
+                    !!p.variantId,
+            );
+        await this.stockThresholdCheckService.checkAndNotifyMany(affectedPairs);
 
         const updatedRequest =
             await this.prisma.departmentRefillRequest.findUniqueOrThrow({

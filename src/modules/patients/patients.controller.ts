@@ -33,7 +33,9 @@ export class PatientsController {
     async lookup(@Query() query: LookupPatientDto) {
         const data = await this.patientsService.lookup(query);
         return {
-            message: data ? 'Patient found.' : 'No matching patient found.',
+            message: data
+                ? 'تم العثور على المريض.'
+                : 'لم يتم العثور على مريض مطابق.',
             data,
         };
     }

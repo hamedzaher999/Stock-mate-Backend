@@ -13,6 +13,7 @@ import {
     requestTypeToFrequencyUnit,
 } from '../../../common/utils/recurrence.util';
 import { AlreadyProcessedError } from '../../../common/utils/concurrency.util';
+import { HOSPITAL_MANAGER_ROLE_NAME } from '../../../common/constants/roles.constants';
 
 const refillRequestDetailSelect = {
     id: true,
@@ -355,5 +356,15 @@ export class RefillRequestsRepository {
                 select: { variantId: true },
             })
             .then((rows) => rows.map((r) => r.variantId));
+    }
+
+    findHospitalManagerId() {
+        return this.prisma.user.findFirst({
+            where: {
+                role: { name: HOSPITAL_MANAGER_ROLE_NAME },
+                status: 'active',
+            },
+            select: { id: true },
+        });
     }
 }

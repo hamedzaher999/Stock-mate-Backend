@@ -57,6 +57,16 @@ export class StockSettingsRepository {
     findByVariantAndDepartment(variantId: string, departmentId: string) {
         return this.prisma.departmentStockSetting.findUnique({
             where: { variantId_departmentId: { variantId, departmentId } },
+            select: {
+                id: true,
+                isActive: true,
+                minimumStock: true,
+                maximumStock: true,
+                variant: { select: { id: true, variantName: true, sku: true } },
+                department: {
+                    select: { id: true, name: true, managerId: true },
+                },
+            },
         });
     }
 
