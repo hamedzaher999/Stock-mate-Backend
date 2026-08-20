@@ -8,6 +8,7 @@ import { RequirePermissions } from '../../core/decorators/require-permissions.de
 import type { AuthenticatedUser } from '../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../common/constants/permissions.constants';
 import { Throttle } from '@nestjs/throttler';
+import { RequireAnyPermissions } from '../../core/decorators/require-any-permissions.decorator';
 
 @Controller('prescriptions')
 export class PrescriptionsController {
@@ -21,7 +22,10 @@ export class PrescriptionsController {
     }
 
     @Get(':id')
-    @RequirePermissions(PERMISSIONS.VIEW_PATIENT_HISTORY)
+    @RequireAnyPermissions(
+        PERMISSIONS.VIEW_PATIENT_HISTORY,
+        PERMISSIONS.DISPENSE_PRESCRIPTION,
+    )
     async findOne(@Param('id') id: string) {
         const data = await this.prescriptionsService.findById(id);
         return { message: 'Success', data };

@@ -21,7 +21,10 @@ import { UserScopeService } from '../rbac/user-scope.service';
 import { DepartmentsCacheService } from '../departments/departments-cache.service';
 import { AlreadyProcessedError } from '../../common/utils/concurrency.util';
 import { RemoveAllQueueEntriesDto } from './dto/remove-all-queue-entries.dto';
-const UNRESTRICTED_ROLES = [RECEPTION_STAFF_ROLE_NAME];
+const UNRESTRICTED_ROLES = [
+    RECEPTION_STAFF_ROLE_NAME,
+    HOSPITAL_MANAGER_ROLE_NAME,
+];
 const QUEUEABLE_DEPARTMENT_TYPE = 'standard';
 
 @Injectable()
