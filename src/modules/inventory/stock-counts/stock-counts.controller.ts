@@ -17,7 +17,6 @@ import { RequirePermissions } from '../../../core/decorators/require-permissions
 import { CurrentUser } from '../../../core/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../core/interfaces/authenticated-request.interface';
 import { PERMISSIONS } from '../../../common/constants/permissions.constants';
-// src/modules/inventory/stock-counts/stock-counts.controller.ts
 
 @Controller('inventory/stock-counts')
 @RequirePermissions(PERMISSIONS.PERFORM_STOCK_COUNT)
