@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { SendMessageDto } from './dto/send-message.dto';
+import { UserScopeService } from '../rbac/user-scope.service';
 export interface ChatbotReply {
     answer: string;
     hadContext: boolean;
@@ -28,6 +29,7 @@ export class ChatbotProxyService {
     constructor(
         private readonly httpService: HttpService,
         private readonly configService: ConfigService,
+        private readonly userScopeService: UserScopeService,
     ) {}
 
     async sendMessage(
@@ -36,6 +38,10 @@ export class ChatbotProxyService {
     ): Promise<ChatbotReply> {
         const baseUrl = this.configService.get<string>('chatbot.serviceUrl');
         const secret = this.configService.get<string>('chatbot.internalSecret');
+
+        const scope =
+            await this.userScopeService.getUserScope(requestingUserId);
+        const role = scope?.roleName;
 
         let lastError: AxiosError | undefined;
 
@@ -48,6 +54,8 @@ export class ChatbotProxyService {
                             message: `${dto.message}\n\n[تعليمات: يجب أن تكون إجابتك باللغة العربية فقط.]`,
                             history: dto.history,
                             userId: requestingUserId,
+                            platform: dto.platform,
+                            role,
                         },
                         {
                             headers: { 'x-internal-secret': secret },

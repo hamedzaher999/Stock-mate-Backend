@@ -1,3 +1,4 @@
+import { SessionPlatform } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
     ArrayMaxSize,
@@ -7,7 +8,6 @@ import {
     MaxLength,
     ValidateNested,
 } from 'class-validator';
-
 enum ChatRole {
     user = 'user',
     assistant = 'assistant',
@@ -32,4 +32,7 @@ export class SendMessageDto {
     @ValidateNested({ each: true })
     @Type(() => ChatHistoryMessageDto)
     history!: ChatHistoryMessageDto[];
+
+    @IsEnum(SessionPlatform)
+    platform!: SessionPlatform;
 }
