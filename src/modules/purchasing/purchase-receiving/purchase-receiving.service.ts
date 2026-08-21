@@ -234,8 +234,11 @@ export class PurchaseReceivingService {
             `purchase-receipts/${dto.purchaseRequestId}`,
         );
 
+        let receipt: Awaited<
+            ReturnType<typeof this.purchaseReceivingRepository.recordReceipt>
+        >;
         try {
-            return await this.purchaseReceivingRepository.recordReceipt({
+            receipt = await this.purchaseReceivingRepository.recordReceipt({
                 purchaseRequestId: dto.purchaseRequestId,
                 supplierId: dto.supplierId,
                 receivedById,
@@ -249,6 +252,20 @@ export class PurchaseReceivingService {
             await this.rollbackUploads(uploaded);
             throw error;
         }
+
+        await this.notificationsService.create({
+            userId: request.requestedById,
+            type: NOTIFICATION_TYPES.PURCHASE_RECEIPT_CREATED,
+            category: 'purchasing',
+            title: 'تم تسجيل إيصال شراء جديد',
+            body: 'تم تسجيل إيصال شراء جديد لطلب الشراء الخاص بك وهو الآن بانتظار تأكيدك.',
+            data: {
+                purchaseRequestId: dto.purchaseRequestId,
+                purchaseReceiptId: receipt.id,
+            },
+        });
+
+        return receipt;
     }
     async confirm(
         id: string,

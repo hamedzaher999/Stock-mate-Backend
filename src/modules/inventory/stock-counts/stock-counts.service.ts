@@ -141,6 +141,18 @@ export class StockCountsService {
             );
         }
 
+        const existingItem =
+            await this.stockCountsRepository.findItemByVariantAndBatch(
+                sessionId,
+                dto.variantId,
+                dto.batchId,
+            );
+        if (existingItem) {
+            throw new ConflictException(
+                'تم عد هذا الصنف (بنفس الدفعة) بالفعل في هذه الجلسة -- يرجى تعديل العنصر الموجود بدلاً من إضافته مرة أخرى.',
+            );
+        }
+
         const stockRow = await this.stockCountsRepository.getLiveBatchQuantity(
             dto.batchId,
             session.departmentId,

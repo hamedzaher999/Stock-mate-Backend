@@ -301,4 +301,14 @@ export class StockCountsRepository {
             });
         });
     }
+    findItemByVariantAndBatch(
+        sessionId: string,
+        variantId: string,
+        batchId: string,
+    ) {
+        return this.prisma.stockCountItem.findFirst({
+            where: { sessionId, variantId, batchId },
+            select: { id: true },
+        });
+    }
 }

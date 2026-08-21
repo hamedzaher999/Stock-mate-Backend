@@ -173,8 +173,11 @@ export class RefillDeliveriesService {
             });
         }
 
+        let delivery: Awaited<
+            ReturnType<typeof this.refillDeliveriesRepository.createDelivery>
+        >;
         try {
-            return await this.refillDeliveriesRepository.createDelivery({
+            delivery = await this.refillDeliveriesRepository.createDelivery({
                 refillRequestId: dto.refillRequestId,
                 deliveredById,
                 warehouseDepartmentId: warehouse.id,
@@ -190,6 +193,20 @@ export class RefillDeliveriesService {
             }
             throw error;
         }
+
+        await this.notificationsService.create({
+            userId: request.requestedById,
+            type: NOTIFICATION_TYPES.REFILL_DELIVERY_CREATED,
+            category: 'inventory',
+            title: 'تم شحن تسليم جديد',
+            body: 'تم شحن تسليم جديد من المستودع المركزي لطلب التزويد الخاص بك.',
+            data: {
+                refillRequestId: dto.refillRequestId,
+                deliveryId: delivery.id,
+            },
+        });
+
+        return delivery;
     }
 
     async confirm(

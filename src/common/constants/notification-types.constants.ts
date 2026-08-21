@@ -12,6 +12,8 @@ export const NOTIFICATION_TYPES = {
     DISPOSAL_TRANSFER_CANCELLED: 'disposal_transfer_cancelled',
     DISPOSAL_SALE_REQUEST_STATUS_CHANGED:
         'disposal_sale_request_status_changed',
+    PURCHASE_RECEIPT_CREATED: 'purchase_receipt_created',
+    REFILL_DELIVERY_CREATED: 'refill_delivery_created',
 } as const;
 
 export type NotificationTypeCode =
