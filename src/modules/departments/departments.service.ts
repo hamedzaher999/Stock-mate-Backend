@@ -58,6 +58,10 @@ const SELECTABLE_CONTEXTS: Record<
             type: { not: 'disposal_warehouse' },
         },
     },
+    'stock-settings': {
+        unrestrictedRoles: [HOSPITAL_MANAGER_ROLE_NAME],
+        where: { isActive: true, tracksInventory: true },
+    },
 };
 @Injectable()
 export class DepartmentsService {
