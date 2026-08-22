@@ -49,8 +49,6 @@ export const PERMISSIONS = {
     DISPENSE_PRESCRIPTION: 'dispense_prescription',
 
     VIEW_REPORTS: 'view_reports',
-    VIEW_AI_INSIGHTS: 'view_ai_insights',
-    REVIEW_AI_INSIGHTS: 'review_ai_insights',
     MANAGE_PERIODIC_REFILL_SCHEDULES: 'manage_periodic_refill_schedules',
     VIEW_DISPOSAL: 'view_disposal',
     MANAGE_DISPOSAL_TRANSFERS: 'manage_disposal_transfers',
