@@ -22,6 +22,7 @@ import {
     TRANSACTION_TYPE_LABELS_AR,
     translateEnum,
 } from '../common/report-labels';
+import { ReportsCacheService } from '../common/reports-cache.service';
 
 const MAX_EXPORT_ROWS = 50_000;
 
@@ -40,9 +41,23 @@ export class InventoryMovementReportService {
         private readonly repository: InventoryMovementRepository,
         private readonly reportAccessService: ReportAccessService,
         private readonly excelExportService: ExcelExportService,
+        private readonly reportsCacheService: ReportsCacheService,
     ) {}
 
     async getReport(dto: ListInventoryMovementDto, requestingUserId: string) {
+        return this.reportsCacheService.getOrCompute(
+            'inventory-movement',
+            'report',
+            requestingUserId,
+            { ...dto },
+            () => this.computeReport(dto, requestingUserId),
+        );
+    }
+
+    private async computeReport(
+        dto: ListInventoryMovementDto,
+        requestingUserId: string,
+    ) {
         const filters = await this.buildFilters(dto, requestingUserId);
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
@@ -85,6 +100,19 @@ export class InventoryMovementReportService {
     }
 
     async exportExcel(
+        dto: ListInventoryMovementDto,
+        requestingUserId: string,
+    ): Promise<Buffer> {
+        return this.reportsCacheService.getOrCompute(
+            'inventory-movement',
+            'export',
+            requestingUserId,
+            { ...dto },
+            () => this.computeExportExcel(dto, requestingUserId),
+        );
+    }
+
+    private async computeExportExcel(
         dto: ListInventoryMovementDto,
         requestingUserId: string,
     ): Promise<Buffer> {

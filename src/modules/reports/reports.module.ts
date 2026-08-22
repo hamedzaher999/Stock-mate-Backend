@@ -11,6 +11,7 @@ import { PatientVisitsReportService } from './patient-visits-report/patient-visi
 import { PatientVisitsReportRepository } from './patient-visits-report/patient-visits-report.repository';
 import { ExcelExportService } from './common/excel-export.service';
 import { ReportAccessService } from './common/report-access.service';
+import { ReportsCacheService } from './common/reports-cache.service';
 
 @Module({
     imports: [RbacModule],
@@ -28,6 +29,7 @@ import { ReportAccessService } from './common/report-access.service';
         PatientVisitsReportRepository,
         ExcelExportService,
         ReportAccessService,
+        ReportsCacheService,
     ],
 })
 export class ReportsModule {}

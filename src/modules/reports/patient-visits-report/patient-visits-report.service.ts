@@ -18,6 +18,8 @@ import {
 import { ReportGroupBy } from '../../../common/enums/report-group-by.enum';
 import { PaginatedResult } from '../../../core/interfaces/paginated-result.interface';
 import { translateEnum, VISIT_STATUS_LABELS_AR } from '../common/report-labels';
+import { ReportsCacheService } from '../common/reports-cache.service';
+// src\modules\reports\patient-visits-report\patient-visits-report.service.ts
 
 const MAX_EXPORT_ROWS = 50_000;
 
@@ -35,9 +37,23 @@ export class PatientVisitsReportService {
         private readonly repository: PatientVisitsReportRepository,
         private readonly reportAccessService: ReportAccessService,
         private readonly excelExportService: ExcelExportService,
+        private readonly reportsCacheService: ReportsCacheService,
     ) {}
 
     async getReport(dto: ListPatientVisitsReportDto, requestingUserId: string) {
+        return this.reportsCacheService.getOrCompute(
+            'patient-visits',
+            'report',
+            requestingUserId,
+            { ...dto },
+            () => this.computeReport(dto, requestingUserId),
+        );
+    }
+
+    private async computeReport(
+        dto: ListPatientVisitsReportDto,
+        requestingUserId: string,
+    ) {
         const filters = await this.buildFilters(dto, requestingUserId);
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
@@ -75,6 +91,19 @@ export class PatientVisitsReportService {
     }
 
     async exportExcel(
+        dto: ListPatientVisitsReportDto,
+        requestingUserId: string,
+    ): Promise<Buffer> {
+        return this.reportsCacheService.getOrCompute(
+            'patient-visits',
+            'export',
+            requestingUserId,
+            { ...dto },
+            () => this.computeExportExcel(dto, requestingUserId),
+        );
+    }
+
+    private async computeExportExcel(
         dto: ListPatientVisitsReportDto,
         requestingUserId: string,
     ): Promise<Buffer> {

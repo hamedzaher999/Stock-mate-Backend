@@ -22,6 +22,8 @@ import {
     REFERENCE_TYPE_LABELS_AR,
     translateEnum,
 } from '../common/report-labels';
+import { ReportsCacheService } from '../common/reports-cache.service';
+// src\modules\reports\adjustments-report\adjustments-report.service.ts
 
 const MAX_EXPORT_ROWS = 50_000;
 
@@ -40,9 +42,23 @@ export class AdjustmentsReportService {
         private readonly repository: AdjustmentsReportRepository,
         private readonly reportAccessService: ReportAccessService,
         private readonly excelExportService: ExcelExportService,
+        private readonly reportsCacheService: ReportsCacheService,
     ) {}
 
     async getReport(dto: ListAdjustmentsReportDto, requestingUserId: string) {
+        return this.reportsCacheService.getOrCompute(
+            'adjustments',
+            'report',
+            requestingUserId,
+            { ...dto },
+            () => this.computeReport(dto, requestingUserId),
+        );
+    }
+
+    private async computeReport(
+        dto: ListAdjustmentsReportDto,
+        requestingUserId: string,
+    ) {
         const filters = await this.buildFilters(dto, requestingUserId);
         const page = dto.page ?? 1;
         const limit = dto.limit ?? 20;
@@ -83,7 +99,21 @@ export class AdjustmentsReportService {
             groupBy: filters.groupBy,
         };
     }
+
     async exportExcel(
+        dto: ListAdjustmentsReportDto,
+        requestingUserId: string,
+    ): Promise<Buffer> {
+        return this.reportsCacheService.getOrCompute(
+            'adjustments',
+            'export',
+            requestingUserId,
+            { ...dto },
+            () => this.computeExportExcel(dto, requestingUserId),
+        );
+    }
+
+    private async computeExportExcel(
         dto: ListAdjustmentsReportDto,
         requestingUserId: string,
     ): Promise<Buffer> {
